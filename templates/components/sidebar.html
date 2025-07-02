@@ -1,0 +1,96 @@
+{% load static menu_tags %}
+<aside class="fixed md:relative flex flex-col w-64 h-screen px-4 py-8 bg-base-100 border-r border-base-300 rtl:border-r-0 rtl:border-l transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out z-50"
+       id="sidebar">
+    <div class="flex items-center space-x-4">
+        {% if app_settings.logo %}
+            <img class="w-full" src="{{ app_settings.logo.url }}" alt="Logo">
+        {% else %}
+            {% include 'svgs/phoenix_tower_logo_horizontal.svg' %}
+        {% endif %}
+    </div>
+
+    <div class="flex flex-col justify-between flex-1 mt-6">
+        <nav class="-mx-3 space-y-6">
+            {% for menu_item in menu_items %}
+                {% if menu_item.children %}
+                    <div class="space-y-3">
+                        <label class="px-3 text-xs text-base-content/60 uppercase flex items-center justify-between cursor-pointer group submenu-trigger"
+                               data-menu-id="{{ forloop.counter }}">
+                            {{ menu_item.name }}
+                            <i class="fas fa-chevron-right transform transition-all duration-300 ease-in-out"></i>
+                        </label>
+
+                        <div class="space-y-2 transition-all duration-300 ease-in-out overflow-hidden submenu"
+                             data-submenu="{{ forloop.counter }}" style="max-height: 0; opacity: 0">
+                            {% for child in menu_item.children %}
+                                <a href="{% url child.url %}"
+                                   class="flex items-center px-3 py-2 text-base-content transition-colors duration-300 transform rounded-lg hover:bg-base-200 {% if request|is_menu_active:child %}bg-primary/10 text-primary border-l-4 border-primary{% endif %}"
+                                   data-active="{% if request|is_menu_active:child %}true{% else %}false{% endif %}">
+                                    <i class="{{ child.icon }} w-5 h-5 {% if request|is_menu_active:child %}text-primary{% endif %}"></i>
+                                    <span class="mx-2">{{ child.name }}</span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="{% url menu_item.url %}"
+                       class="flex items-center px-3 py-2 text-base-content transition-colors duration-300 transform rounded-lg hover:bg-base-200 {% if request|is_menu_active:menu_item %}bg-primary/10 text-primary border-l-4 border-primary{% endif %}">
+                        <i class="{{ menu_item.icon }} w-5 h-5 {% if request|is_menu_active:menu_item %}text-primary{% endif %}"></i>
+                        <span class="mx-2">{{ menu_item.name }}</span>
+                    </a>
+                {% endif %}
+            {% endfor %}
+        </nav>
+
+        <div class="mt-6">
+            {% comment %} <form method="post" action="{% url 'users:logout' %}" class="block"> {% endcomment %}
+            <form method="post" action=# class="block">
+                {% csrf_token %}
+                <button type="submit"
+                        class="w-full text-left px-4 py-2 text-sm text-error hover:bg-base-200">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Cerrar sesión
+                </button>
+            </form>
+        </div>
+    </div>
+</aside>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializar submenús
+        document.querySelectorAll('.submenu-trigger').forEach(trigger => {
+            trigger.addEventListener('click', function (e) {
+                const menuId = this.getAttribute('data-menu-id');
+                const submenu = document.querySelector(`[data-submenu="${menuId}"]`);
+                const arrow = this.querySelector('i');
+
+                // Toggle el estado
+                const isExpanded = submenu.style.maxHeight !== '0px';
+
+                // Aplicar los cambios
+                if (isExpanded) {
+                    submenu.style.maxHeight = '0';
+                    submenu.style.opacity = '0';
+                    arrow.style.transform = 'rotate(0deg)';
+                } else {
+                    submenu.style.maxHeight = submenu.scrollHeight + 'px';
+                    submenu.style.opacity = '1';
+                    arrow.style.transform = 'rotate(90deg)';
+                }
+            });
+        });
+
+        // Expandir submenús que contienen elementos activos
+        document.querySelectorAll('[data-active="true"]').forEach(activeItem => {
+            const submenu = activeItem.closest('.submenu');
+            if (submenu) {
+                const trigger = document.querySelector(`[data-menu-id="${submenu.getAttribute('data-submenu')}"]`);
+                const arrow = trigger.querySelector('i');
+
+                submenu.style.maxHeight = submenu.scrollHeight + 'px';
+                submenu.style.opacity = '1';
+                arrow.style.transform = 'rotate(90deg)';
+            }
+        });
+    });
+</script>

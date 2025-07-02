@@ -2,19 +2,15 @@
 from .base import *
 
 DEBUG = True
+# DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 INSTALLED_APPS += [
-    # "django_extensions",
-    # "debug_toolbar",
     'django_browser_reload',
-    'tailwind',
-    'theme'
 ]
 
 MIDDLEWARE += [
-    # "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
@@ -24,8 +20,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
-TAILWIND_APP_NAME = 'theme'
 
 INTERNAL_IPS = [
     "127.0.0.1",

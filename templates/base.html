@@ -1,16 +1,9 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="es" data-theme="mytheme">
+<html lang="es" data-theme="light">
     <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-        {% block meta %}
-        {% endblock %}
-
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+        {% include 'base_head.html' %}
 
         {% block css %}
         {% endblock css %}
@@ -21,93 +14,34 @@
         <title>{% block title %}{% endblock %}</title>
     </head>
 
-    <body class="{% block body_class %}{% endblock %}">
-        <!-- Barra de navegación superior -->
-        <nav class="bg-primary  text-white p-4 flex justify-between items-center fixed w-full z-10">
-            <div class="flex items-center">
-                <span class="text-xl font-bold">LOGO</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="relative">
-                    <i class="fas fa-bell text-xl"></i>
-                    {% if notifications_count %}
-                    <span class="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                        {{ notifications_count }}
-                    </span>
-                    {% endif %}
-                </div>
-                <div class="flex items-center gap-2">
-                    {% if user.is_authenticated %}
-                        <img src="{% static 'images/default-avatar.png' %}" alt="Avatar" class="w-8 h-8 rounded-full">
-                        <span>{{ user.get_full_name|default:user.username }}</span>
-                    {% endif %}
-                </div>
-            </div>
-        </nav>
+<body class="bg-base-300 transition-colors duration-200 font-poppins">
 
-        <!-- Navegación lateral -->
-        <div class="flex">
-            <nav class="bg-neutral w-64 min-h-screen fixed pt-16">
-                <div class="p-4">
-                    <div class="mb-4">
-                        <select class="w-full bg-secondary text-white p-2 rounded">
-                            <option>Proyecto Activo</option>
-                        </select>
-                    </div>
-                    
-                    <div class="space-y-1">
-                        <a href="#" class="nav-item active">
-                            <i class="fas fa-home"></i>
-                            <span>Panel Principal</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-project-diagram"></i>
-                            <span>Proyectos</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-plus"></i>
-                            <span>Nuevo Proyecto</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-list"></i>
-                            <span>Lista de Proyectos</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-calculator"></i>
-                            <span>Presupuesto</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-cogs"></i>
-                            <span>Ejecución</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-chart-line"></i>
-                            <span>Monitoreo</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-cog"></i>
-                            <span>Administración</span>
-                        </a>
-                        <a href="#" class="nav-item">
-                            <i class="fas fa-user"></i>
-                            <span>Mi Cuenta</span>
-                        </a>
-                    </div>
-                </div>
-            </nav>
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    {% include 'components/sidebar.html' %}
 
-            <!-- Contenido principal -->
-            <main class="flex-1 ml-64 pt-16">
-                <div class="p-6">
-                    {% block content %}
-                    {% endblock content %}
-                </div>
-            </main>
-        </div>
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Navigation -->
+        {% include 'components/common/header.html' %}
 
-        {% block js %}
-        {% endblock js %}
-    </body>
+        <!-- Page Content -->
+        <main class="flex-1 overflow-y-auto p-4 text-base-content">
+            <!-- Breadcrumbs -->
+            {% include 'components/common/breadcrumbs.html' %}
+
+            {% block pre_content %}{% endblock %}
+            {% block content %}{% endblock %}
+            {% block post_content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<!-- Overlay for mobile sidebar -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-opacity-50 z-40 hidden lg:hidden"></div>
+
+{% block extra_js %}{% endblock %}
+</body>
 </html>
 
 

@@ -1,11 +1,12 @@
-from decouple import config
 from pathlib import Path
+from dotenv import load_dotenv
 import os
 
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY', default='your secret key')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-hkq1alhihxk%87ka03pu2g!@luwb*7079(6rtxf-_t4aozt_9z')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -15,7 +16,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'main',
+    'tailwind',
+    'theme',
+
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -45,6 +49,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                
+                "core.context_processors.menu_context",
             ],
         },
     },

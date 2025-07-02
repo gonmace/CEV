@@ -48,3 +48,9 @@ Uses gunicorn + Redis.
     ```
 
     Test it out at [http://localhost:8003](http://localhost:8003).
+
+
+pip freeze | xargs pip uninstall -y
+pip install -r requirements.txt
+
+pip freeze > requirements.txt

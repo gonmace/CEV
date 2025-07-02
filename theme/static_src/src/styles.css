@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/* @import "tailwindcss-animated"; */
+
+@source "../../../**/*.{html,py,js,ts}";
+/* @source "../../../pozosscz/maps/src/utils/SliderControl.js"; */
+/* @source "../../main/src/index-main.ts";
+@source "../../maps/src/index-maps-admin.ts"; */
+
+@plugin "daisyui";
+/* @plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+} */
+
+
+
+
+/* Tema claro */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: "light";
+  --color-base-100: #ffffff;
+  --color-base-200: #f2f2f2;
+  --color-base-300: #e5e5e5;
+  --color-base-content: #1f2937;
+  --color-primary: #EF233C;
+  --color-primary-content: #ffffff;
+  --color-secondary: #2B2D42;
+  --color-secondary-content: #ffffff;
+  --color-accent: #FFB703;
+  --color-accent-content: #1f2937;
+  --color-neutral: #f3f4f6;
+  --color-neutral-content: #1f2937;
+  --color-info: #3ABFF8;
+  --color-info-content: #ffffff;
+  --color-success: #36D399;
+  --color-success-content: #ffffff;
+  --color-warning: #FBBD23;
+  --color-warning-content: #1f2937;
+  --color-error: #F87272;
+  --color-error-content: #ffffff;
+} 
+
+/* Tema oscuro */
+@plugin "daisyui/theme" {
+  name: "dark";
+  color-scheme: "dark";
+  --color-base-100: oklch(25.33% 0.016 252.42);
+  --color-base-200: oklch(23.26% 0.014 253.1);
+  --color-base-300: oklch(21.15% 0.012 254.09);
+  --color-base-content: oklch(97.807% 0.029 256.847);
+  --color-primary: #FF0000;
+  --color-primary-content: #ffffff;
+  --color-secondary: #2B2D42;
+  --color-secondary-content: #8D99AE;
+  --color-accent: #EF233C;
+  --color-accent-content: oklch(98% 0.003 247.858);
+  --color-neutral: #fff;
+  --color-neutral-content: oklch(92% 0.004 286.32);
+  --color-info: oklch(74% 0.16 232.661);
+  --color-info-content: #fff;
+  --color-success: oklch(76% 0.177 163.223);
+  --color-success-content: #fff;
+  --color-warning: oklch(82% 0.189 84.429);
+  --color-warning-content: #000;
+  --color-error: oklch(71% 0.194 13.428);
+  --color-error-content: #fff;
+}
+
+@layer base {
+  body {
+    font-family: "Nunito Variable", sans-serif;
+  }
+}
+
+@layer components {
+  .centrear-w-absolute {
+    @apply left-1/2 transform -translate-x-1/2;
+  }
+  .centrearXY {
+    @apply top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+  }
+  .sombra {
+    -webkit-filter: drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.7));
+    filter: drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.7));
+  }
+  .clientes {
+    @apply p-6 mx-auto flex flex-col text-center items-center;
+  }
+  
+  .item {
+    @apply text-accent inline-flex items-center h-20 w-20 justify-center mb-5 flex-shrink-0;
+  }
+  
+  /* .scrolled {
+    @apply md:bg-primary 
+  }
+  .puntos {
+    @apply ml-2 inline-block border-black border-1 w-4 h-4 text-center rounded-full;
+  }
+  #map {
+    @apply h-screen;
+  }
+
+  .menu {
+    @apply flex flex-col space-y-1;
+  }
+
+  .menu-item {
+    @apply flex items-center px-3 py-2 text-gray-600 transition-colors duration-300 transform rounded-lg dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 hover:text-gray-700;
+  }
+
+  .menu-item.active {
+    @apply bg-primary/10 text-primary border-l-4 border-primary;
+  }
+
+  .menu-item i {
+    @apply w-5 h-5;
+  }
+
+  .menu-item.active i {
+    @apply text-primary;
+  }
+
+  .submenu-trigger {
+    @apply px-3 text-xs text-gray-500 uppercase dark:text-gray-400 flex items-center justify-between cursor-pointer group;
+  }
+
+  .submenu {
+    @apply space-y-2 transition-all duration-300 ease-in-out overflow-hidden;
+  } */
+}

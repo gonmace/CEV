@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block css %}    
+{% endblock css %}
+
+{% block body_class %}bg-base-300{% endblock %}
+
+{% block content %}
+
+<div class="bg-red-200">
+    Django | PostgreSQL | Redis | Tailwind
+</div>
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li {% if message.tags %} class="text-red-600 {{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if user.is_authenticated %}
+Esta autenticado
+{% endif %}
+
+{% endblock content %}
