@@ -1,5 +1,154 @@
 @import "tailwindcss";
-@source not "../static";
-@source "../../../templates";
-@source "../../../home";
+
+@source "../../../**/*.{html,py,js}";
+@source "../../**/templates/*.{html,py,js}";
+@source "../../templates/**/*.{html,py,js}";
+@source "../../**/templates/**/*.html";
+@source "../../**/forms.py";
+
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/aspect-ratio";
 @plugin "daisyui";
+@plugin "daisyui" {
+  themes: constructor;
+}
+@plugin "daisyui/theme" {
+  name: "constructor";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(90% 0 0);
+  --color-base-300: oklch(80% 0 0);
+  --color-base-content: #000;
+  --color-primary: #cb4040;
+  --color-primary-content: oklch(93% 0.034 272.788);
+  --color-secondary: #45484d;
+  --color-secondary-content: oklch(94% 0.028 342.258);
+  --color-accent: oklch(77% 0.152 181.912);
+  --color-accent-content: oklch(38% 0.063 188.416);
+  --color-neutral: #45484d;
+  --color-neutral-content: oklch(92% 0.004 286.32);
+  --color-info: #2563eb;
+  --color-info-content: #fff;
+  --color-success: #16a34a;
+  --color-success-content: #fff;
+  --color-warning: #d97706;
+  --color-warning-content: #fff;
+  --color-error: #dc2626;
+  --color-error-content: #fff;
+
+  --color-edit: #f0b100;
+  --color-edit-content: #fff;
+  --color-delete: #e7000b;
+  --color-delete-content: #fff;
+  --color-view: #2b7fff;
+  --color-view-content: #fff;
+  --color-copy: #00b8db;
+  --color-copy-content: #fff;
+}
+
+@layer base {
+  body {
+    font-family: 'Nunito', sans-serif;
+  }
+
+  .sombra {
+    -webkit-filter: drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.7));
+    filter: drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.7));
+  }
+}
+
+@layer components {
+  .prose ul {
+    @apply pl-6! text-2xl!;
+  }
+  .prose h2 {
+    @apply font-bold! text-blue-800! text-xl!;
+  }
+  .prose h3 {
+    @apply font-bold! text-blue-800! text-lg!;
+  }
+  .prose h4 {
+    @apply font-bold! text-black! text-xl!;
+  }
+  .prose p {
+    @apply text-base!;
+  }
+  .prose li {
+    @apply text-base!;
+  }
+
+  /* Botones personalizados para DaisyUI */
+  .btn.btn-edit {
+    --btn-color: var(--color-edit);
+    --btn-fg: var(--color-edit-content);
+    background-color: var(--color-edit);
+    color: var(--color-edit-content) !important;
+    border-color: var(--color-edit);
+  }
+  .btn.btn-edit:hover {
+    background-color: color-mix(in srgb, var(--color-edit) 90%, black);
+    border-color: color-mix(in srgb, var(--color-edit) 90%, black);
+    color: var(--color-edit-content) !important;
+  }
+  .btn.btn-edit:focus-visible {
+    outline-color: var(--color-edit);
+  }
+
+  .btn.btn-delete {
+    --btn-color: var(--color-delete);
+    --btn-fg: var(--color-delete-content);
+    background-color: var(--color-delete);
+    color: var(--color-delete-content) !important;
+    border-color: var(--color-delete);
+  }
+  .btn.btn-delete:hover {
+    background-color: color-mix(in srgb, var(--color-delete) 90%, black);
+    border-color: color-mix(in srgb, var(--color-delete) 90%, black);
+    color: var(--color-delete-content) !important;
+  }
+  .btn.btn-delete:focus-visible {
+    outline-color: var(--color-delete);
+  }
+
+  .btn.btn-view {
+    --btn-color: var(--color-view);
+    --btn-fg: var(--color-view-content);
+    background-color: var(--color-view);
+    color: var(--color-view-content) !important;
+    border-color: var(--color-view);
+  }
+  .btn.btn-view:hover {
+    background-color: color-mix(in srgb, var(--color-view) 90%, black);
+    border-color: color-mix(in srgb, var(--color-view) 90%, black);
+    color: var(--color-view-content) !important;
+  }
+  .btn.btn-view:focus-visible {
+    outline-color: var(--color-view);
+  }
+
+  .btn.btn-copy {
+    --btn-color: var(--color-copy);
+    --btn-fg: var(--color-copy-content);
+    background-color: var(--color-copy);
+    color: var(--color-copy-content) !important;
+    border-color: var(--color-copy);
+  }
+  .btn.btn-copy:hover {
+    background-color: color-mix(in srgb, var(--color-copy) 90%, black);
+    border-color: color-mix(in srgb, var(--color-copy) 90%, black);
+    color: var(--color-copy-content) !important;
+  }
+  .btn.btn-copy:focus-visible {
+    outline-color: var(--color-copy);
+  }
+
+  /* Icono de imagen sin imágenes - efecto relieve */
+  .gestionar-imagenes-btn i.text-base-content\/20 {
+    color: var(--color-base-content);
+    opacity: 0.2;
+    filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.1));
+  }
+}
