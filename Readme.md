@@ -10,7 +10,6 @@ Esqueleto base para proyectos Django con Tailwind v4 + DaisyUI v5, listo para de
 - **Archivos estáticos:** Whitenoise
 - **Automatización:** n8n (disponible en `/n8n/` en producción)
 - **Seguridad:** django-axes, django-csp, headers HTTP
-- **Monitoreo:** Sentry
 - **Producción:** Docker Compose + Nginx (gzip)
 
 ## Estructura
@@ -161,8 +160,6 @@ POSTGRES_PASSWORD=contraseña-segura
 
 N8N_ENCRYPTION_KEY=clave-larga-y-secreta
 
-# Opcional — monitoreo de errores
-SENTRY_DSN=https://...@sentry.io/...
 ```
 
 > `N8N_ENCRYPTION_KEY` debe mantenerse constante — cambiarla invalida todas las credenciales guardadas en n8n.
@@ -196,7 +193,6 @@ El archivo `core/settings.py` se adapta automáticamente según las variables de
 | `DEBUG=True` | SQLite, email en consola, Tailwind y browser-reload activos |
 | `POSTGRES_DB` definido | Usa PostgreSQL |
 | `EMAIL_HOST` definido | Usa backend SMTP |
-| `SENTRY_DSN` definido | Activa monitoreo de errores |
 | `DEBUG=False` | HSTS, CSRF seguro, sin herramientas de dev |
 
 ## Personalizar antes de usar

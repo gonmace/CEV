@@ -12,16 +12,6 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
 ADMIN_URL = config('ADMIN_URL', default='admin/')
 
-# Sentry — solo si SENTRY_DSN está definido
-SENTRY_DSN = config('SENTRY_DSN', default='')
-if SENTRY_DSN:
-    import sentry_sdk
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        traces_sample_rate=0.2,
-        send_default_pii=False,
-    )
-
 # Application definition
 
 INSTALLED_APPS = [

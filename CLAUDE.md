@@ -51,7 +51,6 @@ Single `core/settings.py` — no separate dev/prod files. Behavior adapts via en
 - `DEBUG=True` → SQLite, console email, Tailwind + browser-reload enabled
 - `POSTGRES_DB` defined → PostgreSQL
 - `EMAIL_HOST` defined → SMTP backend
-- `SENTRY_DSN` defined → Sentry enabled
 - `DEBUG=False` → HSTS, secure CSRF, no dev tools
 
 **Tailwind setup** (`django-tailwind` + Tailwind CSS v4 + DaisyUI v5):
