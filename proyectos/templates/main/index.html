@@ -1,0 +1,286 @@
+{% extends 'base_pliego.html' %}
+{% load static crispy_forms_tags tailwind_tags main_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+{% endblock %}
+
+{% block title %}Gestión de Proyectos{% endblock %}
+
+{% block body_class %}bg-base-200{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-200">
+  <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row lg:items-start gap-6">
+
+    <!-- ── Sidebar izquierdo ── -->
+    <aside class="w-full lg:w-64 flex-shrink-0 flex flex-col gap-3">
+
+      <!-- Acciones principales -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <div class="px-4 pt-4 pb-2">
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
+        </div>
+        <div class="flex flex-col px-3 pb-3 gap-1">
+          <a href="{% url 'proyectos:crear_proyecto' %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-success hover:bg-success/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-plus text-success text-xs"></i>
+            </span>
+            Crear Nuevo Proyecto
+          </a>
+          <a href="{% url 'proyectos:lista_proyectos' %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:bg-secondary/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-list text-secondary text-xs"></i>
+            </span>
+            Todos los Proyectos
+          </a>
+          <a href="{% url 'proyectos:especificaciones_disponibles' %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-info hover:bg-info/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-info/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-list-ul text-info text-xs"></i>
+            </span>
+            Especificaciones disponibles
+          </a>
+        </div>
+      </div>
+
+      <!-- Proyecto activo -->
+      {% if proyecto_seleccionado %}
+      <div class="rounded-xl bg-primary text-primary-content shadow-sm overflow-hidden">
+        <div class="px-4 pt-4 pb-1">
+          <p class="text-[10px] font-bold uppercase tracking-widest opacity-60">
+            <i class="fas fa-folder-open mr-1"></i> Proyecto Activo
+          </p>
+          <p class="font-bold text-sm leading-snug mt-1.5">{{ proyecto_seleccionado.nombre }}</p>
+        </div>
+        <div class="flex flex-col px-3 pb-3 mt-2 gap-0.5">
+          <a href="{% url 'proyectos:proyecto_detalle' proyecto_seleccionado.id %}"
+             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 hover:bg-white/25 transition-colors">
+            <i class="fas fa-sign-in-alt text-xs"></i> Ingresar
+          </a>
+          {% if proyecto_seleccionado.creado_por_id == request.user.id %}
+          <a href="{% url 'proyectos:editar_proyecto' proyecto_seleccionado.id %}"
+             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm opacity-80 hover:opacity-100 hover:bg-white/10 transition-colors">
+            <i class="fas fa-edit text-xs"></i> Editar
+          </a>
+          <a href="{% url 'proyectos:eliminar_proyecto' proyecto_seleccionado.id %}"
+             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm opacity-80 hover:opacity-100 hover:bg-white/10 transition-colors">
+            <i class="fas fa-trash text-xs"></i> Eliminar
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Stats -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-1">
+            <i class="fas fa-folder text-primary text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-primary leading-none">{{ page_obj.paginator.count }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Proyectos</span>
+        </div>
+        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mb-1">
+            <i class="fas fa-file-alt text-info text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-info leading-none">{{ total_especificaciones }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Especificaciones</span>
+        </div>
+      </div>
+
+    </aside>
+
+      <!-- Tabla -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+
+
+        {% if proyectos %}
+        <div class="overflow-x-auto">
+        <table class="table table-sm w-full">
+            <thead>
+              <tr class="bg-primary text-primary-content text-xs uppercase tracking-wider font-bold">
+                <th class="py-3 pl-5 w-2/5">{% sortable_header 'Nombre' 'nombre' sort_by order %}</th>
+                <th class="py-3 w-1/4">{% sortable_header 'Solicitante' 'solicitante' sort_by order %}</th>
+                <th class="py-3 w-16 text-center">{% sortable_header 'Espec.' 'especificaciones' sort_by order %}</th>
+                <th class="py-3 w-24 text-center">{% sortable_header 'Acceso' 'publico' sort_by order %}</th>
+                <th class="py-3 w-20 text-center">{% sortable_header 'Usuario' 'usuario' sort_by order 'justify-center' %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for proyecto in proyectos %}
+              <tr class="cursor-pointer transition-all duration-150 group border-b border-base-200/70 last:border-0
+                  {% if proyecto_seleccionado and proyecto_seleccionado.id == proyecto.id %}
+                    bg-primary/8
+                  {% else %}
+                    hover:bg-base-200/40
+                  {% endif %}"
+                  onclick="window.location.href='{% url 'proyectos:seleccionar_proyecto' proyecto.id %}?next={{ request.get_full_path|urlencode }}'">
+
+                <td class="py-3 pl-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full flex-shrink-0
+                      {% if proyecto_seleccionado and proyecto_seleccionado.id == proyecto.id %}bg-primary{% else %}bg-base-300 group-hover:bg-primary/40{% endif %}
+                      transition-colors"></div>
+                    <span class="font-semibold text-sm">{{ proyecto.nombre }}</span>
+                  </div>
+                </td>
+
+                <td class="py-3 text-sm text-secondary/80">{{ proyecto.solicitante }}</td>
+
+                <!-- Espec. -->
+                <td class="py-3 text-center">
+                  {% if proyecto.num_especificaciones > 0 %}
+                    <span class="text-xs font-bold text-info bg-info/10 px-2 py-0.5 rounded-full font-mono">
+                      {{ proyecto.num_especificaciones }}
+                    </span>
+                  {% else %}
+                    <span class="text-xs text-base-content/25 font-mono">—</span>
+                  {% endif %}
+                </td>
+
+                <!-- Acceso -->
+                <td class="py-3 text-center">
+                  {% if proyecto.publico %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">
+                      <i class="fas fa-globe text-[10px]"></i>
+                      <span class="hidden sm:inline">Público</span>
+                    </span>
+                  {% else %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-base-200 text-base-content/35">
+                      <i class="fas fa-lock text-[10px]"></i>
+                      <span class="hidden sm:inline">Privado</span>
+                    </span>
+                  {% endif %}
+                </td>
+
+                <!-- Usuario -->
+                <td class="py-3 text-center">
+                  {% if proyecto.creado_por %}
+                    {% with proyecto.creado_por.first_name|default:proyecto.creado_por.username as fn %}
+                    {% with proyecto.creado_por.last_name as ln %}
+                    {% with proyecto.creado_por|user_avatar_color as avatar_color %}
+                      <div class="tooltip tooltip-left" data-tip="{{ proyecto.creado_por.get_full_name|default:proyecto.creado_por.username }}">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center mx-auto ring-2 ring-offset-1 ring-base-200 group-hover:ring-primary/20 transition-all {{ avatar_color }}">
+                          <span class="text-xs font-bold uppercase leading-none">{{ fn|slice:':1' }}{{ ln|default:''|slice:':1' }}</span>
+                        </div>
+                      </div>
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                  {% else %}
+                    <div class="w-8 h-8 rounded-full bg-base-200 text-base-content/25 flex items-center justify-center mx-auto">
+                      <span class="text-xs leading-none">?</span>
+                    </div>
+                  {% endif %}
+                </td>
+
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="px-4 py-3 border-t border-base-200 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary/70">
+            <span class="whitespace-nowrap">Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }}</span>
+            <form method="get" class="flex items-center gap-1">
+              <select name="per_page" class="select select-bordered select-xs w-16 text-base-content bg-base-100 font-medium" onchange="this.form.submit()">
+                {% for option in per_page_options %}
+                  <option value="{{ option }}" {% if per_page == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+              <span class="whitespace-nowrap">por página</span>
+              {% for key, value in request.GET.items %}
+                {% if key != 'per_page' and key != 'page' %}
+                  <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+              {% endfor %}
+            </form>
+          </div>
+          <div class="join">
+            {% if page_obj.has_previous %}
+              <a class="join-item btn btn-xs btn-secondary btn-outline" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            {% else %}
+              <button class="join-item btn btn-xs btn-disabled"><i class="fas fa-chevron-left"></i></button>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <button class="join-item btn btn-xs btn-primary">{{ num }}</button>
+              {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a class="join-item btn btn-xs btn-secondary btn-outline" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ num }}">{{ num }}</a>
+              {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+              <a class="join-item btn btn-xs btn-secondary btn-outline" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.next_page_number }}">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            {% else %}
+              <button class="join-item btn btn-xs btn-disabled"><i class="fas fa-chevron-right"></i></button>
+            {% endif %}
+          </div>
+        </div>
+
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-20 text-base-content/40">
+          <i class="fas fa-folder-open text-5xl mb-4"></i>
+          <p class="text-lg font-medium">No hay proyectos disponibles</p>
+          <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-primary btn-sm mt-4 gap-2">
+            <i class="fas fa-plus"></i> Crear primer proyecto
+          </a>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+  (function () {
+    const STORAGE_KEY_SORT_BY = 'proyecto_main_sort_by';
+    const STORAGE_KEY_ORDER   = 'proyecto_main_order';
+
+    function saveSortState(s, o) {
+      try { localStorage.setItem(STORAGE_KEY_SORT_BY, s); localStorage.setItem(STORAGE_KEY_ORDER, o); } catch(e){}
+    }
+    function getSortState() {
+      try { return { sortBy: localStorage.getItem(STORAGE_KEY_SORT_BY), order: localStorage.getItem(STORAGE_KEY_ORDER) }; } catch(e){ return {}; }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentSortBy = urlParams.get('sort_by');
+    const currentOrder  = urlParams.get('order');
+
+    if (currentSortBy && currentOrder) {
+      saveSortState(currentSortBy, currentOrder);
+    } else {
+      const saved = getSortState();
+      if (saved.sortBy && saved.order) {
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('sort_by', saved.sortBy);
+        newUrl.searchParams.set('order', saved.order);
+        window.location.href = newUrl.toString();
+        return;
+      }
+    }
+
+    document.querySelectorAll('thead a[href*="sort_by"]').forEach(h => {
+      h.addEventListener('click', function() {
+        const url = new URL(this.getAttribute('href'), window.location.origin);
+        saveSortState(url.searchParams.get('sort_by'), url.searchParams.get('order'));
+      });
+    });
+
+    {% if sort_by and order %}saveSortState('{{ sort_by }}', '{{ order }}');{% endif %}
+  })();
+</script>
+{% endblock %}

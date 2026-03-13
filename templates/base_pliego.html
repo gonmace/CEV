@@ -1,0 +1,267 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en" data-theme="constructor" class="bg-base-300">
+
+<head>
+    <title>Principal</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <!--<link rel="icon" href="img/favicon.ico" type="image/x-icon" />-->
+    <!--<link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon" />-->
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta http-equiv="X-UA-Compatible" content="IE=9; IE=8; IE=7; IE=EDGE" />
+
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+    
+    {% tailwind_css %}
+  
+
+    <!-- <link rel="stylesheet"  href="{% static 'constructor-app/js/assets/css/admin/module.admin.page.index.min.css' %}" /> -->
+    <!-- <link rel="stylesheet" 
+        href="{% static 'constructor-app/js/assets/css/admin/module.admin.page.notifications.min.css' %}" /> -->
+    <!-- <link rel="stylesheet"  href="{% static 'constructor-app/css/style.css' %}" /> -->
+
+    {% block css %}
+    {% endblock %}
+
+    <!-- <script src="{% static 'constructor-app/js/assets/components/library/jquery/jquery.min.js?v=v1.2.3' %}"></script> -->
+    <!-- <script
+        src="{% static 'constructor-app/js/assets/components/library/jquery/jquery-migrate.min.js?v=v1.2.3' %}"></script>
+    <script src="{% static 'constructor-app/js/assets/components/library/modernizr/modernizr.js?v=v1.2.3' %}"></script> -->
+    <!-- <script src="{% static 'constructor-app/js/modules/main.js' %}"></script> -->
+</head>
+
+<body class="{% block body_class %}{% endblock %} min-h-screen ">
+    <!--Navbar-->
+    <!-- <div class="navbar navbar-fixed-top navbar-primary main" role="navigation">
+        <div class="navbar-header pull-left">
+            <div class="navbar-brand">
+                <div class="pull-left">
+                    <a href="" class="toggle-button toggle-sidebar btn-navbar"><i class="fa fa-bars"></i></a>
+                </div>
+                <a href="#" class="appbrand innerL">GDAR</a>
+            </div>
+        </div>
+        <ul class="nav navbar-nav navbar-left"> -->
+            <!--Left Navbar Content-->
+        <!-- </ul>
+        <ul class="nav navbar-nav navbar-right hidden-xs">
+            <li>
+                <div id="spinner"></div>
+            </li>
+            <li class="dropdown">
+                <a href="" class="dropdown-toggle user" data-toggle="dropdown"> <img
+                        src="{% static 'constructor-app/js/assets/images/people/35/20.jpg' %}" alt="" class="img-circle" /><span
+                        class="hidden-xs hidden-sm"> &nbsp; Gonzalo Aldunate </span><span class="caret"></span></a>
+                <ul class="dropdown-menu list pull-right ">
+                    <li><a href="#">Tu Perfil <i class="fa fa-user pull-right"></i></a></li>
+                    <li><a href="" id="logout">Salir <i class="fa fa-sign-out pull-right"></i></a></li>
+                </ul>
+            </li>
+        </ul>
+    </div> -->
+
+    <!--End of Navbar-->
+
+    <!--Sidebar-->
+
+    <!-- <div id="menu" class="hidden-print hidden-xs">
+        <div class="sidebar sidebar-inverse">
+            <div class="user-profile media innerAll">
+                <div class="media-body">
+                    <p class="text-success"><i class="fa fa-fw fa-circle"></i> Proyecto Activo:</p>
+                    <select class="col-md-7 form-control pull-right projects"></select>
+                </div>
+            </div>
+            <div class="sidebarMenuWrapper">
+                <ul class="list-unstyled">
+                    <li><a href="" id="dashboard" class="side-menu"><i
+                                class="icon-projector-screen-line"></i><span>Panel Principal</span></a></li>
+                    <li class="hasSubmenu">
+                        <a href="#" data-target="#projects-toggle" data-toggle="collapse"><i
+                                class="icon-new-window"></i><span>Proyectos</span></a>
+                        <ul class="collapse" id="projects-toggle">
+                            <li><a href="" id="new-project" class="side-menu"><i class="icon-new-window"></i><span>Nuevo
+                                        Proyecto</span></a></li>
+                            <li><a href="" id="list-projects" class="side-menu"><i
+                                        class="icon-paper-document"></i><span>Lista de Proyectos</span></a></li>
+                        </ul>
+                    </li>
+            </div>
+        </div>
+    </div> -->
+
+    <!--End of Sidebar-->
+
+    <!--Main Content-->
+
+    <div class="bg-primary text-white shadow z-50 overflow-visible relative">
+        <div class="px-4 py-2 pr-20 flex items-center overflow-visible">
+            <div class="flex items-center space-x-4">
+                <a href="/" class="bg-white rounded p-0.5 flex items-center justify-center">
+                    <img src="{% static 'img/logo-gdar.png' %}" alt="GDAR Logo" class="h-8 object-contain">
+                </a>
+            </div>
+            <div class="flex-1 flex items-center justify-center">
+                <span class="text-lg font-semibold tracking-wide uppercase">
+                    {% block navbar_title %}{% block title %}Principal{% endblock %}{% endblock %}
+                </span>
+            </div>
+            <div class="flex items-center gap-4 pr-1">
+                {% block navbar_right %}{% endblock %}
+                {% if request.user.is_authenticated %}
+                <div class="inline-flex items-center gap-2">
+                    {% with request.user.first_name|default:request.user.username as first_name %}
+                      {% with request.user.last_name as last_name %}
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-base-200 text-base-content font-semibold uppercase">
+                          {{ first_name|slice:':1' }}{{ last_name|default:''|slice:':1' }}
+                        </span>
+                      {% endwith %}
+                    {% endwith %}
+                </div>
+                <form action="{% url 'logout' %}" method="post" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-ghost text-white hover:text-primary-content">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="absolute right-0 top-0">
+                <div class="bg-primary rounded-full p-2">
+                    <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center p-3 shadow-lg">
+                        <img src="{% static 'img/Embol Logo.png' %}" alt="Embol Logo" class="h-full w-full">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% block breadcrumbs_bar %}
+    <div class="bg-base-100 border-b border-base-300">
+        <nav class="px-4 py-0 max-w-7xl mx-auto flex items-center {% if request.resolver_match.url_name == 'proyecto_main' %}justify-start{% else %}justify-between{% endif %}" aria-label="Breadcrumb">
+            <ol class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
+                <li class="flex items-center gap-2">
+                    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors flex items-center gap-1">
+                        <i class="fas fa-home text-xs"></i>
+                        <span>Inicio</span>
+                    </a>
+                    {% block breadcrumbs_separator %}{% endblock %}
+                </li>
+                {% block breadcrumbs %}
+                {% endblock %}
+            </ol>
+            {% if request.resolver_match.url_name != 'proyecto_main' %}
+            <button onclick="window.history.back()" class="btn btn-ghost btn-sm text-base-content/70 hover:text-base-content" title="Volver a la página anterior">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Volver
+            </button>
+            {% endif %}
+        </nav>
+    </div>
+    {% endblock %}
+
+    <div id="content">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    {% if messages %}
+    <script id="django-messages-data" type="application/json">
+        [
+        {% for message in messages %}
+            {"level": "{{ message.tags|default:'info' }}", "message": "{{ message|escapejs }}"}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+        ]
+    </script>
+    {% endif %}
+
+    <!--End of Main Content-->
+
+    <!-- <div class="clearfix"></div>
+
+    <div id="footer" class="hidden-print">
+        <div class="copy">&copy; 2019 <a href="">Const.</a> - Todos Los Derechos Reservados - Version: 1.0.0</div>
+    </div> -->
+
+    <!-- Global -->
+    <!-- <script> -->
+        
+            
+            
+            
+
+        <!-- var primaryColor = '#cb4040',
+            dangerColor = '#b55151',
+            infoColor = '#466baf',
+            successColor = '#8baf46',
+            warningColor = '#ab7a4b',
+            inverseColor = '#45484d';
+
+        var themerPrimaryColor = primaryColor;
+    </script> -->
+
+    <!--Scripts Needed-->
+    <!-- <script src="{% static 'constructor-app/js/assets/components/core/js/sidebar.main.init.js?v=v1.2.3' %}"></script> -->
+    <!-- <script 
+        src="{% static 'constructor-app/js/assets/components/core/js/sidebar.collapse.init.js?v=v1.2.3' %}"></script> -->
+    <!-- <script 
+        src="{% static 'constructor-app/js/assets/components/library/bootstrap/js/bootstrap.min.js?v=v1.2.3' %}"></script> -->
+    <!-- <script 
+        src="{% static 'constructor-app/js/assets/components/plugins/nicescroll/jquery.nicescroll.min.js?v=v1.2.3' %}"></!-->
+    <script src="{% static 'vendor/flashy/flashy.js' %}"></script>
+    <script>
+        (function () {
+            if (!window.flashy) {
+                console.warn('Flashy.js no está disponible.');
+                return;
+            }
+            var dataElement = document.getElementById('django-messages-data');
+            if (!dataElement) {
+                return;
+            }
+            var typeMap = {
+                success: 'success',
+                warning: 'warning',
+                error: 'error',
+                danger: 'error',
+                info: 'info',
+                debug: 'info'
+            };
+            try {
+                var messages = JSON.parse(dataElement.textContent || '[]');
+                messages.forEach(function (entry) {
+                    if (!entry || !entry.message) {
+                        return;
+                    }
+                    var tags = (entry.level || '').split(/\s+/).filter(Boolean);
+                    var type = 'default';
+                    for (var i = 0; i < tags.length; i++) {
+                        if (typeMap[tags[i]]) {
+                            type = typeMap[tags[i]];
+                            break;
+                        }
+                    }
+                    flashy(entry.message, {
+                        type: type,
+                        position: 'top-right',
+                        duration: type === 'error' ? 0 : 5000,
+                        closable: true,
+                        animation: 'slide'
+                    });
+                });
+            } catch (error) {
+                console.error('No se pudieron procesar los mensajes de Django para Flashy.js', error);
+            }
+        })();
+    </script>
+
+    {% block js %}
+    {% endblock %}
+</body>
+
+</html>

@@ -1,0 +1,135 @@
+{% extends 'base_pliego.html' %}
+{% load static crispy_forms_tags tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}
+  Crear Nuevo Proyecto
+{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">Crear</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+  <div class="flex flex-col items-center justify-center mt-6 px-4">
+    <div class="w-full max-w-4xl">
+      <!-- Mensajes -->
+      {% if messages %}
+        {# Los mensajes se gestionan con Flashy.js desde la plantilla base #}
+      {% endif %}
+    </div>
+    
+    <div class="card w-full max-w-4xl bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title text-2xl font-bold mb-4">
+          <i class="fas fa-plus-circle mr-2 text-primary"></i>
+          Crear Nuevo Proyecto
+        </h2>
+        
+        <form method="post" class="space-y-6">
+          {% csrf_token %}
+          
+          <!-- Nombre de Proyecto -->
+          <div class="form-control w-full">
+            <label class="label" for="{{ form.nombre.id_for_label }}">
+              <span class="label-text font-semibold">{{ form.nombre.label }}</span>
+              <span class="label-text-alt text-error">*</span>
+            </label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}
+              <label class="label">
+                <span class="label-text-alt text-error">{{ form.nombre.errors.0 }}</span>
+              </label>
+            {% endif %}
+          </div>
+
+          <!-- Solicitante -->
+          <div class="form-control w-full">
+            <label class="label" for="{{ form.solicitante.id_for_label }}">
+              <span class="label-text font-semibold">{{ form.solicitante.label }}</span>
+              <span class="label-text-alt text-error">*</span>
+            </label>
+            {{ form.solicitante }}
+            {% if form.solicitante.errors %}
+              <label class="label">
+                <span class="label-text-alt text-error">{{ form.solicitante.errors.0 }}</span>
+              </label>
+            {% endif %}
+          </div>
+
+          <!-- Ubicación -->
+          <div class="form-control w-full">
+            <label class="label" for="{{ form.ubicacion.id_for_label }}">
+              <span class="label-text font-semibold">{{ form.ubicacion.label }}</span>
+              <span class="label-text-alt text-error">*</span>
+            </label>
+            {{ form.ubicacion }}
+            {% if form.ubicacion.errors %}
+              <label class="label">
+                <span class="label-text-alt text-error">{{ form.ubicacion.errors.0 }}</span>
+              </label>
+            {% endif %}
+          </div>
+
+          <!-- Descripción -->
+          <div class="form-control w-full">
+            <label class="label" for="{{ form.descripcion.id_for_label }}">
+              <span class="label-text font-semibold">{{ form.descripcion.label }}</span>
+              <span class="label-text-alt">Opcional</span>
+            </label>
+            {{ form.descripcion }}
+            {% if form.descripcion.errors %}
+              <label class="label">
+                <span class="label-text-alt text-error">{{ form.descripcion.errors.0 }}</span>
+              </label>
+            {% endif %}
+          </div>
+
+          <!-- Público -->
+          <div class="form-control w-full">
+            <label class="label cursor-pointer justify-start gap-3">
+              {{ form.publico }}
+              <span class="label-text font-semibold">{{ form.publico.label }}</span>
+              <span class="label-text-alt text-base-content/70">(Opcional)</span>
+            </label>
+            {% if form.publico.errors %}
+              <label class="label">
+                <span class="label-text-alt text-error">{{ form.publico.errors.0 }}</span>
+              </label>
+            {% endif %}
+            <label class="label">
+              <span class="label-text-alt text-base-content/70">Marque esta opción si el proyecto debe ser visible para todos los usuarios</span>
+            </label>
+          </div>
+
+          <!-- Botones de acción -->
+          <div class="card-actions justify-end mt-6">
+            <a href="{% url 'proyectos:lista_proyectos' %}" class="btn btn-outline">
+              <i class="fas fa-times mr-2"></i>
+              Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save mr-2"></i>
+              Crear Proyecto
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block js %}
+{% endblock %}
+

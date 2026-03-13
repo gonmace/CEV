@@ -1,0 +1,650 @@
+{% load static crispy_forms_tags tailwind_tags %}
+
+<!-- Paso 4: Actividades Adicionales - Modal -->
+<dialog id="modal-actividades-adicionales" class="modal fixed inset-0 z-[100]">
+  <div class="modal-box max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-2xl font-bold">
+        <div class="flex items-center gap-4">
+          <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg animate-pulse-glow">
+            4
+          </div>
+          <span class="text-primary flex items-center gap-3">
+            <span id="modal-actividades-titulo">Actividades Adicionales</span>
+          </span>
+        </div>
+      </h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost" id="modal-actividades-close">✕</button>
+      </form>
+    </div>
+    <div class="divider my-4"></div>
+    
+    <div id="spinner-container-paso4" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-base-100 bg-opacity-75">
+      <div class="flex flex-col items-center">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+        <p class="mt-4 text-lg font-semibold">Enviando actividades...</p>
+      </div>
+    </div>
+    
+    <div class="mb-4 flex-1 flex flex-col min-h-0">
+      <p class="text-base-content/70 mb-4">
+        Seleccione las actividades adicionales que desea incluir en la especificación técnica:
+      </p>
+      
+      <div class="overflow-auto rounded-lg flex-1 p-0 m-0">
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr class="bg-primary text-primary-content">
+              <th class="w-1/12">
+                <input type="checkbox" id="select-all-actividades" class="checkbox checkbox-primary border-white">
+              </th>
+              <th class="w-3/12">Actividad</th>
+              <th class="w-2/12 text-center">Unidad</th>
+              <th class="w-7/12">Descripción</th>
+            </tr>
+          </thead>
+          <tbody id="actividades-table-body">
+            <!-- Las filas se llenarán dinámicamente con JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div class="mt-4 pt-3 flex justify-end items-center border-t border-base-300">
+      <button class="btn btn-primary" id="enviar-actividades-btn">
+        <i class="fas fa-arrow-right mr-2"></i>
+        Continuar
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+// Función para renderizar la tabla de actividades adicionales dinámicamente (Paso 4)
+function renderizarTablaActividades(actividades) {
+  console.log('Renderizando tabla de actividades adicionales:', actividades);
+  
+  // Escapar HTML para prevenir XSS
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  console.log('Llenando tabla con', actividades.length, 'actividades');
+  
+  // Obtener el modal (debe existir en el HTML)
+  const modalActividades = document.getElementById('modal-actividades-adicionales');
+  if (!modalActividades) {
+    console.error('No se encontró el modal modal-actividades-adicionales');
+    if (typeof mostrarModalJSON === 'function') {
+      mostrarModalJSON({error: 'No se encontró el modal de actividades', actividades: actividades});
+    }
+    return;
+  }
+  
+  // Obtener el tbody de la tabla
+  const tableBody = document.getElementById('actividades-table-body');
+  if (!tableBody) {
+    console.error('No se encontró el tbody de la tabla de actividades');
+    if (typeof mostrarModalJSON === 'function') {
+      mostrarModalJSON({error: 'No se encontró el cuerpo de la tabla de actividades', actividades: actividades});
+    }
+    return;
+  }
+  
+  // Limpiar el tbody antes de llenarlo
+  tableBody.innerHTML = '';
+  
+  // Agregar filas de actividades
+  actividades.forEach((actividad, index) => {
+    const checked = actividad.check ? 'checked' : '';
+    const unidadMedida = actividad.unidad_medida || '';
+    // Manejar tanto "actividad" como "nombre" para compatibilidad
+    const nombre = actividad.actividad || actividad.nombre || '';
+    const descripcion = actividad.descripcion || '';
+    
+    const row = document.createElement('tr');
+    row.className = 'actividad-row';
+    row.setAttribute('data-index', index);
+    
+    row.innerHTML = `
+      <td>
+        <input 
+          type="checkbox" 
+          class="checkbox checkbox-primary actividad-checkbox" 
+          data-nombre="${escapeHtml(nombre)}"
+          data-descripcion="${escapeHtml(descripcion)}"
+          data-unidad="${escapeHtml(unidadMedida)}"
+          id="actividad-${index}"
+          ${checked}
+        >
+      </td>
+      <td class="font-semibold">${escapeHtml(nombre)}</td>
+      <td class="text-sm text-base-content/70 font-medium text-center">${escapeHtml(unidadMedida)}</td>
+      <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap: break-word; white-space: pre-wrap; min-width: 200px; max-width: none;">${escapeHtml(descripcion)}</td>
+    `;
+    
+    tableBody.appendChild(row);
+  });
+  
+  // Agregar fila para nueva actividad
+  const nuevaFilaRow = document.createElement('tr');
+  nuevaFilaRow.id = 'nuevo-actividad-row';
+  nuevaFilaRow.className = 'bg-base-200';
+  nuevaFilaRow.innerHTML = `
+    <td>
+      <button class="btn btn-sm btn-success" id="agregar-actividad-btn" title="Agregar actividad">
+        <i class="fas fa-plus"></i>
+      </button>
+    </td>
+    <td>
+      <input 
+        type="text" 
+        class="input input-bordered input-sm w-full" 
+        id="nuevo-actividad-nombre"
+        placeholder="Nombre de la actividad"
+      >
+    </td>
+    <td class="text-center">
+      <input 
+        type="text" 
+        class="input input-bordered input-sm w-full text-center" 
+        id="nuevo-actividad-unidad"
+        placeholder="Unidad de medida"
+      >
+    </td>
+    <td>
+      <input 
+        type="text" 
+        class="input input-bordered input-sm w-full" 
+        id="nuevo-actividad-descripcion"
+        placeholder="Descripción (opcional)"
+      >
+    </td>
+  `;
+  
+  tableBody.appendChild(nuevaFilaRow);
+  
+  // Mostrar el modal
+  console.log('Mostrando modal de actividades adicionales');
+  if (typeof modalActividades.showModal === 'function') {
+    modalActividades.showModal();
+  } else {
+    modalActividades.setAttribute('open', '');
+    modalActividades.classList.add('modal-open');
+  }
+  
+  // Cargar el script de manejo de actividades
+  setTimeout(() => {
+    cargarScriptActividades();
+  }, 200);
+}
+
+// Función para cargar el script de manejo de actividades adicionales
+function cargarScriptActividades() {
+  console.log('Cargando script de actividades adicionales...');
+  
+  const selectAllCheckbox = document.getElementById('select-all-actividades');
+  let actividadesCheckboxes = document.querySelectorAll('.actividad-checkbox');
+  const enviarBtn = document.getElementById('enviar-actividades-btn');
+  const agregarActividadBtn = document.getElementById('agregar-actividad-btn');
+  const nuevoActividadNombre = document.getElementById('nuevo-actividad-nombre');
+  const nuevoActividadUnidad = document.getElementById('nuevo-actividad-unidad');
+  const nuevoActividadDescripcion = document.getElementById('nuevo-actividad-descripcion');
+  const nuevoActividadRow = document.getElementById('nuevo-actividad-row');
+  
+  if (!selectAllCheckbox || !enviarBtn) {
+    console.error('No se encontraron elementos necesarios para actividades:', {
+      selectAll: !!selectAllCheckbox,
+      enviarBtn: !!enviarBtn
+    });
+    return;
+  }
+  
+  // Función para obtener cookie CSRF
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  
+  // Función para actualizar el botón de enviar
+  function updateEnviarButtonActividades() {
+    // El botón siempre está habilitado, permitiendo continuar sin seleccionar actividades
+    enviarBtn.disabled = false;
+    enviarBtn.innerHTML = `<i class="fas fa-arrow-right mr-2"></i> Continuar`;
+  }
+  
+  // Manejar seleccionar/deseleccionar todos
+  if (selectAllCheckbox) {
+    const newSelectAll = selectAllCheckbox.cloneNode(true);
+    selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+    
+    newSelectAll.addEventListener('change', function() {
+      const allCheckboxes = document.querySelectorAll('.actividad-checkbox');
+      allCheckboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+      });
+      updateEnviarButtonActividades();
+    });
+  }
+  
+  // Manejar cambios en checkboxes individuales
+  actividadesCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      if (selectAllCheckbox) {
+        const allCheckboxes = document.querySelectorAll('.actividad-checkbox');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+      }
+      updateEnviarButtonActividades();
+    });
+  });
+  
+  // Manejar agregar nueva actividad
+  if (agregarActividadBtn && nuevoActividadNombre && nuevoActividadUnidad) {
+    agregarActividadBtn.addEventListener('click', function() {
+      const nombre = nuevoActividadNombre.value.trim();
+      const unidad = nuevoActividadUnidad.value.trim();
+      const descripcion = nuevoActividadDescripcion ? nuevoActividadDescripcion.value.trim() : '';
+      
+      if (!nombre || !unidad) {
+        alert('Por favor, complete al menos el nombre y unidad de la actividad');
+        return;
+      }
+      
+      // Crear nueva fila
+      const newRow = document.createElement('tr');
+      newRow.className = 'actividad-row nuevo-actividad-row';
+      const index = actividadesCheckboxes.length;
+      
+      newRow.innerHTML = `
+        <td>
+          <input 
+            type="checkbox" 
+            class="checkbox checkbox-primary actividad-checkbox" 
+            data-nombre="${nombre.replace(/"/g, '&quot;')}"
+            data-unidad="${unidad.replace(/"/g, '&quot;')}"
+            data-descripcion="${descripcion.replace(/"/g, '&quot;')}"
+            id="actividad-${index}"
+            checked
+          >
+        </td>
+        <td class="font-semibold">${nombre}</td>
+        <td class="text-sm text-base-content/70 font-medium text-center">${unidad}</td>
+        <td class="text-sm text-base-content/70 leading-tight p-0 m-0 align-middle" style="max-width: 300px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2;">${descripcion}</td>
+      `;
+      
+      // Insertar antes de la fila de nueva actividad
+      const tableBody = document.getElementById('actividades-table-body');
+      if (tableBody && nuevoActividadRow) {
+        tableBody.insertBefore(newRow, nuevoActividadRow);
+      }
+      
+      // Limpiar campos
+      nuevoActividadNombre.value = '';
+      nuevoActividadUnidad.value = '';
+      if (nuevoActividadDescripcion) nuevoActividadDescripcion.value = '';
+      
+      // Re-inicializar eventos para el nuevo checkbox
+      actividadesCheckboxes = document.querySelectorAll('.actividad-checkbox');
+      const newCheckbox = newRow.querySelector('.actividad-checkbox');
+      if (newCheckbox) {
+        newCheckbox.addEventListener('change', function() {
+          if (selectAllCheckbox) {
+            const allCheckboxes = document.querySelectorAll('.actividad-checkbox');
+            const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+            const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = someChecked && !allChecked;
+          }
+          updateEnviarButtonActividades();
+        });
+      }
+      
+      updateEnviarButtonActividades();
+    });
+  }
+  
+  // Manejar envío de actividades seleccionadas
+  if (enviarBtn) {
+    const newEnviarBtn = enviarBtn.cloneNode(true);
+    enviarBtn.parentNode.replaceChild(newEnviarBtn, enviarBtn);
+    
+    newEnviarBtn.addEventListener('click', async function() {
+      const selectedActividades = [];
+      const allCheckboxes = document.querySelectorAll('.actividad-checkbox');
+      
+      allCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+          selectedActividades.push({
+            nombre: checkbox.getAttribute('data-nombre'),
+            unidad_medida: checkbox.getAttribute('data-unidad') || '',
+            descripcion: checkbox.getAttribute('data-descripcion')
+          });
+        }
+      });
+      
+      // Permitir continuar sin seleccionar actividades (array vacío)
+      
+      // Cerrar el modal de actividades primero
+      const modalActividades = document.getElementById('modal-actividades-adicionales');
+      if (modalActividades) {
+        modalActividades.close();
+      }
+      
+      // Mostrar el spinner de pasos.html
+      const spinnerContainer = document.getElementById('spinner-container');
+      if (spinnerContainer) {
+        spinnerContainer.classList.remove('hidden');
+        const spinnerText = spinnerContainer.querySelector('p');
+        if (spinnerText) {
+          spinnerText.textContent = 'Guardando actividades adicionales seleccionadas...';
+        }
+      }
+      
+      newEnviarBtn.disabled = true;
+      const originalText = newEnviarBtn.innerHTML;
+      newEnviarBtn.innerHTML = '<span class="loading loading-spinner loading-sm mr-2"></span> Enviando...';
+      
+      try {
+        // Obtener título, descripción y tipo de servicio de las variables globales
+        const titulo = window.n8nTitulo || '';
+        const descripcion = window.n8nDescripcion || '';
+        const tipoServicio = window.n8nTipoServicio || '';
+        
+        console.log('Enviando actividades seleccionadas:', selectedActividades);
+        console.log('Datos de especificación:', { titulo, descripcion, tipoServicio });
+        
+        // Enviar a la vista Django para guardar en el modelo
+        const response = await fetch(window.n8nUrls.enviarActividades, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            actividades: selectedActividades,
+            especificacion_id: window.especificacionTecnicaId
+          })
+        });
+        
+        const result = await response.json();
+        
+        // Ocultar el spinner
+        if (spinnerContainer) spinnerContainer.classList.add('hidden');
+        
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Error al guardar las actividades');
+        }
+        
+        console.log('Actividades guardadas exitosamente:', result);
+        console.log('Estructura completa de result:', JSON.stringify(result, null, 2));
+        
+        // PRIORIDAD 1: Verificar si hay markdown en el nivel superior de result
+        let markdownHtml = result.markdown_html;
+        let rawMarkdown = result.raw_markdown;
+        
+        console.log('Búsqueda inicial de markdown:', {
+          'result.markdown_html': !!markdownHtml,
+          'result.raw_markdown': !!rawMarkdown
+        });
+        
+        // PRIORIDAD 2: Buscar en final_response (puede ser array o objeto)
+        if (!markdownHtml && !rawMarkdown && result.final_response) {
+          console.log('Buscando en final_response:', {
+            tipo: Array.isArray(result.final_response) ? 'array' : typeof result.final_response,
+            longitud: Array.isArray(result.final_response) ? result.final_response.length : 'N/A'
+          });
+          
+          if (Array.isArray(result.final_response) && result.final_response.length > 0) {
+            const firstItem = result.final_response[0];
+            console.log('Primer item del array:', firstItem);
+            if (firstItem && typeof firstItem === 'object') {
+              markdownHtml = markdownHtml || firstItem.markdown_html;
+              rawMarkdown = rawMarkdown || firstItem.raw_markdown;
+              // También verificar si hay output (que es el markdown raw)
+              if (!rawMarkdown && firstItem.output && typeof firstItem.output === 'string' && firstItem.output.trim().length > 0) {
+                rawMarkdown = firstItem.output;
+                console.log('Markdown encontrado en firstItem.output:', rawMarkdown.substring(0, 100) + '...');
+              }
+              // También verificar si hay actividades_adicionales (que es el markdown raw)
+              if (!rawMarkdown && firstItem.actividades_adicionales && typeof firstItem.actividades_adicionales === 'string' && firstItem.actividades_adicionales.trim().length > 0) {
+                rawMarkdown = firstItem.actividades_adicionales;
+                console.log('Markdown encontrado en firstItem.actividades_adicionales:', rawMarkdown.substring(0, 100) + '...');
+              }
+            }
+          } else if (typeof result.final_response === 'object' && result.final_response !== null) {
+            markdownHtml = markdownHtml || result.final_response.markdown_html;
+            rawMarkdown = rawMarkdown || result.final_response.raw_markdown;
+            // También verificar si hay output
+            if (!rawMarkdown && result.final_response.output && typeof result.final_response.output === 'string' && result.final_response.output.trim().length > 0) {
+              rawMarkdown = result.final_response.output;
+              console.log('Markdown encontrado en final_response.output:', rawMarkdown.substring(0, 100) + '...');
+            }
+            // También verificar si hay actividades_adicionales (que es el markdown raw)
+            if (!rawMarkdown && result.final_response.actividades_adicionales && typeof result.final_response.actividades_adicionales === 'string' && result.final_response.actividades_adicionales.trim().length > 0) {
+              rawMarkdown = result.final_response.actividades_adicionales;
+              console.log('Markdown encontrado en final_response.actividades_adicionales:', rawMarkdown.substring(0, 100) + '...');
+            }
+          }
+        }
+        
+        console.log('Verificación final de markdown:', {
+          markdownHtml: !!markdownHtml,
+          rawMarkdown: !!rawMarkdown,
+          markdownHtmlLength: markdownHtml ? markdownHtml.length : 0,
+          rawMarkdownLength: rawMarkdown ? rawMarkdown.length : 0,
+          tieneMarkdown: !!(markdownHtml || rawMarkdown)
+        });
+        
+        // Si hay markdown (HTML o raw), redirigir al paso 5 INMEDIATAMENTE
+        if (markdownHtml || rawMarkdown) {
+          // Redirigir al paso 5 para mostrar el resultado
+          console.log('✅ MARKDOWN DETECTADO - Redirigiendo al paso 5');
+          // Ocultar spinner antes de redirigir
+          if (spinnerContainer) spinnerContainer.classList.add('hidden');
+          
+          // Guardar el ID en sessionStorage para que persista entre recargas
+          if (window.especificacionTecnicaId) {
+            sessionStorage.setItem('especificacionTecnicaId', window.especificacionTecnicaId);
+          }
+          
+          // Redirigir inmediatamente sin mostrar ningún modal, incluyendo el ID en la URL
+          const especificacionId = window.especificacionTecnicaId || sessionStorage.getItem('especificacionTecnicaId');
+          // Obtener proyecto_id de la URL actual si existe
+          const urlParams = new URLSearchParams(window.location.search);
+          const proyectoId = urlParams.get('proyecto_id');
+          let url = '{% url "pliego_licitacion:pasos" %}?paso=5';
+          if (especificacionId) {
+            url += `&especificacion_id=${especificacionId}`;
+          }
+          if (proyectoId) {
+            url += `&proyecto_id=${proyectoId}`;
+          }
+          window.location.href = url;
+          return; // CRÍTICO: Salir inmediatamente para evitar mostrar el modal
+        }
+        
+        // Si NO hay markdown, mostrar modal con JSON
+        console.log('❌ NO se detectó markdown, mostrando modal JSON');
+        if (typeof mostrarModalJSON === 'function') {
+          mostrarModalJSON({
+            success: true,
+            message: `Se guardaron ${result.actividades_guardadas || selectedActividades.length} actividades exitosamente`,
+            actividades_guardadas: result.actividades_guardadas,
+            response_data: result.response_data,
+            final_response: result.final_response
+          });
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        // Ocultar el spinner en caso de error
+        const spinnerContainerError = document.getElementById('spinner-container');
+        if (spinnerContainerError) spinnerContainerError.classList.add('hidden');
+        alert('Hubo un error al enviar las actividades: ' + error.message);
+      } finally {
+        newEnviarBtn.disabled = false;
+        newEnviarBtn.innerHTML = originalText;
+      }
+    });
+  }
+  
+  // Inicializar estado del botón
+  updateEnviarButtonActividades();
+}
+
+// Variable para controlar si el modal se cerró manualmente (con la cruz) o programáticamente
+let modalActividadesCerradoManual = false;
+
+// Función para mostrar el contenido del paso 1 (solo cuando se cierra manualmente)
+function mostrarPaso1() {
+  const formCardContainer = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+  if (formCardContainer) {
+    formCardContainer.style.display = 'flex';
+  }
+}
+
+// Agregar event listener para cuando se cierre el modal
+// Usar DOMContentLoaded para asegurar que el modal existe
+document.addEventListener('DOMContentLoaded', function() {
+  const modalActividades = document.getElementById('modal-actividades-adicionales');
+  if (modalActividades) {
+    modalActividades.addEventListener('close', function() {
+      // Solo mostrar paso 1 si se cerró manualmente (con la cruz)
+      if (modalActividadesCerradoManual) {
+        mostrarPaso1();
+        modalActividadesCerradoManual = false; // Resetear el flag
+      }
+    });
+    
+    // Manejar el botón de cerrar específico (X)
+    const closeBtn = document.getElementById('modal-actividades-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        modalActividadesCerradoManual = true; // Marcar como cierre manual
+      });
+    }
+    
+    // Manejar el backdrop
+    const backdrop = modalActividades.querySelector('.modal-backdrop');
+    if (backdrop) {
+      const backdropBtn = backdrop.querySelector('button');
+      if (backdropBtn) {
+        backdropBtn.addEventListener('click', function() {
+          modalActividadesCerradoManual = true; // Marcar como cierre manual
+        });
+      }
+    }
+  }
+});
+
+// Función para mostrar el resultado del markdown en pantalla
+function mostrarResultadoMarkdown(markdownHtml, rawMarkdown) {
+  console.log('Mostrando resultado markdown');
+  
+  // Ocultar el spinner
+  const spinnerContainer = document.getElementById('spinner-container');
+  if (spinnerContainer) spinnerContainer.classList.add('hidden');
+  
+  // Ocultar el formulario si está visible
+  const formCardContainer = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+  if (formCardContainer) {
+    formCardContainer.style.display = 'none';
+  }
+  
+  // Obtener o crear el contenedor de resultado
+  let resultadoContainer = document.getElementById('resultado-markdown-container');
+  if (!resultadoContainer) {
+    // Si no existe, crear uno dinámicamente
+    const mainContainer = document.querySelector('.flex.flex-col.items-center');
+    resultadoContainer = document.createElement('div');
+    resultadoContainer.id = 'resultado-markdown-container';
+    resultadoContainer.className = 'w-full max-w-5xl mt-8';
+    resultadoContainer.innerHTML = `
+      <div class="card bg-base-100 shadow-2xl w-full">
+        <div class="card-body p-8">
+          <div class="mb-6">
+            <h2 class="card-title text-2xl mb-2">
+              <div class="flex items-center gap-4">
+                <div class="badge badge-success badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <i class="fas fa-check"></i>
+                </div>
+                <span class="text-success">
+                  <i class="fas fa-file-alt mr-2"></i>
+                  Especificación Técnica Generada
+                </span>
+              </div>
+            </h2>
+          </div>
+          
+          <div id="resultado-markdown-content" class="prose prose-slate prose-lg max-w-none">
+            <!-- El contenido markdown se insertará aquí -->
+          </div>
+          
+          <div class="card-actions justify-end mt-6 pt-6 border-t border-base-300">
+            <button onclick="window.location.reload()" class="btn btn-outline">
+              <i class="fas fa-redo mr-2"></i>
+              Generar Nueva
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    if (mainContainer) {
+      mainContainer.appendChild(resultadoContainer);
+    } else {
+      document.body.appendChild(resultadoContainer);
+    }
+  }
+  
+  // Obtener el contenedor de contenido
+  const contenidoMarkdown = document.getElementById('resultado-markdown-content');
+  if (contenidoMarkdown) {
+    // Si ya tenemos el HTML renderizado, usarlo directamente
+    if (markdownHtml) {
+      contenidoMarkdown.innerHTML = markdownHtml;
+    } else if (rawMarkdown) {
+      // Si solo tenemos el markdown raw, necesitamos convertirlo a HTML
+      // Por ahora, mostrar el markdown como texto plano o usar una librería
+      // Para una solución simple, podemos usar DOMPurify si está disponible
+      // o simplemente mostrar el texto formateado
+      contenidoMarkdown.innerHTML = '<pre class="whitespace-pre-wrap">' + escapeHtml(rawMarkdown) + '</pre>';
+    }
+  }
+  
+  // Mostrar el contenedor
+  resultadoContainer.classList.remove('hidden');
+  resultadoContainer.style.display = 'block';
+  
+  // Scroll al resultado
+  setTimeout(() => {
+    resultadoContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+// Función auxiliar para escapar HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>
+

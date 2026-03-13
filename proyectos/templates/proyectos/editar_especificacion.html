@@ -1,0 +1,131 @@
+{% extends 'base_pliego.html' %}
+{% load static crispy_forms_tags tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+{% endblock %}
+
+{% block title %}
+  Editar Especificación: {{ especificacion.titulo }}
+{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">
+      {{ proyecto.nombre }}
+    </a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:ver_especificacion' especificacion.id %}" class="hover:text-primary transition-colors">
+      {{ especificacion.titulo }}
+    </a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">Editar</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+
+
+  <div class="flex flex-col items-center justify-center mt-6 px-4">
+    <div class="w-full max-w-4xl">
+      {% if messages %}
+        {# Los mensajes se muestran mediante Flashy.js en la plantilla base #}
+      {% endif %}
+
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-6">
+
+
+          <form method="post" class="space-y-6">
+            {% csrf_token %}
+            <div class="form-control">
+              <label class="label" for="{{ form.titulo.id_for_label }}">
+                <span class="label-text font-semibold">{{ form.titulo.label }}</span>
+              </label>
+              {{ form.titulo }}
+              {% if form.titulo.errors %}
+                <label class="label">
+                  <span class="label-text-alt text-error">{{ form.titulo.errors.0 }}</span>
+                </label>
+              {% endif %}
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="{{ form.contenido.id_for_label }}">
+                <span class="label-text font-semibold">{{ form.contenido.label }}</span>
+                <span class="label-text-alt text-base-content/50">Utilice formato Markdown</span>
+              </label>
+              <div id="editor-container" class="rounded-lg border border-base-300"></div>
+              <div class="hidden">
+                {{ form.contenido }}
+              </div>
+              {% if form.contenido.errors %}
+                <label class="label">
+                  <span class="label-text-alt text-error">{{ form.contenido.errors.0 }}</span>
+                </label>
+              {% endif %}
+            </div>
+
+            <div class="card-actions justify-end">
+              <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-ghost">
+                <i class="fas fa-times mr-2"></i>
+                Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save mr-2"></i>
+                Guardar cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block js %}
+  <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+  <script src="https://uicdn.toast.com/editor/latest/i18n/es-es.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const textarea = document.querySelector('#id_contenido');
+      const container = document.getElementById('editor-container');
+      if (!textarea || !container) return;
+
+      const editor = new toastui.Editor({
+        el: container,
+        height: '500px',
+        initialEditType: 'wysiwyg',
+        previewStyle: 'tab',
+        usageStatistics: false,
+        language: 'es-ES',
+        toolbarItems: [
+          ['heading', 'bold', 'italic', 'strike'],
+          ['hr', 'quote'],
+          ['ul', 'ol', 'task'],
+          ['table', 'link'],
+          ['scrollSync']
+        ],
+        initialValue: textarea.value || ''
+      });
+
+      const form = textarea.closest('form');
+      if (form) {
+        form.addEventListener('submit', function () {
+          textarea.value = editor.getMarkdown();
+        });
+      }
+    });
+  </script>
+{% endblock %}

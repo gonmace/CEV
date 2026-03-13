@@ -1,0 +1,166 @@
+{% load main_tags %}
+<dialog id="mover-especificacion-modal" class="modal">
+  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden max-w-sm">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/10">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+          <i class="fas fa-arrows-alt text-accent text-xs"></i>
+        </span>
+        <span class="text-sm font-semibold text-base-content">Mover especificación</span>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-base-content/40 hover:bg-base-200 hover:text-base-content transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-5 space-y-4">
+      <div class="rounded-lg bg-base-200/50 border border-secondary/10 px-4 py-3">
+        <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Especificación</p>
+        <p id="mover-especificacion-titulo" class="text-sm font-semibold text-base-content truncate"></p>
+        <p class="text-xs text-secondary/60 mt-1">Posición actual: <span id="mover-especificacion-posicion-actual" class="font-medium text-base-content"></span></p>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1">Nueva posición</label>
+        <select id="mover-especificacion-nueva-posicion" class="select select-bordered select-sm w-full text-sm">
+          <option value="" disabled selected>Elige una posición...</option>
+        </select>
+        <p class="text-[10px] text-secondary/50 mt-1.5">
+          <i class="fas fa-info-circle mr-1"></i>
+          Las demás especificaciones se reordenarán automáticamente.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-secondary/10">
+      <form method="dialog">
+        <button type="button" id="mover-especificacion-cancel"
+                class="flex items-center gap-1.5 text-xs font-semibold text-base-content/60 hover:bg-base-200 px-3 py-2 rounded-lg transition-colors">
+          Cancelar
+        </button>
+      </form>
+      <button type="button" id="mover-especificacion-confirm"
+              class="flex items-center gap-1.5 text-xs font-semibold text-accent bg-accent/10 hover:bg-accent/20 px-3 py-2 rounded-lg transition-colors">
+        <i class="fas fa-arrows-alt text-xs"></i> Mover
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('mover-especificacion-modal');
+    const cancelButton = document.getElementById('mover-especificacion-cancel');
+    const confirmButton = document.getElementById('mover-especificacion-confirm');
+    const tituloElement = document.getElementById('mover-especificacion-titulo');
+    const posicionActualElement = document.getElementById('mover-especificacion-posicion-actual');
+    const nuevaPosicionSelect = document.getElementById('mover-especificacion-nueva-posicion');
+
+    let currentEspecificacionId = null;
+    let currentProyectoId = null;
+    let totalEspecificaciones = 0;
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    function openMoverModal(especificacionId, especificacionTitulo, proyectoId, posicionActual, total) {
+      if (!modal || !tituloElement || !posicionActualElement || !nuevaPosicionSelect) return;
+
+      currentEspecificacionId = especificacionId;
+      currentProyectoId = proyectoId;
+      totalEspecificaciones = total;
+
+      tituloElement.textContent = especificacionTitulo;
+      posicionActualElement.textContent = posicionActual;
+
+      nuevaPosicionSelect.innerHTML = '<option value="" disabled selected>Elige una posición...</option>';
+      for (let i = 1; i <= total; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `Posición ${i}`;
+        if (i === posicionActual) option.selected = true;
+        nuevaPosicionSelect.appendChild(option);
+      }
+
+      if (typeof modal.showModal === 'function') modal.showModal();
+      else { modal.setAttribute('open', ''); modal.classList.add('modal-open'); }
+    }
+
+    if (cancelButton) {
+      cancelButton.addEventListener('click', function() {
+        if (typeof modal.close === 'function') modal.close();
+        else { modal.removeAttribute('open'); modal.classList.remove('modal-open'); }
+      });
+    }
+
+    if (confirmButton) {
+      confirmButton.addEventListener('click', async function() {
+        const nuevaPosicion = parseInt(nuevaPosicionSelect.value);
+        if (!nuevaPosicion || nuevaPosicion === parseInt(posicionActualElement.textContent)) {
+          if (window.flashy) flashy.warning('Por favor, selecciona una posición diferente a la actual.');
+          else alert('Por favor, selecciona una posición diferente a la actual.');
+          return;
+        }
+
+        const originalText = confirmButton.innerHTML;
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Moviendo...';
+
+        try {
+          const response = await fetch(`/proyectos/${currentProyectoId}/mover-especificacion/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ especificacion_id: currentEspecificacionId, nueva_posicion: nuevaPosicion })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              if (typeof modal.close === 'function') modal.close();
+              else { modal.removeAttribute('open'); modal.classList.remove('modal-open'); }
+              if (window.flashy) flashy.success(data.message || 'Especificación movida correctamente.');
+              window.location.reload();
+            } else {
+              throw new Error(data.error || 'Error al mover la especificación');
+            }
+          } else {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || 'Error al mover la especificación');
+          }
+        } catch (error) {
+          console.error('Error al mover:', error);
+          if (window.flashy) flashy.error('Error al mover la especificación. Por favor, inténtelo de nuevo.');
+          else alert('Error al mover la especificación. Por favor, inténtelo de nuevo.');
+          confirmButton.disabled = false;
+          confirmButton.innerHTML = originalText;
+        }
+      });
+    }
+
+    window.openMoverEspecificacionModal = openMoverModal;
+  })();
+</script>

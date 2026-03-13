@@ -1,0 +1,501 @@
+{% load main_tags %}
+<!-- Modal de confirmación para eliminar imagen -->
+<dialog id="confirmar-eliminar-imagen-modal" class="modal">
+  <div class="modal-box">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xl font-bold">¿Eliminar imagen?</h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+    
+    <div class="flex flex-col items-center text-center space-y-4 mb-6">
+      <i class="fas fa-exclamation-triangle text-5xl text-error"></i>
+      <p class="text-base-content/70">
+        ¿Está seguro de que desea eliminar esta imagen?
+        Esta acción no se podrá deshacer.
+      </p>
+    </div>
+
+    <div class="modal-action">
+      <form method="dialog">
+        <button type="button" class="btn btn-ghost" id="confirmar-eliminar-imagen-cancel">
+          <i class="fas fa-times mr-2"></i>
+          Cancelar
+        </button>
+      </form>
+      <button type="button" class="btn btn-error" id="confirmar-eliminar-imagen-confirm">
+        <i class="fas fa-trash mr-2"></i>
+        Eliminar
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<dialog id="gestionar-imagenes-modal" class="modal">
+  <div class="modal-box max-w-4xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-2xl font-bold">Gestionar Imágenes</h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+    
+    <div class="mb-4">
+      <p class="text-base-content/70">
+        Especificación: <span id="gestionar-imagenes-titulo" class="font-semibold"></span>
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Galería de imágenes existentes -->
+    <div id="gestionar-imagenes-galeria" class="mb-6">
+      <h4 class="font-semibold mb-3">Imágenes existentes</h4>
+      <div id="gestionar-imagenes-lista" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <!-- Las imágenes se cargarán aquí dinámicamente -->
+      </div>
+      <div id="gestionar-imagenes-vacio" class="text-center py-8 text-base-content/60 hidden">
+        <i class="fas fa-image text-4xl mb-2"></i>
+        <p>No hay imágenes agregadas aún</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Formulario para agregar nuevas imágenes -->
+    <div class="mb-4">
+      <h4 class="font-semibold mb-3">Agregar nuevas imágenes</h4>
+      <form id="gestionar-imagenes-form" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" id="gestionar-imagenes-especificacion-id" name="especificacion_id" value="">
+        <div class="form-control">
+          <input type="file" 
+                 id="gestionar-imagenes-input" 
+                 name="imagenes" 
+                 accept="image/*" 
+                 multiple 
+                 class="file-input file-input-bordered w-full">
+          <label class="label">
+            <span class="label-text-alt text-base-content/60">
+              <i class="fas fa-info-circle mr-1"></i>
+              Puedes seleccionar múltiples imágenes. Se optimizarán automáticamente.
+            </span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-success mt-3" id="gestionar-imagenes-submit">
+          <i class="fas fa-upload mr-2"></i>
+          Subir imágenes
+        </button>
+      </form>
+    </div>
+
+    <div class="modal-action">
+      <form method="dialog">
+        <button type="button" class="btn btn-ghost" id="gestionar-imagenes-cancel">
+          Cerrar
+        </button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('gestionar-imagenes-modal');
+    const cancelButton = document.getElementById('gestionar-imagenes-cancel');
+    const form = document.getElementById('gestionar-imagenes-form');
+    const tituloElement = document.getElementById('gestionar-imagenes-titulo');
+    const especificacionIdInput = document.getElementById('gestionar-imagenes-especificacion-id');
+    const galeriaLista = document.getElementById('gestionar-imagenes-lista');
+    const galeriaVacio = document.getElementById('gestionar-imagenes-vacio');
+    const submitButton = document.getElementById('gestionar-imagenes-submit');
+    const fileInput = document.getElementById('gestionar-imagenes-input');
+    
+    let currentEspecificacionId = null;
+    let imagenAEliminarId = null;
+
+    // Función para obtener el token CSRF
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Función para cargar las imágenes existentes
+    async function cargarImagenes(especificacionId) {
+      try {
+        const response = await fetch(`/proyecto/especificacion/${especificacionId}/imagenes/`, {
+          method: 'GET',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          mostrarImagenes(data.imagenes || []);
+        } else {
+          console.error('Error al cargar imágenes');
+          mostrarImagenes([]);
+        }
+      } catch (error) {
+        console.error('Error al cargar imágenes:', error);
+        mostrarImagenes([]);
+      }
+    }
+
+    // Función para mostrar las imágenes en la galería
+    function mostrarImagenes(imagenes) {
+      if (imagenes.length === 0) {
+        galeriaLista.innerHTML = '';
+        galeriaVacio.classList.remove('hidden');
+        return;
+      }
+
+      galeriaVacio.classList.add('hidden');
+      galeriaLista.innerHTML = imagenes.map(imagen => `
+        <div class="card bg-base-100 border border-base-300">
+          <div class="relative group">
+            <img src="${imagen.url}" 
+                 alt="Imagen" 
+                 class="w-full h-48 object-cover rounded-t-lg">
+            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button type="button" 
+                      class="btn btn-sm btn-error eliminar-imagen-btn" 
+                      data-imagen-id="${imagen.id}"
+                      title="Eliminar imagen">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-3">
+            <div class="form-control">
+              <input type="text" 
+                     class="input input-bordered input-sm descripcion-imagen-input w-full" 
+                     placeholder="Agregar descripción..."
+                     value="${imagen.descripcion || ''}"
+                     data-imagen-id="${imagen.id}">
+              <button type="button" 
+                      class="btn btn-xs btn-success mt-2 guardar-descripcion-btn hidden" 
+                      data-imagen-id="${imagen.id}">
+                <i class="fas fa-save mr-1"></i>
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // Agregar event listeners a los botones de eliminar
+      galeriaLista.querySelectorAll('.eliminar-imagen-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const imagenId = this.dataset.imagenId;
+          abrirConfirmacionEliminar(imagenId);
+        });
+      });
+
+      // Agregar event listeners para las descripciones
+      galeriaLista.querySelectorAll('.descripcion-imagen-input').forEach(textarea => {
+        const imagenId = textarea.dataset.imagenId;
+        const guardarBtn = galeriaLista.querySelector(`.guardar-descripcion-btn[data-imagen-id="${imagenId}"]`);
+        let descripcionOriginal = textarea.value;
+
+        textarea.addEventListener('input', function() {
+          if (this.value !== descripcionOriginal) {
+            guardarBtn.classList.remove('hidden');
+          } else {
+            guardarBtn.classList.add('hidden');
+          }
+        });
+
+        guardarBtn.addEventListener('click', async function() {
+          await guardarDescripcion(imagenId, textarea.value);
+          descripcionOriginal = textarea.value;
+          guardarBtn.classList.add('hidden');
+        });
+      });
+    }
+
+    // Función para abrir el modal de confirmación de eliminación
+    function abrirConfirmacionEliminar(imagenId) {
+      const confirmModal = document.getElementById('confirmar-eliminar-imagen-modal');
+      if (!confirmModal) {
+        console.error('Modal de confirmación no encontrado');
+        return;
+      }
+
+      imagenAEliminarId = imagenId;
+
+      // Abrir el modal
+      if (typeof confirmModal.showModal === 'function') {
+        confirmModal.showModal();
+      } else {
+        confirmModal.setAttribute('open', '');
+        confirmModal.classList.add('modal-open');
+      }
+    }
+
+    // Manejar el botón confirmar del modal de confirmación
+    const confirmBtn = document.getElementById('confirmar-eliminar-imagen-confirm');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', async function() {
+        if (imagenAEliminarId) {
+          await eliminarImagen(imagenAEliminarId);
+          imagenAEliminarId = null;
+          const confirmModal = document.getElementById('confirmar-eliminar-imagen-modal');
+          if (typeof confirmModal.close === 'function') {
+            confirmModal.close();
+          } else {
+            confirmModal.removeAttribute('open');
+            confirmModal.classList.remove('modal-open');
+          }
+        }
+      });
+    }
+
+    // Manejar el botón cancelar del modal de confirmación
+    const confirmCancelBtn = document.getElementById('confirmar-eliminar-imagen-cancel');
+    if (confirmCancelBtn) {
+      confirmCancelBtn.addEventListener('click', function() {
+        imagenAEliminarId = null;
+        const confirmModal = document.getElementById('confirmar-eliminar-imagen-modal');
+        if (typeof confirmModal.close === 'function') {
+          confirmModal.close();
+        } else {
+          confirmModal.removeAttribute('open');
+          confirmModal.classList.remove('modal-open');
+        }
+      });
+    }
+
+    // Función para eliminar una imagen
+    async function eliminarImagen(imagenId) {
+      try {
+        const response = await fetch(`/proyecto/especificacion/imagen/${imagenId}/eliminar/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+            if (data.success) {
+              if (window.flashy) {
+                flashy.success('Imagen eliminada correctamente.');
+              }
+              // Recargar las imágenes
+              await cargarImagenes(currentEspecificacionId);
+              // Actualizar el icono
+              actualizarIconoImagen(currentEspecificacionId);
+            }
+        }
+      } catch (error) {
+        console.error('Error al eliminar imagen:', error);
+        if (window.flashy) {
+          flashy.error('Error al eliminar la imagen.');
+        }
+      }
+    }
+
+    // Función para actualizar el icono de imágenes en la página principal
+    async function actualizarIconoImagen(especificacionId) {
+      try {
+        const response = await fetch(`/proyecto/especificacion/${especificacionId}/imagenes/`, {
+          method: 'GET',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const cantidadImagenes = (data.imagenes || []).length;
+          
+          const botonImagen = document.querySelector(`.gestionar-imagenes-btn[data-especificacion-id="${especificacionId}"]`);
+          if (botonImagen) {
+            const icono = botonImagen.querySelector('i');
+            if (icono) {
+              // Remover todas las clases de color y opacidad
+              icono.classList.remove('text-base-content/20', 'text-warning', 'text-success', 'opacity-50');
+              
+              // Agregar la clase correspondiente según la cantidad
+              if (cantidadImagenes === 0) {
+                icono.classList.add('text-base-content/20', 'opacity-50');
+                botonImagen.title = 'Agregar imágenes';
+              } else if (cantidadImagenes === 1) {
+                icono.classList.add('text-warning');
+                botonImagen.title = `Ver imágenes (${cantidadImagenes})`;
+              } else {
+                icono.classList.add('text-success');
+                botonImagen.title = `Ver imágenes (${cantidadImagenes})`;
+              }
+              
+              botonImagen.dataset.cantidadImagenes = cantidadImagenes;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error al actualizar icono:', error);
+      }
+    }
+
+    // Función para guardar la descripción de una imagen
+    async function guardarDescripcion(imagenId, descripcion) {
+      try {
+        const response = await fetch(`/proyecto/especificacion/imagen/${imagenId}/actualizar-descripcion/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({
+            descripcion: descripcion
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            if (window.flashy) {
+              flashy.success('Descripción guardada correctamente.');
+            }
+          } else {
+            throw new Error(data.error || 'Error al guardar la descripción');
+          }
+        } else {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Error al guardar la descripción');
+        }
+      } catch (error) {
+        console.error('Error al guardar descripción:', error);
+        if (window.flashy) {
+          flashy.error('Error al guardar la descripción. Por favor, inténtelo de nuevo.');
+        }
+      }
+    }
+
+    // Función para abrir el modal
+    function openGestionarImagenesModal(especificacionId, especificacionTitulo) {
+      if (!modal || !tituloElement || !especificacionIdInput) {
+        console.error('Elementos del modal de gestionar imágenes no encontrados');
+        return;
+      }
+
+      currentEspecificacionId = especificacionId;
+      tituloElement.textContent = especificacionTitulo;
+      especificacionIdInput.value = especificacionId;
+      fileInput.value = '';
+
+      // Cargar las imágenes existentes
+      cargarImagenes(especificacionId);
+
+      if (typeof modal.showModal === 'function') {
+        modal.showModal();
+      } else {
+        modal.setAttribute('open', '');
+        modal.classList.add('modal-open');
+      }
+    }
+
+    // Manejar el botón cancelar
+    if (cancelButton) {
+      cancelButton.addEventListener('click', function() {
+        if (typeof modal.close === 'function') {
+          modal.close();
+        } else {
+          modal.removeAttribute('open');
+          modal.classList.remove('modal-open');
+        }
+      });
+    }
+
+    // Manejar el envío del formulario
+    if (form) {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const files = fileInput.files;
+        if (files.length === 0) {
+          if (window.flashy) {
+            flashy.warning('Por favor, selecciona al menos una imagen.');
+          }
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('especificacion_id', currentEspecificacionId);
+        for (let i = 0; i < files.length; i++) {
+          formData.append('imagenes', files[i]);
+        }
+
+        const originalText = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Subiendo...';
+
+        try {
+          const response = await fetch(`/proyecto/especificacion/${currentEspecificacionId}/subir-imagenes/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              if (window.flashy) {
+                flashy.success(data.message || 'Imágenes subidas correctamente. Puedes agregar descripciones ahora.');
+              }
+              fileInput.value = '';
+              // Recargar las imágenes (NO cerrar el modal)
+              await cargarImagenes(currentEspecificacionId);
+              // Actualizar el icono sin recargar toda la página
+              actualizarIconoImagen(currentEspecificacionId);
+            } else {
+              throw new Error(data.error || 'Error al subir las imágenes');
+            }
+          } else {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || 'Error al subir las imágenes');
+          }
+        } catch (error) {
+          console.error('Error al subir imágenes:', error);
+          if (window.flashy) {
+            flashy.error('Error al subir las imágenes. Por favor, inténtelo de nuevo.');
+          } else {
+            alert('Error al subir las imágenes. Por favor, inténtelo de nuevo.');
+          }
+        } finally {
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalText;
+        }
+      });
+    }
+
+    // Exponer la función para abrir el modal globalmente
+    window.openGestionarImagenesModal = openGestionarImagenesModal;
+  })();
+</script>
+

@@ -1,0 +1,203 @@
+{% load main_tags %}
+<dialog id="mover-especificacion-modal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-2xl font-bold">Mover Especificación</h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+    
+    <div class="mb-4">
+      <p class="text-base-content/70 mb-2">
+        Especificación: <span id="mover-especificacion-titulo" class="font-semibold"></span>
+      </p>
+      <p class="text-sm text-base-content/60">
+        Posición actual: <span id="mover-especificacion-posicion-actual" class="font-medium"></span>
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="mb-4">
+      <label class="label">
+        <span class="label-text font-semibold">Selecciona la nueva posición:</span>
+      </label>
+      <select id="mover-especificacion-nueva-posicion" class="select select-bordered w-full">
+        <option value="" disabled selected>Elige una posición...</option>
+      </select>
+      <label class="label">
+        <span class="label-text-alt text-base-content/60">
+          <i class="fas fa-info-circle mr-1"></i>
+          Las demás especificaciones se reordenarán automáticamente
+        </span>
+      </label>
+    </div>
+
+    <div class="modal-action">
+      <form method="dialog">
+        <button type="button" class="btn btn-ghost" id="mover-especificacion-cancel">
+          <i class="fas fa-times mr-2"></i>
+          Cancelar
+        </button>
+      </form>
+      <button type="button" class="btn btn-primary" id="mover-especificacion-confirm">
+        <i class="fas fa-arrows-alt mr-2"></i>
+        Mover
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('mover-especificacion-modal');
+    const cancelButton = document.getElementById('mover-especificacion-cancel');
+    const confirmButton = document.getElementById('mover-especificacion-confirm');
+    const tituloElement = document.getElementById('mover-especificacion-titulo');
+    const posicionActualElement = document.getElementById('mover-especificacion-posicion-actual');
+    const nuevaPosicionSelect = document.getElementById('mover-especificacion-nueva-posicion');
+    
+    let currentEspecificacionId = null;
+    let currentProyectoId = null;
+    let totalEspecificaciones = 0;
+
+    // Función para obtener el token CSRF
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Función para abrir el modal
+    function openMoverModal(especificacionId, especificacionTitulo, proyectoId, posicionActual, total) {
+      if (!modal || !tituloElement || !posicionActualElement || !nuevaPosicionSelect) {
+        console.error('Elementos del modal de mover especificación no encontrados');
+        return;
+      }
+
+      currentEspecificacionId = especificacionId;
+      currentProyectoId = proyectoId;
+      totalEspecificaciones = total;
+
+      tituloElement.textContent = especificacionTitulo;
+      posicionActualElement.textContent = posicionActual;
+
+      // Llenar el select con las posiciones disponibles
+      nuevaPosicionSelect.innerHTML = '<option value="" disabled selected>Elige una posición...</option>';
+      for (let i = 1; i <= total; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `Posición ${i}`;
+        if (i === posicionActual) {
+          option.selected = true;
+        }
+        nuevaPosicionSelect.appendChild(option);
+      }
+
+      if (typeof modal.showModal === 'function') {
+        modal.showModal();
+      } else {
+        modal.setAttribute('open', '');
+        modal.classList.add('modal-open');
+      }
+    }
+
+    // Manejar el botón cancelar
+    if (cancelButton) {
+      cancelButton.addEventListener('click', function() {
+        if (typeof modal.close === 'function') {
+          modal.close();
+        } else {
+          modal.removeAttribute('open');
+          modal.classList.remove('modal-open');
+        }
+      });
+    }
+
+    // Manejar la confirmación
+    if (confirmButton) {
+      confirmButton.addEventListener('click', async function() {
+        const nuevaPosicion = parseInt(nuevaPosicionSelect.value);
+        if (!nuevaPosicion || nuevaPosicion === parseInt(posicionActualElement.textContent)) {
+          if (window.flashy) {
+            flashy.warning('Por favor, selecciona una posición diferente a la actual.');
+          } else {
+            alert('Por favor, selecciona una posición diferente a la actual.');
+          }
+          return;
+        }
+
+        const originalText = confirmButton.innerHTML;
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Moviendo...';
+
+        try {
+          const response = await fetch(`/proyecto/${currentProyectoId}/mover-especificacion/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+              especificacion_id: currentEspecificacionId,
+              nueva_posicion: nuevaPosicion
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              // Cerrar el modal
+              if (typeof modal.close === 'function') {
+                modal.close();
+              } else {
+                modal.removeAttribute('open');
+                modal.classList.remove('modal-open');
+              }
+
+              // Mostrar mensaje de éxito
+              if (window.flashy) {
+                flashy.success(data.message || 'Especificación movida correctamente.');
+              }
+
+              // Recargar la página para mostrar el nuevo orden
+              window.location.reload();
+            } else {
+              throw new Error(data.error || 'Error al mover la especificación');
+            }
+          } else {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || 'Error al mover la especificación');
+          }
+        } catch (error) {
+          console.error('Error al mover:', error);
+          if (window.flashy) {
+            flashy.error('Error al mover la especificación. Por favor, inténtelo de nuevo.');
+          } else {
+            alert('Error al mover la especificación. Por favor, inténtelo de nuevo.');
+          }
+          confirmButton.disabled = false;
+          confirmButton.innerHTML = originalText;
+        }
+      });
+    }
+
+    // Exponer la función para abrir el modal globalmente
+    window.openMoverEspecificacionModal = openMoverModal;
+  })();
+</script>
+

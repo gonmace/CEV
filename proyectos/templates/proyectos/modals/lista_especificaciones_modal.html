@@ -1,0 +1,237 @@
+{% load main_tags %}
+<input type="checkbox" id="lista-especificaciones-modal" class="modal-toggle" {% if spec_modal_open %}checked{% endif %} />
+<div class="modal" role="dialog" aria-labelledby="lista-especificaciones-modal-title">
+  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden max-w-5xl">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/10">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center">
+          <i class="fas fa-list text-secondary text-xs"></i>
+        </span>
+        <span id="lista-especificaciones-modal-title" class="text-sm font-semibold text-base-content">Especificaciones disponibles</span>
+      </div>
+      <label for="lista-especificaciones-modal"
+             class="w-7 h-7 rounded-lg flex items-center justify-center text-base-content/40 hover:bg-base-200 hover:text-base-content transition-colors cursor-pointer">
+        <i class="fas fa-times text-xs"></i>
+      </label>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-4">
+      {% if especificaciones_accesibles %}
+        <!-- Búsqueda -->
+        <div class="mb-4">
+          <div class="relative">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-secondary/40 text-xs"></i>
+            <input type="text" id="buscar-especificacion-input"
+                   placeholder="Buscar especificación (mín. 3 caracteres)..."
+                   class="input input-bordered input-sm w-full pl-8 text-sm" />
+          </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-[55vh] rounded-lg border border-secondary/10">
+          <table class="table table-sm w-full">
+            <thead>
+              <tr class="bg-primary text-primary-content text-xs uppercase tracking-wider font-bold">
+                <th class="py-3 pl-4">{% sortable_header 'Nombre' 'titulo' spec_sort_by spec_order sort_param='spec_sort_by' order_param='spec_order' extra_query='spec_modal_open=1' %}</th>
+                <th class="py-3">{% sortable_header 'Proyecto' 'proyecto' spec_sort_by spec_order sort_param='spec_sort_by' order_param='spec_order' extra_query='spec_modal_open=1' %}</th>
+                <th class="py-3">{% sortable_header 'Usuario' 'usuario' spec_sort_by spec_order sort_param='spec_sort_by' order_param='spec_order' extra_query='spec_modal_open=1' %}</th>
+                <th class="py-3 text-center w-20">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="especificaciones-table-body" class="divide-y divide-secondary/10">
+              {% for especificacion in especificaciones_accesibles %}
+                <tr class="especificacion-row hover:bg-base-200/40 transition-colors" data-nombre="{{ especificacion.titulo|lower }}">
+                  <td class="py-3 pl-4">
+                    <p class="text-sm font-semibold text-base-content">{{ especificacion.titulo }}</p>
+                    <p class="text-xs text-secondary/60 mt-0.5">Actualizada {{ especificacion.fecha_actualizacion|date:"d/m/Y" }}</p>
+                  </td>
+                  <td class="py-3">
+                    <p class="text-sm font-medium text-base-content">{{ especificacion.proyecto.nombre }}</p>
+                    <p class="text-xs text-secondary/60 mt-0.5">{{ especificacion.proyecto.solicitante }}</p>
+                  </td>
+                  <td class="py-3">
+                    {% if especificacion.proyecto.creado_por %}
+                      <span class="text-sm text-base-content/80">
+                        {{ especificacion.proyecto.creado_por.get_full_name|default:especificacion.proyecto.creado_por.username }}
+                      </span>
+                    {% else %}
+                      <span class="text-xs text-base-content/40">No asignado</span>
+                    {% endif %}
+                  </td>
+                  <td class="py-3 text-center">
+                    <div class="flex items-center justify-center gap-0.5">
+                      <button type="button"
+                              class="w-7 h-7 rounded-md flex items-center justify-center text-info hover:bg-info/10 transition-colors view-especificacion-btn"
+                              title="Ver especificación"
+                              data-title="{{ especificacion.titulo|escape }}"
+                              data-proyecto="{{ especificacion.proyecto.nombre|escape }}"
+                              data-usuario="{% if especificacion.proyecto.creado_por %}{{ especificacion.proyecto.creado_por.get_full_name|default:especificacion.proyecto.creado_por.username|escape }}{% else %}-{% endif %}"
+                              data-preview="{{ especificacion.preview_html|default:''|escape }}">
+                        <i class="fas fa-eye text-xs"></i>
+                      </button>
+                      {% if es_propietario %}
+                        <button type="button"
+                                class="w-7 h-7 rounded-md flex items-center justify-center text-secondary hover:bg-secondary/10 transition-colors copy-especificacion-btn"
+                                title="Copiar al proyecto actual"
+                                data-title="{{ especificacion.titulo|escape }}"
+                                data-copy-url="{% url 'proyectos:copiar_especificacion' especificacion.id %}">
+                          <i class="fas fa-copy text-xs"></i>
+                        </button>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="flex flex-col items-center justify-center py-14 gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+            <i class="fas fa-file-alt text-xl text-base-content/25"></i>
+          </div>
+          <p class="text-sm font-medium text-base-content/40">No hay especificaciones disponibles.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end px-5 py-4 border-t border-secondary/10">
+      <label for="lista-especificaciones-modal"
+             class="flex items-center gap-1.5 text-xs font-semibold text-base-content/60 hover:bg-base-200 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+        Cerrar
+      </label>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="lista-especificaciones-modal">Cerrar</label>
+</div>
+
+{% include 'proyectos/modals/ver_especificacion_modal.html' %}
+
+<dialog id="copy-especificacion-modal" class="modal">
+  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden max-w-md">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/10">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center">
+          <i class="fas fa-copy text-secondary text-xs"></i>
+        </span>
+        <span class="text-sm font-semibold text-base-content">Copiar especificación</span>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-base-content/40 hover:bg-base-200 hover:text-base-content transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-5">
+      <p class="text-sm text-base-content/70 leading-relaxed">
+        ¿Deseas copiar <span class="font-semibold text-base-content" id="copy-especificacion-nombre"></span>
+        al proyecto <span class="font-semibold text-base-content">{{ proyecto.nombre }}</span>?
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-secondary/10">
+      <form method="dialog">
+        <button class="flex items-center gap-1.5 text-xs font-semibold text-base-content/60 hover:bg-base-200 px-3 py-2 rounded-lg transition-colors">
+          Cancelar
+        </button>
+      </form>
+      <form method="post" id="copy-especificacion-form">
+        {% csrf_token %}
+        <input type="hidden" name="proyecto_destino" value="{{ proyecto.id }}">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit"
+                class="flex items-center gap-1.5 text-xs font-semibold text-success bg-success/10 hover:bg-success/20 px-3 py-2 rounded-lg transition-colors">
+          <i class="fas fa-copy text-xs"></i> Copiar
+        </button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cancelar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const copyButtons = Array.from(document.querySelectorAll('.copy-especificacion-btn'));
+    const copyModal = document.getElementById('copy-especificacion-modal');
+    const copyName = document.getElementById('copy-especificacion-nombre');
+    const copyForm = document.getElementById('copy-especificacion-form');
+
+    if (copyButtons.length && copyForm) {
+      copyButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          copyName.textContent = btn.dataset.title || '';
+          copyForm.setAttribute('action', btn.dataset.copyUrl || '#');
+          if (typeof copyModal.showModal === 'function') copyModal.showModal();
+          else copyModal.classList.add('modal-open');
+        });
+      });
+    }
+  })();
+
+  (function() {
+    const buscarInput = document.getElementById('buscar-especificacion-input');
+    const especificacionesRows = document.querySelectorAll('.especificacion-row');
+
+    if (buscarInput && especificacionesRows.length > 0) {
+      buscarInput.addEventListener('input', function() {
+        const busqueda = this.value.trim().toLowerCase();
+        if (busqueda.length < 3) {
+          especificacionesRows.forEach(row => { row.style.display = ''; });
+          const m = document.getElementById('sin-resultados-busqueda');
+          if (m) m.remove();
+          return;
+        }
+
+        let filasVisibles = 0;
+        especificacionesRows.forEach(row => {
+          const nombre = row.dataset.nombre || '';
+          if (nombre.includes(busqueda)) { row.style.display = ''; filasVisibles++; }
+          else row.style.display = 'none';
+        });
+
+        const tableBody = document.getElementById('especificaciones-table-body');
+        let mensajeSinResultados = document.getElementById('sin-resultados-busqueda');
+
+        if (filasVisibles === 0) {
+          if (!mensajeSinResultados && tableBody) {
+            mensajeSinResultados = document.createElement('tr');
+            mensajeSinResultados.id = 'sin-resultados-busqueda';
+            mensajeSinResultados.innerHTML = `
+              <td colspan="4" class="text-center py-10 text-base-content/40">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-10 h-10 rounded-xl bg-base-200 flex items-center justify-center">
+                    <i class="fas fa-search text-base-content/25"></i>
+                  </div>
+                  <p class="text-xs">Sin resultados para "<strong>${busqueda}</strong>"</p>
+                </div>
+              </td>`;
+            tableBody.appendChild(mensajeSinResultados);
+          }
+        } else {
+          if (mensajeSinResultados) mensajeSinResultados.remove();
+        }
+      });
+
+      const modalToggle = document.getElementById('lista-especificaciones-modal');
+      if (modalToggle) {
+        modalToggle.addEventListener('change', function() {
+          if (!this.checked) {
+            buscarInput.value = '';
+            especificacionesRows.forEach(row => { row.style.display = ''; });
+            const m = document.getElementById('sin-resultados-busqueda');
+            if (m) m.remove();
+          }
+        });
+      }
+    }
+  })();
+</script>

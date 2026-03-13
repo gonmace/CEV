@@ -1,0 +1,347 @@
+{% extends 'base_pliego.html' %}
+{% load static crispy_forms_tags tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}
+  Proyecto: {{ proyecto.nombre }}
+{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:proyecto_main' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">{{ proyecto.nombre }}</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+  <!-- Navbar -->
+
+
+  <div class="px-4 py-6 max-w-7xl mx-auto w-full">
+    <div class="flex flex-col lg:flex-row gap-4">
+      <!-- Columna izquierda: Especificaciones -->
+      <div class="w-full lg:w-2/3">
+        <div class="card bg-base-100 shadow-xl h-full">
+          <div class="card-body">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <div class="flex items-center gap-3">
+                <h2 class="card-title text-2xl m-0">
+                  <i class="fas fa-list-alt mr-2"></i>
+                  Especificaciones del Proyecto
+                </h2>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {% if es_propietario %}
+                  <a href="{% url 'proyectos:nueva_especificacion' proyecto.id %}" class="btn btn-sm btn-success">
+                    <i class="fas fa-plus mr-1"></i>
+                    Nueva
+                  </a>
+                  <label for="lista-especificaciones-modal" class="btn btn-sm btn-view cursor-pointer">
+                    <i class="fas fa-list mr-1"></i>
+                    Especificaciones Disponibles
+                  </label>
+                {% endif %}
+                <a href="{% url 'proyectos:proyecto_main' %}" class="btn btn-sm btn-ghost text-base-content/60 hover:text-base-content" title="Ver página del proyecto">
+                  <i class="fas fa-arrow-left"></i>
+                </a>
+              </div>
+            </div>
+
+            {% if especificaciones %}
+              <div id="especificaciones-list" class="space-y-2 overflow-y-auto max-h-[70vh] pr-1">
+                {% for especificacion in especificaciones %}
+                  <div class="card bg-base-200/70 border border-base-300/60 especificacion-item" data-especificacion-id="{{ especificacion.id }}">
+                    <div class="card-body py-2 px-4">
+                      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                          {% if es_propietario %}
+                            <div class="cursor-move text-base-content/40 hover:text-base-content/70 transition-colors">
+                              <i class="fas fa-grip-vertical"></i>
+                            </div>
+                          {% endif %}
+                          <button type="button" 
+                                  class="btn btn-ghost btn-sm p-1.5 h-8 min-h-8 gestionar-imagenes-btn" 
+                                  title="{% if especificacion.cantidad_imagenes > 0 %}Ver imágenes ({{ especificacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}"
+                                  data-especificacion-id="{{ especificacion.id }}"
+                                  data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                                  data-cantidad-imagenes="{{ especificacion.cantidad_imagenes }}">
+                            {% if especificacion.cantidad_imagenes == 0 %}
+                              <i class="fas fa-image text-lg text-base-content/20 opacity-50"></i>
+                            {% elif especificacion.cantidad_imagenes == 1 %}
+                              <i class="fas fa-image text-lg text-warning"></i>
+                            {% else %}
+                              <i class="fas fa-image text-lg text-success"></i>
+                            {% endif %}
+                          </button>
+                          <h3 class="text-base font-semibold text-base-content flex-1 min-w-0 break-words">{{ especificacion.titulo }}</h3>
+                        </div>
+                        <div class="flex items-center gap-1">
+                          {% if es_propietario %}
+                          <button type="button" 
+                                  class="btn btn-ghost btn-sm text-purple-500 mover-especificacion-btn" 
+                                  title="Mover posición"
+                                  data-especificacion-id="{{ especificacion.id }}"
+                                  data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                                  data-especificacion-posicion="{{ especificacion.orden }}"
+                                  data-proyecto-id="{{ proyecto.id }}"
+                                  data-total-especificaciones="{{ especificaciones|length }}">
+                            <i class="fas fa-arrows-alt"></i>
+                          </button>
+                          {% endif %}
+                          <a href="{% url 'proyectos:ver_especificacion' especificacion.id %}?from=proyecto" class="btn btn-ghost btn-sm text-blue-500" title="Ver">
+                            <i class="fas fa-eye"></i>
+                          </a>
+                          {% if es_propietario %}
+                          <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}" class="btn btn-ghost btn-sm text-yellow-500" title="Editar">
+                            <i class="fas fa-edit"></i>
+                          </a>
+                          <button type="button" 
+                                  class="btn btn-ghost btn-sm text-red-600 eliminar-especificacion-btn" 
+                                  title="Eliminar"
+                                  data-especificacion-id="{{ especificacion.id }}"
+                                  data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="h-full flex flex-col items-center justify-center text-center py-12">
+                <i class="fas fa-file-alt text-6xl text-base-300 mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">Sin especificaciones registradas</h3>
+                <p class="text-base-content/70 max-w-md">
+                  Aún no se han generado especificaciones para este proyecto. Utilice el botón "Nuevo" para crear la primera especificación.
+                </p>
+                {% if es_propietario %}
+                  <a href="{% url 'proyectos:nueva_especificacion' proyecto.id %}" class="btn btn-primary mt-4">
+                    <i class="fas fa-plus mr-2"></i>
+                    Nueva especificación
+                  </a>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha: Opciones -->
+      <div class="w-full lg:w-1/3 flex flex-col gap-4">
+        <!-- Información del proyecto -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="text-2xl font-bold uppercase tracking-wide text-center mb-6">
+              {{ proyecto.nombre }}
+            </h2>
+            <div class="space-y-3 text-base-content/80">
+              <div>
+                <span class="font-semibold">Nombre:</span>
+                <p>{{ proyecto.nombre }}</p>
+              </div>
+              <div>
+                <span class="font-semibold">Solicitante:</span>
+                <p>{{ proyecto.solicitante }}</p>
+              </div>
+              <div>
+                <span class="font-semibold">Ubicación:</span>
+                <p>{{ proyecto.ubicacion }}</p>
+              </div>
+              <div>
+                <span class="font-semibold">Fecha de creación:</span>
+                <p>{{ proyecto.fecha_creacion|date:"d/m/Y H:i" }}</p>
+              </div>
+              <div>
+                <span class="font-semibold">Última actualización:</span>
+                <p>{{ proyecto.fecha_actualizacion|date:"d/m/Y H:i" }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="font-semibold">Visibilidad:</span>
+                {% if proyecto.publico %}
+                  <span class="badge badge-success">
+                    <i class="fas fa-globe-americas mr-1"></i>
+                    Público
+                  </span>
+                {% else %}
+                  <span class="badge badge-base-300">
+                    <i class="fas fa-lock mr-1"></i>
+                    Privado
+                  </span>
+                {% endif %}
+              </div>
+              <div>
+                <span class="font-semibold">Descripción:</span>
+                {% if proyecto.descripcion %}
+                  <div class="mt-2 text-base-content/80 space-y-2">
+                    {{ proyecto.descripcion|linebreaksbr }}
+                  </div>
+                {% else %}
+                  <p class="text-base-content/60 mt-2">No se ha registrado una descripción para este proyecto.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón de exportar a Word -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <a href="{% url 'proyectos:exportar_proyecto_word' proyecto.id %}" 
+               class="btn w-full text-white hover:text-white" 
+               style="background-color: #2B579A; border-color: #2B579A;"
+               title="Exportar todas las especificaciones a Word">
+              <i class="fab fa-microsoft-word mr-2 text-xl"></i>
+              Exportar a Word
+            </a>
+            <p class="text-sm text-base-content/60 mt-2 text-center">
+              Genera un documento Word con todas las especificaciones del proyecto en el orden actual
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% include 'proyectos/modals/lista_especificaciones_modal.html' %}
+  {% include 'proyectos/modals/eliminar_especificacion_modal.html' %}
+  {% include 'proyectos/modals/mover_especificacion_modal.html' %}
+  {% include 'proyectos/modals/gestionar_imagenes_modal.html' %}
+{% endblock %}
+
+{% block js %}
+{% if es_propietario %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+  (function() {
+    // Función para obtener el token CSRF
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    const especificacionesList = document.getElementById('especificaciones-list');
+    if (!especificacionesList) return;
+
+    const sortable = new Sortable(especificacionesList, {
+      animation: 150,
+      handle: '.cursor-move',
+      ghostClass: 'opacity-50',
+      chosenClass: 'bg-base-300/50',
+      onEnd: function(evt) {
+        const items = especificacionesList.querySelectorAll('.especificacion-item');
+        const especificacionesIds = Array.from(items).map(item => 
+          parseInt(item.dataset.especificacionId)
+        );
+
+        // Enviar el nuevo orden al servidor
+        fetch('{% url "proyectos:reordenar_especificaciones" proyecto.id %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            especificaciones_ids: especificacionesIds
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Opcional: mostrar un mensaje de éxito
+            if (window.flashy) {
+              flashy.success(data.message || 'Orden actualizado correctamente.');
+            }
+          } else {
+            console.error('Error al actualizar el orden:', data.error);
+            if (window.flashy) {
+              flashy.error(data.error || 'Error al actualizar el orden.');
+            }
+            // Recargar la página para restaurar el orden original
+            window.location.reload();
+          }
+        })
+        .catch(error => {
+          console.error('Error al actualizar el orden:', error);
+          if (window.flashy) {
+            flashy.error('Error al actualizar el orden. Recargando página...');
+          }
+          // Recargar la página para restaurar el orden original
+          setTimeout(() => window.location.reload(), 1000);
+        });
+      }
+    });
+  })();
+</script>
+{% endif %}
+
+<script>
+  // Manejar clics en botones de eliminar
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.eliminar-especificacion-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const especificacionTitulo = button.dataset.especificacionTitulo;
+      if (window.openEliminarEspecificacionModal) {
+        window.openEliminarEspecificacionModal(especificacionId, especificacionTitulo);
+      }
+    }
+  });
+
+  // Manejar clics en botones de mover posición
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.mover-especificacion-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const especificacionTitulo = button.dataset.especificacionTitulo;
+      const especificacionPosicion = parseInt(button.dataset.especificacionPosicion);
+      const proyectoId = button.dataset.proyectoId;
+      const totalEspecificaciones = parseInt(button.dataset.totalEspecificaciones);
+      if (window.openMoverEspecificacionModal) {
+        window.openMoverEspecificacionModal(
+          especificacionId,
+          especificacionTitulo,
+          proyectoId,
+          especificacionPosicion,
+          totalEspecificaciones
+        );
+      }
+    }
+  });
+
+  // Manejar clics en botones de gestionar imágenes
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.gestionar-imagenes-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const especificacionTitulo = button.dataset.especificacionTitulo;
+      if (window.openGestionarImagenesModal) {
+        window.openGestionarImagenesModal(especificacionId, especificacionTitulo);
+      }
+    }
+  });
+</script>
+{% endblock %}
+

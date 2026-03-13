@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.contrib.sitemaps.views import sitemap
+from django.contrib.auth.views import LoginView, LogoutView
 from home.sitemaps import StaticViewSitemap
 
 sitemaps = {
@@ -18,7 +19,12 @@ urlpatterns = [
         content_type='text/plain',
         extra_context={'ADMIN_URL': settings.ADMIN_URL},
     )),
+    path('login/', LoginView.as_view(template_name='login.html'), name='login'),
+    path('accounts/login/', LoginView.as_view(template_name='login.html')),
+    path('logout/', LogoutView.as_view(next_page='/login/'), name='logout'),
     path('', include('home.urls')),
+    path('proyectos/', include('proyectos.urls')),
+    path('pliego/', include('pliego_licitacion.urls')),
 ]
 
 if settings.DEBUG:

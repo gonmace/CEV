@@ -1,0 +1,68 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}
+  Eliminar Especificación: {{ especificacion.titulo }}
+{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:proyecto_main' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">
+      {{ proyecto.nombre }}
+    </a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:ver_especificacion' especificacion.id %}" class="hover:text-primary transition-colors">
+      {{ especificacion.titulo }}
+    </a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">Eliminar</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+
+
+  <div class="flex flex-col items-center justify-center mt-6 px-4">
+    <div class="w-full max-w-xl">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center space-y-6">
+          <i class="fas fa-exclamation-triangle text-6xl text-error"></i>
+          <h2 class="card-title text-2xl font-bold">¿Eliminar especificación?</h2>
+          <p class="text-base-content/70">
+            ¿Está seguro de que desea eliminar la especificación
+            <span class="font-semibold">"{{ especificacion.titulo }}"</span>?
+            Esta acción eliminará el archivo asociado y no se podrá deshacer.
+          </p>
+
+          <form method="post" class="flex flex-col sm:flex-row gap-3 justify-center">
+            {% csrf_token %}
+            <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-ghost">
+              <i class="fas fa-times mr-2"></i>
+              Cancelar
+            </a>
+            <button type="submit" class="btn btn-error">
+              <i class="fas fa-trash mr-2"></i>
+              Eliminar
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block js %}{% endblock %}

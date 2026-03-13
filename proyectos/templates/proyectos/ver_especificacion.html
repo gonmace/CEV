@@ -1,0 +1,108 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}
+  Especificación: {{ especificacion.titulo }}
+{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  {% if breadcrumbs_origin == 'proyecto' %}
+    <li class="flex items-center gap-2">
+      <span class="text-base-content/50">›</span>
+      <a href="{% url 'proyectos:proyecto_detalle' especificacion.proyecto.id %}" class="hover:text-primary transition-colors">
+        {{ especificacion.proyecto.nombre }}
+      </a>
+    </li>
+  {% elif breadcrumbs_origin == 'disponibles' %}
+    <li class="flex items-center gap-2">
+      <span class="text-base-content/50">›</span>
+      <a href="{% url 'proyectos:especificaciones_disponibles' %}{% if dest_project %}?dest={{ dest_project.id }}{% endif %}" class="hover:text-primary transition-colors">
+        Especificaciones disponibles
+      </a>
+    </li>
+  {% endif %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">{{ especificacion.titulo }}</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+  <div class="px-4 py-6 max-w-7xl mx-auto w-full">
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <div class="mb-1">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+            <div class="flex-1 min-w-0">
+              <h1 class="text-2xl sm:text-3xl font-bold mb-2 break-words">{{ especificacion.titulo }}</h1>
+              <div class="flex flex-wrap gap-4 text-sm text-base-content/60">
+                <div>
+                  <i class="fas fa-folder mr-1"></i>
+                  Proyecto: <span class="font-medium">{{ especificacion.proyecto.nombre }}</span>
+                </div>
+                {% if especificacion.proyecto.creado_por %}
+                  <div>
+                    <i class="fas fa-user mr-1"></i>
+                    Usuario: <span class="font-medium">{{ especificacion.proyecto.creado_por.get_full_name|default:especificacion.proyecto.creado_por.username }}</span>
+                  </div>
+                {% endif %}
+                <div>
+                  <i class="fas fa-calendar mr-1"></i>
+                  Creada: <span class="font-medium">{{ especificacion.fecha_creacion|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% if especificacion.fecha_actualizacion != especificacion.fecha_creacion %}
+                  <div>
+                    <i class="fas fa-edit mr-1"></i>
+                    Actualizada: <span class="font-medium">{{ especificacion.fecha_actualizacion|date:"d/m/Y H:i" }}</span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2 shrink-0">
+              {% if breadcrumbs_origin == 'proyecto' %}
+                <a href="{% url 'proyectos:proyecto_detalle' especificacion.proyecto.id %}" class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap">
+                  <i class="fas fa-arrow-left mr-2"></i>
+                  Volver al proyecto
+                </a>
+              {% elif breadcrumbs_origin == 'disponibles' %}
+                <a href="{% url 'proyectos:especificaciones_disponibles' %}{% if dest_project %}?dest={{ dest_project.id }}{% endif %}" class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap">
+                  <i class="fas fa-arrow-left mr-2"></i>
+                  Volver a especificaciones
+                </a>
+              {% else %}
+                <a href="{% url 'proyectos:lista_proyectos' %}" class="btn btn-ghost btn-sm sm:btn-md whitespace-nowrap">
+                  <i class="fas fa-arrow-left mr-2"></i>
+                  Volver a proyectos
+                </a>
+              {% endif %}
+              {% if especificacion.proyecto.creado_por == request.user %}
+                <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}" class="btn btn-edit btn-sm sm:btn-md whitespace-nowrap">
+                  <i class="fas fa-edit mr-2"></i>
+                  Editar
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="prose max-w-none">
+          {{ preview_html|safe }}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block js %}{% endblock %}
+

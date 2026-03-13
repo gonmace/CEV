@@ -1,0 +1,60 @@
+{% extends 'base_pliego.html' %}
+{% load crispy_forms_tags tailwind_tags %}
+
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block breadcrumbs_bar %}{% endblock %}
+
+{% block content %}
+  <div class="min-h-screen flex items-center justify-center bg-base-200 px-4">
+    <div class="w-full max-w-md">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-6">
+          <h1 class="text-2xl font-bold text-center text-primary">Acceder</h1>
+          <p class="text-base-content/70 text-center">Ingresa tus credenciales para continuar.</p>
+
+          <form method="post" class="space-y-4">
+            {% csrf_token %}
+            {% if next %}
+              <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+            <div class="form-control">
+              <label class="label" for="id_username">
+                <span class="label-text font-semibold">Usuario</span>
+              </label>
+              <input type="text" name="username" id="id_username" value="{{ form.username.value|default:'' }}" class="input input-bordered w-full" autofocus required>
+              {% if form.username.errors %}
+                <label class="label">
+                  <span class="label-text-alt text-error">{{ form.username.errors.0 }}</span>
+                </label>
+              {% endif %}
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="id_password">
+                <span class="label-text font-semibold">Contraseña</span>
+              </label>
+              <input type="password" name="password" id="id_password" class="input input-bordered w-full" required>
+              {% if form.password.errors %}
+                <label class="label">
+                  <span class="label-text-alt text-error">{{ form.password.errors.0 }}</span>
+                </label>
+              {% endif %}
+            </div>
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-error">
+                <span>{{ form.non_field_errors.0 }}</span>
+              </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary w-full">
+              <i class="fas fa-sign-in-alt mr-2"></i>
+              Ingresar
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

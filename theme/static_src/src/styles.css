@@ -26,26 +26,26 @@
   --color-primary-content: oklch(93% 0.034 272.788);
   --color-secondary: #45484d;
   --color-secondary-content: oklch(94% 0.028 342.258);
-  --color-accent: oklch(77% 0.152 181.912);
-  --color-accent-content: oklch(38% 0.063 188.416);
+  --color-accent: #6366f1;
+  --color-accent-content: #fff;
   --color-neutral: #45484d;
   --color-neutral-content: oklch(92% 0.004 286.32);
-  --color-info: #2563eb;
+  --color-info: #0ea5e9;
   --color-info-content: #fff;
-  --color-success: #16a34a;
+  --color-success: #10b981;
   --color-success-content: #fff;
-  --color-warning: #d97706;
+  --color-warning: #f59e0b;
   --color-warning-content: #fff;
-  --color-error: #dc2626;
+  --color-error: #ea580c;
   --color-error-content: #fff;
 
-  --color-edit: #f0b100;
+  --color-edit: #eab308;
   --color-edit-content: #fff;
-  --color-delete: #e7000b;
+  --color-delete: #f97316;
   --color-delete-content: #fff;
-  --color-view: #2b7fff;
+  --color-view: #3b82f6;
   --color-view-content: #fff;
-  --color-copy: #00b8db;
+  --color-copy: #06b6d4;
   --color-copy-content: #fff;
 }
 
@@ -144,6 +144,18 @@
   .btn.btn-copy:focus-visible {
     outline-color: var(--color-copy);
   }
+
+  /* Avatar colors - únicos por usuario */
+  .avatar-c-0 { background-color: color-mix(in srgb, #cb4040 15%, white); color: #9b2020; }
+  .avatar-c-1 { background-color: color-mix(in srgb, #45484d 15%, white); color: #2a2c30; }
+  .avatar-c-2 { background-color: color-mix(in srgb, #0ea5e9 15%, white); color: #0369a1; }
+  .avatar-c-3 { background-color: color-mix(in srgb, #10b981 15%, white); color: #047857; }
+  .avatar-c-4 { background-color: color-mix(in srgb, #f59e0b 15%, white); color: #b45309; }
+  .avatar-c-5 { background-color: color-mix(in srgb, #6366f1 15%, white); color: #4338ca; }
+  .avatar-c-6 { background-color: color-mix(in srgb, #eab308 15%, white); color: #854d0e; }
+  .avatar-c-7 { background-color: color-mix(in srgb, #06b6d4 15%, white); color: #0e7490; }
+  .avatar-c-8 { background-color: color-mix(in srgb, #3b82f6 15%, white); color: #1d4ed8; }
+  .avatar-c-9 { background-color: color-mix(in srgb, #ea580c 15%, white); color: #9a3412; }
 
   /* Icono de imagen sin imágenes - efecto relieve */
   .gestionar-imagenes-btn i.text-base-content\/20 {

@@ -1,0 +1,80 @@
+{% load main_tags %}
+<dialog id="view-especificacion-modal" class="modal">
+  <div class="modal-box max-w-4xl">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex-1">
+        <h3 id="view-especificacion-title" class="text-2xl font-bold mb-2"></h3>
+        <p class="text-sm text-base-content/60">
+          Proyecto: <span id="view-especificacion-proyecto" class="font-medium"></span> ·
+          Usuario: <span id="view-especificacion-usuario"></span>
+        </p>
+      </div>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+    <div class="divider my-4"></div>
+    <div id="view-especificacion-content" class="prose max-w-none"></div>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">Cerrar</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    // Función para abrir el modal de ver especificación
+    function openViewEspecificacionModal(button) {
+      const viewModal = document.getElementById('view-especificacion-modal');
+      const viewTitle = document.getElementById('view-especificacion-title');
+      const viewProyecto = document.getElementById('view-especificacion-proyecto');
+      const viewUsuario = document.getElementById('view-especificacion-usuario');
+      const viewContent = document.getElementById('view-especificacion-content');
+
+      if (!viewModal || !viewTitle || !viewProyecto || !viewUsuario || !viewContent) {
+        console.error('Elementos del modal de ver especificación no encontrados');
+        return;
+      }
+
+      // Llenar los datos del modal
+      viewTitle.textContent = button.dataset.title || 'Especificación';
+      viewProyecto.textContent = button.dataset.proyecto || '-';
+      viewUsuario.textContent = button.dataset.usuario || '-';
+      viewContent.innerHTML = button.dataset.preview || '<p class="text-base-content/60">Sin contenido.</p>';
+
+      // Abrir el modal
+      if (typeof viewModal.showModal === 'function') {
+        viewModal.showModal();
+      } else {
+        viewModal.setAttribute('open', '');
+        viewModal.classList.add('modal-open');
+      }
+    }
+
+    // Usar delegación de eventos para capturar clics en botones que pueden agregarse dinámicamente
+    function initViewEspecificacionModal() {
+      document.addEventListener('click', function(event) {
+        // Verificar si el clic fue en un botón con la clase view-especificacion-btn
+        const button = event.target.closest('.view-especificacion-btn');
+        if (button) {
+          event.preventDefault();
+          event.stopPropagation();
+          openViewEspecificacionModal(button);
+        }
+      });
+    }
+
+    // Inicializar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initViewEspecificacionModal);
+    } else {
+      initViewEspecificacionModal();
+    }
+  })();
+</script>
+

@@ -1,0 +1,135 @@
+{% load static %}
+{% load nav_tags %}
+
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    {% block meta %}
+
+    {% endblock %}
+
+    <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    {% block css %}
+
+    {% endblock %}
+
+    {% block javascript_top %}
+
+    {% endblock %}
+
+    <title>
+      {% block title %}
+
+      {% endblock %}
+    </title>
+  </head>
+
+  <body class="{% block body_class %}
+  
+    {% endblock %}">
+    <!-- Barra de navegación superior -->
+    <nav class="bg-primary p-4 flex justify-between items-center fixed w-full z-10">
+      <div class="flex items-center">
+        <span class="text-xl font-bold">LOGO</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="relative">
+          <i class="fas fa-bell text-xl"></i>
+          {% if notifications_count %}
+            <span class="absolute -top-2 -right-2 bg-warning text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">{{ notifications_count }}</span>
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+          {% if user.is_authenticated %}
+            <img src="{% static 'images/default-avatar.png' %}" alt="Avatar" class="w-8 h-8 rounded-full" />
+            <span>{{ user.get_full_name|default:user.username }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <!-- Navegación lateral -->
+    <div class="flex">
+      <nav class="bg-neutral text-neutral-content w-64 min-h-screen fixed pt-16">
+        <div class="p-4">
+          <div class="mb-4">
+            <select class="w-full bg-secondary text-white p-2 rounded">
+              <option>Proyecto Activo</option>
+            </select>
+          </div>
+
+          <ul class="menu menu-md rounded-box max-w-xs w-full">
+            <li>
+              <a href="{% url 'main:home' %}" class="{% is_active 'panel' %}">
+                <i class="fas fa-home"></i>
+                <span>Panel Principal</span>
+              </a>
+            </li>
+            <li>
+              <a href="{% url 'converttext:convert_text' %}" class="{% is_active 'convert_text' %}">
+                {% include 'icons/md.html' %}
+                <span>Convertir a Markdown</span>
+              </a>
+            </li>
+            <li>
+              <details open>
+                <summary>
+                  <i class="fas fa-bezier-curve"></i>
+                  <span>Embeddings</span>
+                </summary>
+                <ul>
+                  <li>
+                    <a href="{% url 'embeddings:crear' %}" class="{% is_active 'splitters' %} {% is_active 'crear' %}">
+                      <i class="fas fa-plus-circle"></i>
+                      <span>Crear Embedding</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="{% url 'embeddings:listar' %}" class="{% is_active 'listar' %}">
+                      <i class="fas fa-list-ul"></i>
+                      <span>Lista de Embeddings</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="{% url 'embeddings:similaridad' %}" class="{% is_active 'similaridad' %}">
+                      <i class="fas fa-history"></i>
+                      <span>Pruebas de Similaridad</span>
+                    </a>
+                  </li>
+                </ul>
+              </details>
+            </li>
+            <li>
+              <a href="{% url 'langGraph:chat' %}" class="nav-item">
+                <i class="fas fa-plus"></i>
+                <span>Chat</span>
+              </a>
+            </li>
+
+          </ul>
+        </div>
+      </nav>
+
+      <!-- Contenido principal -->
+      <main class="flex-1 ml-64">
+        <div class="p-6">
+          {% block content %}
+
+          {% endblock %}
+        </div>
+      </main>
+    </div>
+
+    {% block js %}
+
+    {% endblock %}
+  </body>
+</html>

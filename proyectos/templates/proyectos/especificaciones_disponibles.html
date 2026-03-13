@@ -1,0 +1,397 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags main_tags %}
+
+{% block title %}Especificaciones Disponibles{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  {% if dest_project %}
+    <li class="flex items-center gap-2">
+      <span class="text-base-content/50">›</span>
+      <a href="{% url 'proyectos:proyecto_detalle' dest_project.id %}" class="hover:text-primary transition-colors">
+        {{ dest_project.nombre }}
+      </a>
+    </li>
+  {% endif %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">Especificaciones disponibles</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+  <div class="px-4 py-6 max-w-7xl mx-auto w-full">
+    <div class="flex flex-col gap-4">
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          {% if especificaciones %}
+            <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+              <div class="text-sm text-base-content/70 whitespace-nowrap">
+                Total especificaciones:
+                <span class="font-semibold" id="contador-total">{{ especificaciones|length }}</span>
+                <span id="contador-filtrado" class="hidden">
+                  (<span class="font-semibold" id="contador-filtrado-numero">0</span> encontradas)
+                </span>
+              </div>
+              <div class="relative flex-1">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                  <i class="fas fa-search text-base-content/50 text-sm"></i>
+                </span>
+                <input type="text"
+                       id="buscador-especificaciones"
+                       placeholder="Buscar especificación..."
+                       class="input input-bordered input-sm w-full pl-10"
+                       autocomplete="off">
+              </div>
+              <button id="bulk-copy-trigger"
+                      type="button"
+                      class="btn btn-copy btn-sm opacity-60 whitespace-nowrap"
+                      disabled>
+                <i class="fas fa-copy mr-2"></i>
+                Copiar a proyecto
+              </button>
+            </div>
+
+            <table class="table table-zebra" id="tabla-especificaciones">
+                <thead>
+                  <tr class="uppercase text-xs tracking-wide text-base-content/70">
+                      <th class="w-12 text-center">
+                        <input type="checkbox"
+                               class="checkbox checkbox-sm"
+                               id="master-checkbox"
+                               aria-label="Seleccionar todas las especificaciones">
+                      </th>
+                    <th>{% sortable_header 'Nombre' 'nombre' sort_by order %}</th>
+                    <th>{% sortable_header 'Proyecto' 'proyecto' sort_by order %}</th>
+                    <th>{% sortable_header 'Fecha de creación' 'fecha' sort_by order %}</th>
+                    <th class="text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for especificacion in especificaciones %}
+                    <tr data-nombre="{{ especificacion.titulo|lower }}">
+                      <td class="align-top text-center">
+                        <input type="checkbox"
+                               class="checkbox checkbox-sm spec-checkbox"
+                               value="{{ especificacion.id }}"
+                               aria-label="Seleccionar especificación {{ especificacion.titulo }}">
+                      </td>
+                      <td class="align-top">
+                        <div class="flex flex-col">
+                          <span class="font-semibold">{{ especificacion.titulo }}</span>
+                          <span class="text-xs text-base-content/60">
+                            Última actualización {{ especificacion.fecha_actualizacion|date:"d/m/Y H:i" }}
+                          </span>
+                        </div>
+                      </td>
+                      <td class="align-top">
+                        <div class="flex flex-col">
+                          <span class="font-medium">{{ especificacion.proyecto.nombre }}</span>
+                          <span class="text-xs text-base-content/60">{{ especificacion.proyecto.solicitante }}</span>
+                        </div>
+                      </td>
+                      <td class="align-top">{{ especificacion.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                      <td class="align-top text-right">
+                        <button type="button"
+                                class="btn btn-ghost text-blue-500 view-especificacion-btn"
+                                title="Ver especificación"
+                                data-title="{{ especificacion.titulo|escape }}"
+                                data-proyecto="{{ especificacion.proyecto.nombre|escape }}"
+                                data-usuario="{% if especificacion.proyecto.creado_por %}{{ especificacion.proyecto.creado_por.get_full_name|default:especificacion.proyecto.creado_por.username|escape }}{% else %}-{% endif %}"
+                                data-preview="{{ especificacion.preview_html|default:''|escape }}">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+          {% else %}
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle mr-2"></i>
+              No existen especificaciones disponibles para los proyectos visibles.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% include 'main/modals/ver_especificacion_modal.html' %}
+  
+  <dialog id="bulk-copy-dialog" class="modal">
+  <div class="modal-box max-w-lg space-y-4">
+    <h3 class="font-bold text-lg flex items-center gap-2">
+      <i class="fas fa-copy"></i>
+      Copiar especificaciones seleccionadas
+    </h3>
+    <form method="post"
+          action="{% url 'proyectos:copiar_especificaciones' %}"
+          id="bulk-copy-form"
+          class="space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <div id="bulk-spec-inputs" class="space-y-2"></div>
+      <div class="form-control">
+        <label class="label" for="bulk-select-proyecto">
+          <span class="label-text font-semibold">Selecciona el proyecto destino</span>
+        </label>
+        <select id="bulk-select-proyecto"
+                name="proyecto_destino"
+                class="select select-bordered w-full"
+                required>
+          <option value="" disabled selected>Elige un proyecto...</option>
+          {% for proyecto in mis_proyectos %}
+            <option value="{{ proyecto.id }}">{{ proyecto.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-action">
+        <button type="button" id="bulk-copy-cancel" class="btn btn-ghost">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Copiar</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cancelar</button>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script>
+  (function () {
+    function initBuscador() {
+      const buscador = document.getElementById('buscador-especificaciones');
+      const tabla = document.getElementById('tabla-especificaciones');
+      const contadorTotal = document.getElementById('contador-total');
+      const contadorFiltrado = document.getElementById('contador-filtrado');
+      const contadorFiltradoNumero = document.getElementById('contador-filtrado-numero');
+      const filas = tabla ? Array.from(tabla.querySelectorAll('tbody tr')) : [];
+
+      if (!buscador || !tabla) {
+        return;
+      }
+
+      function filtrarEspecificaciones(termino) {
+        const terminoLower = termino.toLowerCase().trim();
+        let visibleCount = 0;
+
+        filas.forEach((fila) => {
+          const nombre = fila.getAttribute('data-nombre') || '';
+          const debeMostrar = terminoLower.length < 3 || nombre.includes(terminoLower);
+          
+          if (debeMostrar) {
+            fila.style.display = '';
+            visibleCount++;
+          } else {
+            fila.style.display = 'none';
+          }
+        });
+
+        // Actualizar contador
+        if (terminoLower.length >= 3) {
+          contadorFiltrado.classList.remove('hidden');
+          contadorFiltradoNumero.textContent = visibleCount;
+        } else {
+          contadorFiltrado.classList.add('hidden');
+        }
+      }
+
+      buscador.addEventListener('input', (event) => {
+        filtrarEspecificaciones(event.target.value);
+      });
+
+      // Limpiar búsqueda al presionar Escape
+      buscador.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          buscador.value = '';
+          filtrarEspecificaciones('');
+          buscador.blur();
+        }
+      });
+    }
+
+    function initBulkCopy() {
+      const trigger = document.getElementById('bulk-copy-trigger');
+      const dialog = document.getElementById('bulk-copy-dialog');
+      const inputsContainer = document.getElementById('bulk-spec-inputs');
+      const form = document.getElementById('bulk-copy-form');
+      const cancelButton = document.getElementById('bulk-copy-cancel');
+      const masterCheckbox = document.getElementById('master-checkbox');
+      const specCheckboxSelector = '.spec-checkbox';
+      const triggerDisabledClasses = ['opacity-60', 'pointer-events-none', 'btn-disabled'];
+
+      const getSpecCheckboxes = () => Array.from(document.querySelectorAll(specCheckboxSelector));
+      const getSelectedCheckboxes = () => getSpecCheckboxes().filter((cb) => cb.checked);
+
+      const updateTriggerState = () => {
+        const hasSelection = getSelectedCheckboxes().length > 0;
+        trigger.disabled = !hasSelection;
+        triggerDisabledClasses.forEach((className) => {
+          trigger.classList.toggle(className, !hasSelection);
+        });
+      };
+
+      const updateRowHighlight = () => {
+        getSpecCheckboxes().forEach((checkbox) => {
+          const row = checkbox.closest('tr');
+          if (row) {
+            row.classList.toggle('bg-base-200/40', checkbox.checked);
+          }
+        });
+      };
+
+      const updateMasterCheckbox = () => {
+        if (!masterCheckbox) {
+          return;
+        }
+        const checkboxes = getSpecCheckboxes();
+        const allChecked = checkboxes.length > 0 && checkboxes.every((cb) => cb.checked);
+        const anyChecked = checkboxes.some((cb) => cb.checked);
+        masterCheckbox.checked = allChecked;
+        masterCheckbox.indeterminate = anyChecked && !allChecked;
+      };
+
+      const refreshBulkState = () => {
+        updateMasterCheckbox();
+        updateTriggerState();
+        updateRowHighlight();
+      };
+
+      document.addEventListener('change', (event) => {
+        const checkbox = event.target.closest(specCheckboxSelector);
+        if (checkbox) {
+          refreshBulkState();
+        }
+      });
+
+      if (masterCheckbox) {
+        masterCheckbox.addEventListener('change', () => {
+          const checked = masterCheckbox.checked;
+          getSpecCheckboxes().forEach((cb) => {
+            cb.checked = checked;
+          });
+          refreshBulkState();
+        });
+      }
+
+      trigger.addEventListener('click', (event) => {
+        const selected = getSelectedCheckboxes();
+        if (!selected.length) {
+          event.preventDefault();
+          return;
+        }
+
+        // Verificar si el usuario tiene proyectos
+        // Buscar el select directamente en el documento
+        const select = document.getElementById('bulk-select-proyecto');
+        
+        if (!select) {
+          console.error('Select de proyectos no encontrado en el DOM');
+          console.error('Buscando elementos con id bulk-select-proyecto:', document.querySelectorAll('[id="bulk-select-proyecto"]').length);
+          console.error('Dialog existe:', !!document.getElementById('bulk-copy-dialog'));
+          if (window.flashy) {
+            flashy.error('Error al cargar los proyectos. Por favor, recarga la página.');
+          } else {
+            alert('Error al cargar los proyectos. Por favor, recarga la página.');
+          }
+          event.preventDefault();
+          return;
+        }
+
+        // Verificar si hay opciones de proyectos (excluyendo la opción por defecto que tiene value="")
+        const proyectoOptions = Array.from(select.options).filter(opt => opt.value !== '' && opt.value !== null);
+        
+        if (proyectoOptions.length === 0) {
+          // No hay proyectos disponibles
+          if (window.flashy) {
+            flashy.warning('No tienes proyectos creados. Por favor, crea un proyecto primero antes de copiar especificaciones.');
+          } else {
+            alert('No tienes proyectos creados. Por favor, crea un proyecto primero antes de copiar especificaciones.');
+          }
+          event.preventDefault();
+          return;
+        }
+
+        try {
+          if (typeof dialog.showModal === 'function') {
+            dialog.showModal();
+          } else {
+            dialog.setAttribute('open', '');
+            dialog.classList.add('modal-open');
+          }
+        } catch (error) {
+          console.error('[bulk-copy] unable to open dialog', error);
+          return;
+        }
+
+        inputsContainer.innerHTML = '';
+        if (select) {
+          select.selectedIndex = 0;
+        }
+
+        selected.forEach((checkbox) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'especificaciones';
+          input.value = checkbox.value;
+          inputsContainer.appendChild(input);
+        });
+      });
+
+      if (cancelButton) {
+        cancelButton.addEventListener('click', () => {
+          if (typeof dialog.close === 'function') {
+            dialog.close();
+          } else {
+            dialog.removeAttribute('open');
+            dialog.classList.remove('modal-open');
+          }
+        });
+      }
+
+      if (form) {
+        form.addEventListener('submit', (event) => {
+          const selected = getSelectedCheckboxes();
+          if (!selected.length) {
+            event.preventDefault();
+            if (window.flashy) {
+              flashy.warning('Selecciona al menos una especificación para copiar.');
+            } else {
+              alert('Selecciona al menos una especificación para copiar.');
+            }
+            return;
+          }
+
+          const select = document.getElementById('bulk-select-proyecto');
+          if (!select || !select.value || select.value === '') {
+            event.preventDefault();
+            if (window.flashy) {
+              flashy.warning('Por favor, selecciona un proyecto destino.');
+            } else {
+              alert('Por favor, selecciona un proyecto destino.');
+            }
+            return;
+          }
+        });
+      }
+
+      refreshBulkState();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        initBuscador();
+        initBulkCopy();
+      });
+    } else {
+      initBuscador();
+      initBulkCopy();
+    }
+  })();
+</script>
+{% endblock %}
+

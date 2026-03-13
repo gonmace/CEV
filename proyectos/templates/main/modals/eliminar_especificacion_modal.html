@@ -1,0 +1,262 @@
+{% load main_tags %}
+<dialog id="eliminar-especificacion-modal" class="modal">
+  <div class="modal-box">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-2xl font-bold">¿Eliminar especificación?</h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+    
+    <div class="flex flex-col items-center text-center space-y-4 mb-6">
+      <i class="fas fa-exclamation-triangle text-6xl text-error"></i>
+      <p class="text-base-content/70">
+        ¿Está seguro de que desea eliminar la especificación
+        <span id="eliminar-especificacion-titulo" class="font-semibold"></span>?
+        Esta acción eliminará el archivo asociado y no se podrá deshacer.
+      </p>
+    </div>
+
+    <div class="modal-action">
+      <form method="dialog">
+        <button type="button" class="btn btn-ghost" id="eliminar-especificacion-cancel">
+          <i class="fas fa-times mr-2"></i>
+          Cancelar
+        </button>
+      </form>
+      <form id="eliminar-especificacion-form" method="post">
+        {% csrf_token %}
+        <input type="hidden" id="eliminar-especificacion-id" name="especificacion_id" value="">
+        <button type="submit" class="btn btn-error">
+          <i class="fas fa-trash mr-2"></i>
+          Eliminar
+        </button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('eliminar-especificacion-modal');
+    const form = document.getElementById('eliminar-especificacion-form');
+    const cancelButton = document.getElementById('eliminar-especificacion-cancel');
+    const tituloElement = document.getElementById('eliminar-especificacion-titulo');
+    const idInput = document.getElementById('eliminar-especificacion-id');
+
+    // Función para restablecer el estado del botón
+    function resetSubmitButton() {
+      const submitButton = form.querySelector('button[type="submit"]');
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fas fa-trash mr-2"></i>Eliminar';
+      }
+    }
+
+    // Función para abrir el modal
+    function openEliminarModal(especificacionId, especificacionTitulo) {
+      if (!modal || !tituloElement || !idInput) {
+        console.error('Elementos del modal de eliminar especificación no encontrados');
+        return;
+      }
+
+      // Restablecer el estado del botón antes de abrir
+      resetSubmitButton();
+
+      tituloElement.textContent = `"${especificacionTitulo}"`;
+      idInput.value = especificacionId;
+
+      if (typeof modal.showModal === 'function') {
+        modal.showModal();
+      } else {
+        modal.setAttribute('open', '');
+        modal.classList.add('modal-open');
+      }
+
+      // Agregar listener para Enter después de abrir el modal
+      setTimeout(() => {
+        const handleEnterKey = function(e) {
+          // Solo procesar si el modal está abierto y visible
+          if (!modal.hasAttribute('open') && !modal.classList.contains('modal-open')) {
+            return;
+          }
+          
+          // Solo procesar Enter, no otras combinaciones
+          if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            // No procesar si el usuario está escribiendo en un input o textarea
+            const activeElement = document.activeElement;
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+              return;
+            }
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton && !submitButton.disabled) {
+              // Disparar el evento submit del formulario
+              form.requestSubmit();
+            }
+          }
+        };
+        
+        // Remover listener anterior si existe
+        if (modal._enterKeyHandler) {
+          document.removeEventListener('keydown', modal._enterKeyHandler);
+        }
+        
+        // Guardar referencia al handler para poder removerlo después
+        modal._enterKeyHandler = handleEnterKey;
+        // Agregar el listener al documento para capturar mejor los eventos
+        document.addEventListener('keydown', handleEnterKey);
+        
+        // Enfocar el modal para que capture mejor los eventos de teclado
+        modal.focus();
+      }, 100);
+    }
+
+    // Manejar el envío del formulario
+    if (form) {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const especificacionId = idInput.value;
+        if (!especificacionId) {
+          console.error('ID de especificación no encontrado');
+          return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Eliminando...';
+
+        try {
+          // Función para obtener el token CSRF
+          function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+              const cookies = document.cookie.split(';');
+              for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+                }
+              }
+            }
+            return cookieValue;
+          }
+
+          const response = await fetch(`/proyecto/especificacion/${especificacionId}/eliminar/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({})
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              // Cerrar el modal
+              if (typeof modal.close === 'function') {
+                modal.close();
+              } else {
+                modal.removeAttribute('open');
+                modal.classList.remove('modal-open');
+              }
+
+              // Mostrar mensaje de éxito
+              if (window.flashy) {
+                flashy.success(data.message || 'Especificación eliminada correctamente.');
+              }
+
+              // Eliminar el elemento de la lista
+              const especificacionItem = document.querySelector(`[data-especificacion-id="${especificacionId}"]`);
+              if (especificacionItem) {
+                especificacionItem.style.transition = 'opacity 0.3s';
+                especificacionItem.style.opacity = '0';
+                setTimeout(() => {
+                  especificacionItem.remove();
+                  
+                  // Verificar si no quedan más especificaciones
+                  const lista = document.getElementById('especificaciones-list');
+                  if (lista && lista.children.length === 0) {
+                    window.location.reload();
+                  }
+                }, 300);
+              } else {
+                // Si no encontramos el elemento, recargar la página
+                window.location.reload();
+              }
+            } else {
+              throw new Error(data.error || 'Error al eliminar la especificación');
+            }
+          } else {
+            // Si la respuesta no es JSON, intentar redirigir
+            if (response.redirected) {
+              window.location.href = response.url;
+            } else {
+              throw new Error('Error al eliminar la especificación');
+            }
+          }
+        } catch (error) {
+          console.error('Error al eliminar:', error);
+          if (window.flashy) {
+            flashy.error('Error al eliminar la especificación. Por favor, inténtelo de nuevo.');
+          } else {
+            alert('Error al eliminar la especificación. Por favor, inténtelo de nuevo.');
+          }
+          submitButton.disabled = false;
+          submitButton.innerHTML = originalText;
+        }
+      });
+    }
+
+    // Manejar el botón cancelar
+    if (cancelButton) {
+      cancelButton.addEventListener('click', function() {
+        resetSubmitButton();
+        if (typeof modal.close === 'function') {
+          modal.close();
+        } else {
+          modal.removeAttribute('open');
+          modal.classList.remove('modal-open');
+        }
+      });
+    }
+
+    // Restablecer el botón cuando se cierra el modal (por cualquier razón)
+    if (modal) {
+      modal.addEventListener('close', function() {
+        resetSubmitButton();
+        // Remover el listener de Enter cuando se cierra el modal
+        if (modal._enterKeyHandler) {
+          document.removeEventListener('keydown', modal._enterKeyHandler);
+          modal._enterKeyHandler = null;
+        }
+      });
+      
+      // También manejar cuando se cierra haciendo clic fuera del modal
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          resetSubmitButton();
+          if (modal._enterKeyHandler) {
+            document.removeEventListener('keydown', modal._enterKeyHandler);
+            modal._enterKeyHandler = null;
+          }
+        }
+      });
+    }
+
+    // Exponer la función para abrir el modal globalmente
+    window.openEliminarEspecificacionModal = openEliminarModal;
+  })();
+</script>
+

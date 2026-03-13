@@ -1,0 +1,321 @@
+<!-- Modal para ver actividades adicionales -->
+<dialog id="ver-actividades-modal" class="modal">
+  <div class="modal-box max-w-4xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-2xl font-bold flex items-center gap-2">
+        <i class="fas fa-table text-info"></i>
+        Actividades
+      </h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+    
+    <div class="mb-4">
+      <p class="text-base-content/70">
+        Especificación: <span id="actividades-especificacion-titulo" class="font-semibold"></span>
+      </p>
+    </div>
+    
+    <div id="actividades-table-container">
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr class="bg-base-200">
+              <th class="font-semibold">Nombre</th>
+              <th class="font-semibold text-center">Unidad</th>
+              <th class="font-semibold text-center">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody id="actividades-table-body">
+            <!-- Primero se agregará la fila de la especificación, luego las actividades -->
+          </tbody>
+        </table>
+    </div>
+    <div id="actividades-empty-message" class="hidden text-center py-8 text-base-content/60">
+        <i class="fas fa-inbox text-4xl mb-2"></i>
+        <p>No hay actividades adicionales registradas para esta especificación.</p>
+      </div>
+    </div>
+    
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn btn-ghost">Cerrar</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+// Función para abrir el modal de actividades adicionales
+function openActividadesModal(especificacionId, especificacionTitulo) {
+  const modal = document.getElementById('ver-actividades-modal');
+  const tituloSpan = document.getElementById('actividades-especificacion-titulo');
+  const tableBody = document.getElementById('actividades-table-body');
+  const emptyMessage = document.getElementById('actividades-empty-message');
+  
+  if (!modal || !tituloSpan || !tableBody) {
+    console.error('No se encontraron los elementos del modal de actividades');
+    return;
+  }
+  
+  // Establecer el título
+  tituloSpan.textContent = especificacionTitulo;
+  
+  // Limpiar la tabla
+  tableBody.innerHTML = '';
+  
+  // Obtener las actividades desde el servidor
+  fetch(`/proyecto/especificacion/${especificacionId}/actividades/`, {
+    method: 'GET',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': getCookie('csrftoken')
+    }
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Error al obtener las actividades');
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log('Datos recibidos del servidor:', data);
+    console.log('data.success:', data.success);
+    console.log('data.actividades:', data.actividades);
+    console.log('data.actividades length:', data.actividades ? data.actividades.length : 0);
+    console.log('data.debug:', data.debug);
+    
+    const tableContainer = document.getElementById('actividades-table-container');
+    
+    // Verificar si hay datos para mostrar
+    if (data.success && data.especificacion) {
+      console.log('Mostrando tabla con especificación y', data.actividades ? data.actividades.length : 0, 'actividades');
+      // Mostrar la tabla y ocultar el mensaje vacío
+      if (tableContainer) tableContainer.classList.remove('hidden');
+      emptyMessage.classList.add('hidden');
+      
+      // Agregar fila de la especificación como primera fila
+      const especificacionRow = document.createElement('tr');
+      especificacionRow.className = 'bg-base-300 font-semibold';
+      especificacionRow.innerHTML = `
+        <td class="whitespace-normal">${escapeHtml(data.especificacion.titulo || '-')}</td>
+        <td class="text-center">${escapeHtml(data.especificacion.unidad_medida || '-')}</td>
+        <td class="text-center">
+          <input 
+            type="text" 
+            class="input input-bordered input-sm w-20 text-center cantidad-input" 
+            value="${escapeHtml(data.especificacion.cantidad || '')}"
+            data-tipo="especificacion"
+            data-id="${data.especificacion.especificacion_tecnica_id || data.debug.especificacion_tecnica_id || ''}"
+            maxlength="10"
+            placeholder="-"
+          >
+        </td>
+      `;
+      tableBody.appendChild(especificacionRow);
+      
+      // Llenar la tabla con las actividades
+      if (data.actividades && Array.isArray(data.actividades) && data.actividades.length > 0) {
+        data.actividades.forEach((actividad, index) => {
+          console.log(`Procesando actividad ${index}:`, actividad);
+          const row = document.createElement('tr');
+          // Mostrar solo el nombre
+          const nombre = actividad.nombre || '-';
+          row.innerHTML = `
+            <td class="whitespace-normal">${escapeHtml(nombre)}</td>
+            <td class="text-center">${escapeHtml(actividad.unidad_medida || '-')}</td>
+            <td class="text-center">
+              <input 
+                type="text" 
+                class="input input-bordered input-sm w-20 text-center cantidad-input" 
+                value="${escapeHtml(actividad.valor_recomendado || '')}"
+                data-tipo="actividad"
+                data-id="${actividad.id}"
+                maxlength="255"
+                placeholder="-"
+              >
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      }
+      
+      // Agregar event listeners para los inputs de cantidad
+      agregarEventListenersCantidad();
+    } else {
+      console.log('No hay actividades o array vacío. Mostrando mensaje vacío.');
+      console.log('data.success:', data.success);
+      console.log('data.actividades existe:', !!data.actividades);
+      console.log('data.actividades es array:', Array.isArray(data.actividades));
+      console.log('data.actividades length:', data.actividades ? data.actividades.length : 'N/A');
+      
+      // Ocultar la tabla y mostrar el mensaje vacío
+      if (tableContainer) tableContainer.classList.add('hidden');
+      emptyMessage.classList.remove('hidden');
+      
+      // Si hay información de debug, mostrarla en el mensaje vacío
+      if (data.debug) {
+        const debugInfo = document.createElement('p');
+        debugInfo.className = 'text-xs text-base-content/50 mt-2';
+        debugInfo.textContent = `Debug: ${JSON.stringify(data.debug)}`;
+        emptyMessage.appendChild(debugInfo);
+      }
+    }
+    
+    // Mostrar el modal
+    modal.showModal();
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error al cargar las actividades adicionales. Por favor, inténtelo de nuevo.');
+  });
+}
+
+// Función auxiliar para escapar HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Función para obtener el token CSRF
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Función para agregar event listeners a los inputs de cantidad
+function agregarEventListenersCantidad() {
+  const cantidadInputs = document.querySelectorAll('.cantidad-input');
+  
+  cantidadInputs.forEach(input => {
+    // Guardar valor original
+    input.dataset.originalValue = input.value;
+    
+    // Manejar blur (cuando pierde el foco)
+    input.addEventListener('blur', function() {
+      guardarCantidad(this);
+    });
+    
+    // Manejar Enter
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.blur(); // Esto disparará el evento blur
+      }
+    });
+  });
+}
+
+// Función para guardar la cantidad
+function guardarCantidad(input) {
+  const nuevoValor = input.value.trim();
+  const valorOriginal = input.dataset.originalValue || '';
+  const tipo = input.dataset.tipo; // 'especificacion' o 'actividad'
+  const id = input.dataset.id;
+  
+  // Si no cambió, no hacer nada
+  if (nuevoValor === valorOriginal) {
+    return;
+  }
+  
+  // Mostrar indicador de guardado
+  const originalValue = input.value;
+  input.disabled = true;
+  input.classList.add('loading');
+  
+  // Determinar la URL según el tipo
+  let url;
+  if (tipo === 'especificacion') {
+    url = `/n8n/especificacion-tecnica/${id}/actualizar-cantidad/`;
+  } else if (tipo === 'actividad') {
+    url = `/n8n/actividad-adicional/${id}/actualizar-cantidad/`;
+  } else {
+    console.error('Tipo desconocido:', tipo);
+    input.disabled = false;
+    input.classList.remove('loading');
+    return;
+  }
+  
+  console.log('Guardando cantidad:', { tipo, id, nuevoValor, url });
+  
+  // Enviar petición al servidor
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify({
+      cantidad: nuevoValor
+    })
+  })
+  .then(response => {
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    // Intentar parsear la respuesta como JSON incluso si hay error
+    return response.json().then(data => {
+      if (!response.ok) {
+        throw new Error(data.error || `Error HTTP ${response.status}`);
+      }
+      return data;
+    }).catch(err => {
+      // Si no se puede parsear como JSON, lanzar error con el texto de respuesta
+      return response.text().then(text => {
+        throw new Error(`Error del servidor: ${text || `HTTP ${response.status}`}`);
+      });
+    });
+  })
+  .then(data => {
+    console.log('Datos recibidos:', data);
+    if (data.success) {
+      // Actualizar valor original
+      input.dataset.originalValue = nuevoValor;
+      // Mostrar mensaje de éxito breve
+      input.classList.remove('loading');
+      input.classList.add('input-success');
+      setTimeout(() => {
+        input.classList.remove('input-success');
+      }, 1000);
+    } else {
+      throw new Error(data.error || 'Error al guardar');
+    }
+  })
+  .catch(error => {
+    console.error('Error al guardar cantidad:', error);
+    console.error('URL:', url);
+    console.error('Tipo:', tipo);
+    console.error('ID:', id);
+    console.error('Valor:', nuevoValor);
+    // Restaurar valor original
+    input.value = valorOriginal;
+    input.classList.add('input-error');
+    setTimeout(() => {
+      input.classList.remove('input-error');
+    }, 2000);
+    alert('Error al guardar la cantidad: ' + error.message);
+  })
+  .finally(() => {
+    input.disabled = false;
+    input.classList.remove('loading');
+  });
+}
+
+// Hacer la función disponible globalmente
+window.openActividadesModal = openActividadesModal;
+</script>

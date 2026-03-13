@@ -1,0 +1,237 @@
+{% load static crispy_forms_tags tailwind_tags %}
+
+<!-- Paso 3: Ajustar Título - Modal -->
+<dialog id="modal-respuesta-api" class="modal fixed inset-0 z-50 flex items-start justify-center pt-16">
+  <div class="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-2xl font-bold">
+        <div class="flex items-center gap-4">
+          <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg animate-pulse-glow">
+            3
+          </div>
+          <span class="text-primary flex items-center gap-3">
+            Ajustar nombre de la Actividad
+          </span>
+        </div>
+      </h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+    <div class="divider my-4"></div>
+    
+    <div class="mb-4">
+      <label class="label">
+        <span class="label-text font-semibold">Nombre de la actividad</span>
+      </label>
+      <input 
+        type="text" 
+        id="modal-titulo-inicial" 
+        class="input input-bordered w-full" 
+        readonly
+        disabled
+      >
+    </div>
+    
+    <div class="mb-6">
+      <label class="label">
+        <span class="label-text font-semibold">Nombre de la actividad sugerido</span>
+      </label>
+      <input 
+        type="text" 
+        id="modal-titulo-propuesto" 
+        class="input input-bordered w-full" 
+        placeholder="Ingrese el título propuesto"
+      >
+    </div>
+    
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn btn-outline" id="modal-rechazar-btn">
+          <i class="fas fa-times mr-2"></i>
+          Rechazar
+        </button>
+        <button class="btn btn-primary" id="modal-aceptar-btn">
+          <i class="fas fa-check mr-2"></i>
+          Guardar cambios
+        </button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+// Función para enviar título ajustado (Paso 3)
+async function enviarTituloAjustado(tituloFinal, aceptar, resumeUrl, tituloInicial, tituloPropuesto) {
+  const modalRespuestaApi = document.getElementById('modal-respuesta-api');
+  const modalAceptarBtn = document.getElementById('modal-aceptar-btn');
+  const modalRechazarBtn = document.getElementById('modal-rechazar-btn');
+  
+  // Cerrar el modal primero
+  if (modalRespuestaApi) {
+    modalRespuestaApi.close();
+  }
+  
+  // Mostrar el spinner de pasos.html
+  const spinnerContainer = document.getElementById('spinner-container');
+  if (spinnerContainer) {
+    spinnerContainer.classList.remove('hidden');
+    const spinnerText = spinnerContainer.querySelector('p');
+    if (spinnerText) {
+      spinnerText.textContent = 'Ajustando título de la especificación técnica...';
+    }
+  }
+  
+  if (modalAceptarBtn) modalAceptarBtn.disabled = true;
+  if (modalRechazarBtn) modalRechazarBtn.disabled = true;
+  
+  const originalAceptarText = modalAceptarBtn ? modalAceptarBtn.innerHTML : '';
+  const originalRechazarText = modalRechazarBtn ? modalRechazarBtn.innerHTML : '';
+  
+  try {
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    
+    const urlEnviarTitulo = window.n8nUrls?.enviarTitulo || '/pliego_licitacion/enviar-titulo-ajustado/';
+    const response = await fetch(urlEnviarTitulo, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+        titulo_final: tituloFinal,
+        aceptar: aceptar,
+        resume_url: resumeUrl,
+        titulo_inicial: tituloInicial,
+        titulo_propuesto: tituloPropuesto,
+        especificacion_id: window.especificacionTecnicaId
+      })
+    });
+    
+    const result = await response.json();
+    
+    // Ocultar el spinner
+    if (spinnerContainer) spinnerContainer.classList.add('hidden');
+    
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Error al enviar el título');
+    }
+    
+    console.log('Respuesta recibida después de ajustar título:', result);
+    
+    // Verificar si hay actividades adicionales en la respuesta (Paso 4)
+    let actividadesAdicionales = null;
+    
+    // Manejar diferentes estructuras de respuesta
+    if (result.adicionales_response && result.adicionales_response.actividades_adicionales) {
+      actividadesAdicionales = result.adicionales_response.actividades_adicionales;
+    } else if (result.adicionales_response && Array.isArray(result.adicionales_response) && result.adicionales_response.length > 0) {
+      const firstItem = result.adicionales_response[0];
+      if (firstItem.output && firstItem.output.actividades_adicionales) {
+        actividadesAdicionales = firstItem.output.actividades_adicionales;
+      } else if (firstItem.actividades_adicionales) {
+        actividadesAdicionales = firstItem.actividades_adicionales;
+      }
+    } else if (Array.isArray(result.adicionales_response) && result.adicionales_response.length > 0) {
+      // Manejar estructura: [{ output: { actividades_adicionales: [...] } }]
+      const firstItem = result.adicionales_response[0];
+      if (firstItem.output && firstItem.output.actividades_adicionales) {
+        actividadesAdicionales = firstItem.output.actividades_adicionales;
+      }
+    } else if (result.actividades_adicionales && Array.isArray(result.actividades_adicionales)) {
+      actividadesAdicionales = result.actividades_adicionales;
+    } else if (result.output && result.output.actividades_adicionales) {
+      actividadesAdicionales = result.output.actividades_adicionales;
+    } else if (Array.isArray(result) && result.length > 0) {
+      // Manejar estructura directa: [{ output: { actividades_adicionales: [...] } }]
+      const firstItem = result[0];
+      if (firstItem.output && firstItem.output.actividades_adicionales) {
+        actividadesAdicionales = firstItem.output.actividades_adicionales;
+      }
+    }
+    
+    if (actividadesAdicionales && Array.isArray(actividadesAdicionales) && actividadesAdicionales.length > 0) {
+      console.log('Actividades adicionales encontradas:', actividadesAdicionales);
+      // Renderizar tabla de actividades adicionales (Paso 4)
+      if (typeof renderizarTablaActividades === 'function') {
+        renderizarTablaActividades(actividadesAdicionales);
+      }
+    } else {
+      // Si no hay actividades adicionales, mostrar modal con JSON
+      if (typeof mostrarModalJSON === 'function') {
+        mostrarModalJSON(result);
+      }
+    }
+  
+  } catch (error) {
+    console.error('Error:', error);
+    // Ocultar el spinner en caso de error
+    const spinnerContainerError = document.getElementById('spinner-container');
+    if (spinnerContainerError) spinnerContainerError.classList.add('hidden');
+    alert('Hubo un error al enviar el título: ' + error.message);
+  } finally {
+    if (modalAceptarBtn) {
+      modalAceptarBtn.disabled = false;
+      modalAceptarBtn.innerHTML = originalAceptarText;
+    }
+    if (modalRechazarBtn) {
+      modalRechazarBtn.disabled = false;
+      modalRechazarBtn.innerHTML = originalRechazarText;
+    }
+  }
+}
+
+// Variable para controlar si el modal se cerró manualmente (con la cruz) o programáticamente
+let modalTituloCerradoManual = false;
+
+// Agregar event listener para cuando se cierre el modal
+// Usar DOMContentLoaded para asegurar que el modal existe
+document.addEventListener('DOMContentLoaded', function() {
+  const modalTitulo = document.getElementById('modal-respuesta-api');
+  if (modalTitulo) {
+    modalTitulo.addEventListener('close', function() {
+      // Si se cerró manualmente (con la cruz o backdrop), refrescar la página
+      if (modalTituloCerradoManual) {
+        window.location.reload();
+        modalTituloCerradoManual = false; // Resetear el flag
+      }
+    });
+    
+    // Manejar el botón de cerrar (X)
+    const closeBtn = modalTitulo.querySelector('form[method="dialog"] button');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        modalTituloCerradoManual = true; // Marcar como cierre manual
+      });
+    }
+    
+    // Manejar el backdrop
+    const backdrop = modalTitulo.querySelector('.modal-backdrop');
+    if (backdrop) {
+      const backdropBtn = backdrop.querySelector('button');
+      if (backdropBtn) {
+        backdropBtn.addEventListener('click', function() {
+          modalTituloCerradoManual = true; // Marcar como cierre manual
+        });
+      }
+    }
+  }
+});
+</script>
+

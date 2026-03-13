@@ -1,0 +1,158 @@
+{% load main_tags %}
+<input type="checkbox" id="lista-especificaciones-modal" class="modal-toggle" {% if spec_modal_open %}checked{% endif %} />
+<div class="modal" role="dialog" aria-labelledby="lista-especificaciones-modal-title">
+  <div class="modal-box max-w-5xl">
+    <div class="flex items-center justify-between">
+      <h3 id="lista-especificaciones-modal-title" class="text-xl font-semibold">
+        Especificaciones disponibles
+      </h3>
+      <label for="lista-especificaciones-modal" class="btn btn-sm btn-circle btn-ghost">✕</label>
+    </div>
+
+    <div class="mt-4">
+      {% if especificaciones_accesibles %}
+        <div class="overflow-x-auto max-h-[60vh]">
+          <table class="table table-zebra">
+            <thead>
+              <tr class="uppercase text-xs tracking-wide text-base-content/70">
+                <th>
+                  {% sortable_header 'Nombre' 'titulo' spec_sort_by spec_order sort_param='spec_sort_by' order_param='spec_order' extra_query='spec_modal_open=1' %}
+                </th>
+                <th>
+                  {% sortable_header 'Proyecto' 'proyecto' spec_sort_by spec_order sort_param='spec_sort_by' order_param='spec_order' extra_query='spec_modal_open=1' %}
+                </th>
+                <th>
+                  {% sortable_header 'Usuario' 'usuario' spec_sort_by spec_order sort_param='spec_sort_by' order_param='spec_order' extra_query='spec_modal_open=1' %}
+                </th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for especificacion in especificaciones_accesibles %}
+                <tr>
+                  <td class="align-top">
+                    <div class="flex flex-col">
+                      <span class="font-semibold text-base-content">{{ especificacion.titulo }}</span>
+                      <span class="text-xs text-base-content/60">
+                        Actualizada {{ especificacion.fecha_actualizacion|date:"d/m/Y H:i" }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="align-top">
+                    <div class="flex flex-col">
+                      <span class="font-medium">{{ especificacion.proyecto.nombre }}</span>
+                      <span class="text-xs text-base-content/60">{{ especificacion.proyecto.solicitante }}</span>
+                    </div>
+                  </td>
+                  <td class="align-top">
+                    {% if especificacion.proyecto.creado_por %}
+                      {% with autor=especificacion.proyecto.creado_por %}
+                        {% with autor.get_full_name as full_name %}
+                          <span class="text-sm">
+                            {{ full_name|default:autor.username }}
+                          </span>
+                        {% endwith %}
+                      {% endwith %}
+                    {% else %}
+                      <span class="text-base-content/50">No asignado</span>
+                    {% endif %}
+                  </td>
+                  <td class="align-top text-right">
+                    <div class="flex justify-end">
+                      <button type="button"
+                              class="btn btn-ghost text-blue-500 view-especificacion-btn"
+                              title="Ver especificación"
+                              data-title="{{ especificacion.titulo|escape }}"
+                              data-proyecto="{{ especificacion.proyecto.nombre|escape }}"
+                              data-usuario="{% if especificacion.proyecto.creado_por %}{{ especificacion.proyecto.creado_por.get_full_name|default:especificacion.proyecto.creado_por.username|escape }}{% else %}-{% endif %}"
+                              data-preview="{{ especificacion.preview_html|default:''|escape }}">
+                        <i class="fas fa-eye"></i>
+                      </button>
+                      {% if es_propietario %}
+                        <button type="button"
+                                class="btn btn-ghost text-cyan-500 copy-especificacion-btn"
+                                title="Copiar al proyecto actual"
+                                data-title="{{ especificacion.titulo|escape }}"
+                                data-copy-url="{% url 'proyectos:copiar_especificacion' especificacion.id %}">
+                          <i class="fas fa-copy"></i>
+                        </button>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-10 text-base-content/70">
+          <i class="fas fa-file-alt text-5xl mb-3"></i>
+          <p>No hay especificaciones registradas o disponibles.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="modal-action">
+      <label for="lista-especificaciones-modal" class="btn">Cerrar</label>
+    </div>
+  </div>
+  <label class="modal-backdrop" for="lista-especificaciones-modal">Cerrar</label>
+</div>
+
+{% include 'proyectos/modals/ver_especificacion_modal.html' %}
+
+<dialog id="copy-especificacion-modal" class="modal">
+  <div class="modal-box max-w-md">
+    <div class="flex items-center gap-3">
+      <i class="fas fa-copy text-2xl text-primary"></i>
+      <div>
+        <h3 class="text-xl font-semibold">Copiar especificación</h3>
+        <p class="text-sm text-base-content/70">
+          Confirmación para copiar al proyecto actual.
+        </p>
+      </div>
+    </div>
+    <div class="mt-4 space-y-2">
+      <p>¿Deseas copiar la especificación <span class="font-semibold" id="copy-especificacion-nombre"></span> al proyecto <span class="font-semibold">{{ proyecto.nombre }}</span>?</p>
+    </div>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn btn-ghost">Cancelar</button>
+      </form>
+      <form method="post" id="copy-especificacion-form">
+        {% csrf_token %}
+        <input type="hidden" name="proyecto_destino" value="{{ proyecto.id }}">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="btn btn-success">Copiar</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cancelar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const copyButtons = Array.from(document.querySelectorAll('.copy-especificacion-btn'));
+    const copyModal = document.getElementById('copy-especificacion-modal');
+
+    const copyName = document.getElementById('copy-especificacion-nombre');
+    const copyForm = document.getElementById('copy-especificacion-form');
+
+    if (copyButtons.length && copyForm) {
+      copyButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          copyName.textContent = btn.dataset.title || '';
+          copyForm.setAttribute('action', btn.dataset.copyUrl || '#');
+          if (typeof copyModal.showModal === 'function') {
+            copyModal.showModal();
+          } else {
+            copyModal.classList.add('modal-open');
+          }
+        });
+      });
+    }
+  })();
+</script>
+

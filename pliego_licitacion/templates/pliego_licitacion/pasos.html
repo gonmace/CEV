@@ -1,0 +1,116 @@
+{% extends 'base_pliego.html' %}
+{% load static crispy_forms_tags tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+  <style>
+    /* Animaciones sutiles con DaisyUI */
+    .animate-pulse-glow {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(102, 126, 234, 0.8);
+      }
+    }
+    
+    /* Espacio para el navbar y breadcrumbs fijos */
+    /* Navbar: ~56px, Breadcrumbs: ~40px */
+    body {
+      padding-top: 96px;
+    }
+    
+    /* Ocultar el navbar del template base cuando usamos el navbar personalizado */
+    .bg-primary.text-white.shadow.z-50.overflow-visible.relative {
+      display: none;
+    }
+    
+    /* Ocultar breadcrumbs del template base */
+    {% block breadcrumbs_bar %}
+    <div style="display: none;"></div>
+    {% endblock %}
+  </style>
+{% endblock %}
+
+{% block title %}
+  IA - Especificación Técnica
+{% endblock %}
+
+{% block navbar_title %}
+  IA - Especificación Técnica
+{% endblock %}
+
+{% block content %}
+  <!-- Incluir navbar fijo -->
+  {% include 'pliego_licitacion/includes/navbar_n8n.html' %}
+  
+  <!-- Breadcrumbs fijos -->
+  <div class="bg-base-100 border-b border-base-300 fixed top-[56px] left-0 right-0 z-40 shadow-sm">
+    <nav class="px-4 py-2 max-w-7xl mx-auto flex items-center justify-between" aria-label="Breadcrumb">
+      <ol class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
+        <li class="flex items-center gap-2">
+          <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors flex items-center gap-1">
+            <i class="fas fa-home text-xs"></i>
+            <span>Inicio</span>
+          </a>
+          <span class="text-base-content/50">›</span>
+        </li>
+        <li class="flex items-center gap-2">
+          <span class="text-base-content/50">›</span>
+          <span class="font-semibold text-base-content">IA</span>
+        </li>
+      </ol>
+      <div class="flex items-center gap-4">
+        <!-- ID del registro guardado -->
+        <div id="especificacion-id-display" class="hidden flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-lg border border-primary/20">
+          <span class="text-xs text-base-content/60 font-medium">ID:</span>
+          <span id="especificacion-id-value" class="text-sm font-semibold text-primary font-mono"></span>
+        </div>
+        <button onclick="window.history.back()" class="btn btn-ghost btn-sm text-base-content/70 hover:text-base-content" title="Volver a la página anterior">
+          <i class="fas fa-arrow-left mr-2"></i>
+          Volver
+        </button>
+      </div>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block js %}
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // URLs para uso en JavaScript dinámico
+  window.n8nUrls = {
+    enviarEspecificacion: '{% url "pliego_licitacion:enviar_especificacion" %}',
+    enviarParametros: '{% url "pliego_licitacion:enviar_parametros" %}',
+    enviarTitulo: '{% url "pliego_licitacion:enviar_titulo_ajustado" %}',
+    enviarActividades: '{% url "pliego_licitacion:enviar_actividades" %}'
+  };
+  
+  // Variable global para almacenar el ID de la especificación técnica
+  window.especificacionTecnicaId = null;
+  
+  // Función para obtener el ID de la especificación técnica
+  window.getEspecificacionTecnicaId = function() {
+    return window.especificacionTecnicaId;
+  };
+</script>
+{% endblock %}

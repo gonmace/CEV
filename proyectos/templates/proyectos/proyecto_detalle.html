@@ -1,0 +1,550 @@
+{% extends 'base_pliego.html' %}
+{% load static crispy_forms_tags tailwind_tags main_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}
+  Proyecto: {{ proyecto.nombre }}
+{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">{{ proyecto.nombre }}</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+  <div class="min-h-screen bg-base-200">
+  <div class="px-4 py-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row lg:items-start gap-4">
+
+    <!-- ── Columna izquierda: Ubicación y Especificaciones ── -->
+    <div class="w-full lg:flex-1 flex flex-col gap-3">
+
+      <!-- Ubicación (colapsable) -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <details class="group">
+          <summary class="flex items-center justify-between px-5 py-3.5 cursor-pointer list-none select-none">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
+                <i class="fas fa-map-marker-alt text-secondary text-xs"></i>
+              </span>
+              <span class="text-sm font-semibold text-base-content">Ubicación</span>
+              {% if tiene_ubicacion_con_pdf %}
+                <span class="text-[10px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full">Con PDF</span>
+              {% endif %}
+            </div>
+            <i class="fas fa-chevron-down text-xs text-base-content/30 transition-transform group-open:rotate-180"></i>
+          </summary>
+          <div class="px-4 pb-4 border-t border-secondary/10">
+            {% if ubicaciones %}
+              <div class="space-y-2 pt-3">
+                {% for ubicacion in ubicaciones %}
+                  <div class="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-base-200/50 border border-secondary/10">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      {% if ubicacion.mapa_imagen %}
+                        <img src="{{ ubicacion.mapa_imagen.url }}" alt="Mapa" class="w-10 h-10 object-cover rounded-lg border border-base-300 cursor-pointer hover:opacity-80 flex-shrink-0" onclick="window.open('{{ ubicacion.mapa_imagen.url }}', '_blank')">
+                      {% endif %}
+                      <span class="text-sm font-medium text-base-content truncate">{{ ubicacion.nombre }}</span>
+                    </div>
+                    {% if es_propietario %}
+                    <div class="flex items-center gap-0.5 flex-shrink-0">
+                      {% if ubicacion.documento_pdf %}
+                        <a href="#" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors" title="Descargar PDF">
+                          <i class="fas fa-file-pdf text-xs"></i>
+                        </a>
+                      {% endif %}
+                      <a href="#" class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
+                        <i class="fas fa-edit text-xs"></i>
+                      </a>
+                      <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-ubicacion-btn"
+                              data-ubicacion-id="{{ ubicacion.id }}" data-ubicacion-nombre="{{ ubicacion.nombre|escape }}">
+                        <i class="fas fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="flex flex-col items-center justify-center py-8 gap-2">
+                <div class="w-10 h-10 rounded-xl bg-base-200 flex items-center justify-center">
+                  <i class="fas fa-map-marker-alt text-base-content/25"></i>
+                </div>
+                <p class="text-xs text-base-content/40 font-medium">Sin ubicación registrada</p>
+                {% if es_propietario %}
+                  <a href="#" class="flex items-center gap-1 text-xs font-semibold text-success hover:bg-success/10 px-3 py-1.5 rounded-lg transition-colors">
+                    <i class="fas fa-plus text-xs"></i> Crear ubicación
+                  </a>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </details>
+      </div>
+
+      <!-- Especificaciones -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-secondary/10">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <i class="fas fa-list-alt text-primary text-xs"></i>
+            </span>
+            <span class="text-sm font-semibold text-base-content">Especificaciones</span>
+            <span class="text-[10px] font-bold {% if especificaciones %}text-info bg-info/10{% else %}text-base-content/30 bg-base-200{% endif %} px-2 py-0.5 rounded-full">{{ especificaciones|length }}</span>
+          </div>
+          {% if es_propietario %}
+          <div class="flex items-center gap-1">
+            <label for="lista-especificaciones-modal" class="flex items-center gap-1 text-xs font-semibold text-secondary hover:bg-secondary/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+              <i class="fas fa-list text-xs"></i> Disponibles
+            </label>
+            <a href="{% url 'pliego_licitacion:pasos' %}?proyecto_id={{ proyecto.id }}" class="flex items-center gap-1 text-xs font-semibold text-success hover:bg-success/10 px-3 py-1.5 rounded-lg transition-colors">
+              <i class="fas fa-plus text-xs"></i> Nueva
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if especificaciones %}
+          <div id="especificaciones-list" class="divide-y divide-secondary/10" style="overflow-y: auto;">
+            {% for especificacion in especificaciones %}
+              <div class="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-base-200/40 transition-colors especificacion-item" data-especificacion-id="{{ especificacion.id }}">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                  {% if es_propietario %}
+                    <div class="cursor-move text-base-content/25 hover:text-base-content/50 transition-colors flex-shrink-0">
+                      <i class="fas fa-grip-vertical text-xs"></i>
+                    </div>
+                  {% endif %}
+                  <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 gestionar-imagenes-btn"
+                          title="{% if especificacion.cantidad_imagenes > 0 %}Ver imágenes ({{ especificacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}"
+                          data-especificacion-id="{{ especificacion.id }}"
+                          data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                          data-cantidad-imagenes="{{ especificacion.cantidad_imagenes }}">
+                    {% if especificacion.cantidad_imagenes == 0 %}
+                      <i class="fas fa-image text-sm text-base-content/20"></i>
+                    {% elif especificacion.cantidad_imagenes == 1 %}
+                      <i class="fas fa-image text-sm text-warning"></i>
+                    {% else %}
+                      <i class="fas fa-image text-sm text-success"></i>
+                    {% endif %}
+                  </button>
+                  <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 ver-actividades-btn"
+                          title="Ver actividades adicionales"
+                          data-especificacion-id="{{ especificacion.id }}"
+                          data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+                    {% if especificaciones_con_cantidad|get_item:especificacion.id %}
+                      <i class="fa-solid fa-table text-sm text-success"></i>
+                    {% else %}
+                      <i class="fa-solid fa-table text-sm text-base-content/20"></i>
+                    {% endif %}
+                  </button>
+                  <span class="text-sm font-medium text-base-content truncate">{{ especificacion.titulo }}</span>
+                  {% if especificacion.unidad_medida %}
+                    <span class="text-[10px] font-medium text-secondary/60 bg-secondary/10 px-1.5 py-0.5 rounded flex-shrink-0">{{ especificacion.unidad_medida }}</span>
+                  {% endif %}
+                </div>
+                <div class="flex items-center gap-0.5 flex-shrink-0">
+                  {% if es_propietario %}
+                  <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-accent hover:bg-accent/10 transition-colors mover-especificacion-btn"
+                          title="Mover posición"
+                          data-especificacion-id="{{ especificacion.id }}"
+                          data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                          data-especificacion-posicion="{{ especificacion.orden }}"
+                          data-proyecto-id="{{ proyecto.id }}"
+                          data-total-especificaciones="{{ especificaciones|length }}">
+                    <i class="fas fa-arrows-alt text-xs"></i>
+                  </button>
+                  {% endif %}
+                  <a href="{% url 'proyectos:ver_especificacion' especificacion.id %}?from=proyecto" class="w-7 h-7 rounded-md flex items-center justify-center text-info hover:bg-info/10 transition-colors" title="Ver">
+                    <i class="fas fa-eye text-xs"></i>
+                  </a>
+                  {% if es_propietario %}
+                  <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}" class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
+                    <i class="fas fa-edit text-xs"></i>
+                  </a>
+                  <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-especificacion-btn"
+                          data-especificacion-id="{{ especificacion.id }}"
+                          data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+                    <i class="fas fa-trash text-xs"></i>
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="flex flex-col items-center justify-center py-14 gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+              <i class="fas fa-file-alt text-xl text-base-content/25"></i>
+            </div>
+            <p class="text-sm font-medium text-base-content/40">Sin especificaciones registradas</p>
+            {% if es_propietario %}
+              <a href="{% url 'pliego_licitacion:pasos' %}?proyecto_id={{ proyecto.id }}" class="flex items-center gap-1.5 text-xs font-semibold text-success hover:bg-success/10 px-3 py-1.5 rounded-lg transition-colors">
+                <i class="fas fa-plus text-xs"></i> Nueva especificación
+              </a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ── Columna derecha: Info + Acciones ── -->
+    <div class="w-full lg:w-72 flex-shrink-0 flex flex-col gap-3">
+
+      <!-- Info del proyecto -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <div class="bg-primary px-5 py-4">
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest mb-1">Proyecto</p>
+          <h2 class="text-base font-bold text-primary-content leading-snug">{{ proyecto.nombre }}</h2>
+        </div>
+        <div class="px-5 py-4 flex flex-col gap-3">
+          {% if proyecto.solicitante %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Solicitante</p>
+            <p class="text-sm text-base-content">{{ proyecto.solicitante }}</p>
+          </div>
+          {% endif %}
+          {% if proyecto.ubicacion %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Ubicación</p>
+            <p class="text-sm text-base-content">{{ proyecto.ubicacion }}</p>
+          </div>
+          {% endif %}
+          <div class="flex gap-4">
+            <div>
+              <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Creado</p>
+              <p class="text-xs text-base-content/70">{{ proyecto.fecha_creacion|date:"d/m/Y" }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Actualizado</p>
+              <p class="text-xs text-base-content/70">{{ proyecto.fecha_actualizacion|date:"d/m/Y" }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            {% if proyecto.publico %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">
+                <i class="fas fa-globe text-[10px]"></i> Público
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-base-200 text-base-content/40">
+                <i class="fas fa-lock text-[10px]"></i> Privado
+              </span>
+            {% endif %}
+          </div>
+          {% if proyecto.descripcion %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Descripción</p>
+            <p class="text-xs text-base-content/70 leading-relaxed">{{ proyecto.descripcion|linebreaksbr }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <div class="px-4 pt-4 pb-2">
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
+        </div>
+        <div class="flex flex-col px-3 pb-3 gap-1">
+          <button onclick="document.getElementById('exportar-word-modal').showModal()"
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:bg-secondary/10 transition-colors w-full text-left">
+            <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 392 512.3" class="w-4 h-4"><path fill="#26a9f1" d="M59 0h204l129 140v313c0 33-27 59-59 59H59c-32 0-59-26-59-59V59C0 26 26 0 59 0"/><path fill="#bce2f9" d="m263 0 129 140h-56q-69-3-73-63z"/><path fill="#1c7bb0" fill-rule="nonzero" d="M108 403a13 13 0 0 1 0-26h141a13 13 0 0 1 0 26zm0-152a13 13 0 0 1 0-26h176a13 13 0 0 1 0 26zm0 73a13 13 0 0 1 0-26h167a13 13 0 0 1 0 26z"/><path fill="#1f89c3" d="m310 137 82 68v-65h-56q-14 0-26-3"/></svg>
+            </span>
+            Exportar a Word
+          </button>
+          {% if es_propietario %}
+          <a href="{% url 'proyectos:editar_proyecto' proyecto.id %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-warning hover:bg-warning/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-edit text-warning text-xs"></i>
+            </span>
+            Editar proyecto
+          </a>
+          <a href="{% url 'proyectos:eliminar_proyecto' proyecto.id %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-error/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-trash text-error text-xs"></i>
+            </span>
+            Eliminar proyecto
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+  </div>
+  {% include 'proyectos/modals/lista_especificaciones_modal.html' %}
+  {% include 'proyectos/modals/eliminar_especificacion_modal.html' %}
+  {% include 'proyectos/modals/mover_especificacion_modal.html' %}
+  {% include 'proyectos/modals/gestionar_imagenes_modal.html' %}
+  {% include 'proyectos/modals/exportar_word_modal.html' %}
+  {% include 'proyectos/modals/ver_actividades_adicionales_modal.html' %}
+  {# {% include 'ubi_web/modals/eliminar_ubicacion_modal.html' %} #}
+  {% comment %} Modal de gestión de imágenes de ubicación eliminado {% endcomment %}
+{% endblock %}
+
+{% block js %}
+<script>
+  // Manejar el formulario de exportar a Word
+  document.addEventListener('DOMContentLoaded', function() {
+    const exportForm = document.getElementById('exportar-word-form');
+    if (exportForm) {
+      exportForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Mostrar indicador de carga
+        const submitBtn = exportForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Exportando...';
+        
+        // Crear FormData y enviar
+        const formData = new FormData(exportForm);
+        
+        fetch(exportForm.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error al exportar el documento');
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          // Obtener el nombre del proyecto del formulario para el nombre del archivo
+          const proyectoNombre = document.getElementById('export-proyecto').value;
+          const nombreArchivo = proyectoNombre.toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') + '_especificaciones.docx';
+          
+          // Crear URL del blob y descargar
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = nombreArchivo;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          // Cerrar el modal
+          document.getElementById('exportar-word-modal').close();
+          
+          // Restaurar botón
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error al exportar el documento. Por favor, inténtelo de nuevo.');
+          
+          // Restaurar botón
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        });
+      });
+    }
+  });
+  
+  // Ajustar altura del contenedor de especificaciones
+  document.addEventListener('DOMContentLoaded', function() {
+    const especificacionesList = document.getElementById('especificaciones-list');
+    if (especificacionesList) {
+      const items = especificacionesList.querySelectorAll('.especificacion-item');
+      const cantidadEspecificaciones = items.length;
+      
+      if (cantidadEspecificaciones > 0) {
+        // Calcular la altura total del contenido
+        let alturaTotal = 0;
+        items.forEach((item, index) => {
+          alturaTotal += item.offsetHeight;
+          if (index < items.length - 1) {
+            // Agregar espacio entre items (space-y-2 = 8px)
+            alturaTotal += 8;
+          }
+        });
+        
+        if (cantidadEspecificaciones <= 10) {
+          // Si hay 10 o menos, altura automática sin restricciones
+          especificacionesList.style.maxHeight = 'none';
+          especificacionesList.style.overflowY = 'visible';
+          especificacionesList.style.height = 'auto';
+        } else {
+          // Si hay más de 10, calcular altura de 10 especificaciones
+          const alturaPrimeraEspecificacion = items[0].offsetHeight;
+          const alturaMaxima = (alturaPrimeraEspecificacion * 10) + (8 * 9);
+          especificacionesList.style.maxHeight = alturaMaxima + 'px';
+          especificacionesList.style.overflowY = 'auto';
+        }
+      }
+    }
+  });
+</script>
+{% if es_propietario %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+  (function() {
+    // Función para obtener el token CSRF
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    const especificacionesList = document.getElementById('especificaciones-list');
+    if (!especificacionesList) return;
+
+    const sortable = new Sortable(especificacionesList, {
+      animation: 150,
+      handle: '.cursor-move',
+      ghostClass: 'opacity-50',
+      chosenClass: 'bg-base-300/50',
+      onEnd: function(evt) {
+        const items = especificacionesList.querySelectorAll('.especificacion-item');
+        const especificacionesIds = Array.from(items).map(item => 
+          parseInt(item.dataset.especificacionId)
+        );
+
+        // Enviar el nuevo orden al servidor
+        fetch('{% url "proyectos:reordenar_especificaciones" proyecto.id %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            especificaciones_ids: especificacionesIds
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Opcional: mostrar un mensaje de éxito
+            if (window.flashy) {
+              flashy.success(data.message || 'Orden actualizado correctamente.');
+            }
+          } else {
+            console.error('Error al actualizar el orden:', data.error);
+            if (window.flashy) {
+              flashy.error(data.error || 'Error al actualizar el orden.');
+            }
+            // Recargar la página para restaurar el orden original
+            window.location.reload();
+          }
+        })
+        .catch(error => {
+          console.error('Error al actualizar el orden:', error);
+          if (window.flashy) {
+            flashy.error('Error al actualizar el orden. Recargando página...');
+          }
+          // Recargar la página para restaurar el orden original
+          setTimeout(() => window.location.reload(), 1000);
+        });
+      }
+    });
+  })();
+</script>
+{% endif %}
+
+<script>
+  // Manejar clics en botones de eliminar
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.eliminar-especificacion-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const especificacionTitulo = button.dataset.especificacionTitulo;
+      if (window.openEliminarEspecificacionModal) {
+        window.openEliminarEspecificacionModal(especificacionId, especificacionTitulo);
+      }
+    }
+  });
+
+  // Manejar clics en botones de mover posición
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.mover-especificacion-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const especificacionTitulo = button.dataset.especificacionTitulo;
+      const especificacionPosicion = parseInt(button.dataset.especificacionPosicion);
+      const proyectoId = button.dataset.proyectoId;
+      const totalEspecificaciones = parseInt(button.dataset.totalEspecificaciones);
+      if (window.openMoverEspecificacionModal) {
+        window.openMoverEspecificacionModal(
+          especificacionId,
+          especificacionTitulo,
+          proyectoId,
+          especificacionPosicion,
+          totalEspecificaciones
+        );
+      }
+    }
+  });
+
+  // Manejar clics en botones de gestionar imágenes
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.gestionar-imagenes-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const especificacionTitulo = button.dataset.especificacionTitulo;
+      if (window.openGestionarImagenesModal) {
+        window.openGestionarImagenesModal(especificacionId, especificacionTitulo);
+      }
+    }
+  });
+
+  // Manejar clics en botones de eliminar ubicación
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.eliminar-ubicacion-btn');
+    if (button) {
+      event.preventDefault();
+      const ubicacionId = button.dataset.ubicacionId;
+      const ubicacionNombre = button.dataset.ubicacionNombre;
+      if (window.openEliminarUbicacionModal) {
+        window.openEliminarUbicacionModal(ubicacionId, ubicacionNombre);
+      }
+    }
+  });
+
+  // Manejar clics en botones de ver actividades adicionales
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.ver-actividades-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const especificacionTitulo = button.dataset.especificacionTitulo;
+      if (window.openActividadesModal) {
+        window.openActividadesModal(especificacionId, especificacionTitulo);
+      }
+    }
+  });
+
+  {% comment %} Event listener de gestión de imágenes de ubicación eliminado {% endcomment %}
+</script>
+{% endblock %}
+

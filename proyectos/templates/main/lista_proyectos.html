@@ -1,0 +1,129 @@
+{% extends 'base_pliego.html' %}
+{% load static crispy_forms_tags tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}
+  Lista de Proyectos
+{% endblock %}
+
+{% block body_class %}
+  
+{% endblock %}
+
+{% block content %}
+  <!-- Navbar -->
+  <div class="bg-primary text-white shadow z-50">
+    <div class="flex items-center justify-between px-4 py-2">
+      <!-- Izquierda -->
+      <div class="flex items-center space-x-4">
+        <!-- Botón de menú -->
+        <a href="{% url 'proyectos:proyecto_main' %}" class="text-white focus:outline-none">
+          <i class="fas fa-arrow-left text-xl"></i>
+        </a>
+
+        <!-- Marca -->
+        <a href="{% url 'proyectos:proyecto_main' %}" class="text-lg font-semibold tracking-wide">GDAR</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-col items-center justify-center mt-6 px-4">
+    <div class="w-full max-w-6xl">
+      <!-- Mensajes -->
+      {% if messages %}
+        {# Los mensajes se muestran mediante Flashy.js en la plantilla base #}
+      {% endif %}
+      
+      <!-- Título y botón crear -->
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-base-content">
+          <i class="fas fa-folder-open mr-2 text-primary"></i>
+          Proyectos Existentes
+        </h2>
+        <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-primary">
+          <i class="fas fa-plus mr-2"></i>
+          Nuevo Proyecto
+        </a>
+      </div>
+
+      {% if proyectos %}
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Solicitante</th>
+                  <th>Ubicación</th>
+                  <th>Fecha de Creación</th>
+                  <th>Público</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for proyecto in proyectos %}
+                <tr>
+                  <td class="font-semibold">{{ proyecto.nombre }}</td>
+                  <td>{{ proyecto.solicitante }}</td>
+                  <td>{{ proyecto.ubicacion }}</td>
+                  <td>{{ proyecto.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                  <td>
+                    {% if proyecto.publico %}
+                      <span class="badge badge-success">
+                        <i class="fas fa-globe mr-1"></i>
+                        Público
+                      </span>
+                    {% else %}
+                      <span class="badge badge-base-300">
+                        <i class="fas fa-lock mr-1"></i>
+                        Privado
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="flex gap-2">
+                             <a href="{% url 'proyectos:seleccionar_proyecto' proyecto.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-primary" title="Seleccionar proyecto">
+                        <i class="fas fa-check"></i>
+                      </a>
+                      <a href="{% url 'proyectos:editar_proyecto' proyecto.id %}" class="btn btn-sm btn-secondary" title="Editar proyecto">
+                        <i class="fas fa-edit"></i>
+                      </a>
+                      <a href="{% url 'proyectos:eliminar_proyecto' proyecto.id %}" class="btn btn-sm btn-error" title="Eliminar proyecto">
+                        <i class="fas fa-trash"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center">
+          <div class="text-6xl mb-4 text-base-content/30">
+            <i class="fas fa-folder-open"></i>
+          </div>
+          <h3 class="card-title text-xl mb-2">No hay proyectos disponibles</h3>
+          <p class="text-base-content/70 mb-4">Cree un nuevo proyecto para comenzar</p>
+          <div class="card-actions">
+            <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-primary">
+              <i class="fas fa-plus mr-2"></i>
+              Crear Proyecto
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block js %}
+{% endblock %}
+

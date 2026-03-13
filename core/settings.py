@@ -16,6 +16,11 @@ ADMIN_URL = config('ADMIN_URL', default='admin/')
 
 INSTALLED_APPS = [
     'home',
+    'proyectos',
+    'pliego_licitacion',
+
+    'crispy_forms',
+    'crispy_tailwind',
 
     'axes',
 
@@ -163,6 +168,14 @@ CSP_CONNECT_SRC = ("'self'",) if not DEBUG else ("'self'", "ws://localhost:*", "
 # ── Admins y logging ──────────────────────────────────────────────────────────
 ADMINS = [('Admin', 'admin@example.com')]
 MANAGERS = ADMINS
+
+# ── Crispy Forms ───────────────────────────────────────────────────────────────
+CRISPY_ALLOWED_TEMPLATE_PACKS = 'tailwind'
+CRISPY_TEMPLATE_PACK = 'tailwind'
+
+# ── Auth redirects ─────────────────────────────────────────────────────────────
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/proyectos/'
 
 LOGGING = {
     'version': 1,

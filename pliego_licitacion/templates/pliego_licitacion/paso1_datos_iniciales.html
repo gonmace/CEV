@@ -1,0 +1,845 @@
+{% extends 'pliego_licitacion/pasos.html' %}
+{% load static crispy_forms_tags tailwind_tags %}
+
+{% block content %}
+  {{ block.super }}
+  
+  <!-- Contenido del Paso 1 -->
+  <div class="flex flex-col items-center">
+    <!-- Spinner container -->
+    <div id="spinner-container" class="hidden flex flex-col items-center justify-center mt-12 mb-8">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <p class="mt-4 text-lg font-semibold text-primary">
+        Generando parámetros técnicos...
+      </p>
+      <div class="flex gap-2 mt-4">
+        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0s;"></div>
+        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
+        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
+      </div>
+    </div>
+    
+    <!-- Contenedor para mostrar el resultado del markdown -->
+    <div id="resultado-markdown-container" class="hidden w-full max-w-5xl mt-8">
+      <div class="card bg-base-100 shadow-2xl w-full">
+        <div class="card-body p-8">
+          <div class="mb-6">
+            <h2 class="card-title text-2xl mb-2">
+              <div class="flex items-center gap-4">
+                <div class="badge badge-success badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <i class="fas fa-check"></i>
+                </div>
+                <span class="text-success">
+                  <i class="fas fa-file-alt mr-2"></i>
+                  Especificación Técnica Generada
+                </span>
+              </div>
+            </h2>
+          </div>
+          
+          <div id="resultado-markdown-content" class="prose prose-slate prose-lg max-w-none">
+            <!-- El contenido markdown se insertará aquí -->
+          </div>
+          
+          <div class="card-actions justify-end mt-6 pt-6 border-t border-base-300">
+            <button onclick="window.location.reload()" class="btn btn-outline">
+              <i class="fas fa-redo mr-2"></i>
+              Generar Nueva
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido según el paso -->
+    {% if respuesta_completa.output and respuesta_completa.output.parametros %}
+      <!-- Si hay parámetros, se mostrarán en el modal del paso 2 -->
+    {% else %}
+      <!-- Si no hay parámetros, mostrar formulario de título y descripción -->
+      <div class="flex flex-col items-center justify-center mt-8 w-full max-w-5xl">
+        <div class="card bg-base-100 shadow-2xl w-full hover:shadow-3xl transition-shadow">
+          <div class="card-body p-8">
+            <div class="mb-6">
+              <h2 class="card-title text-2xl mb-2">
+                <div class="flex items-center gap-4">
+                  <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg animate-pulse-glow">
+                    1
+                  </div>
+                  <span class="text-primary">
+                    Datos Iniciales
+                  </span>
+                </div>
+              </h2>
+              <p class="text-sm text-base-content/60 ml-14">Complete los datos para generar la especificación técnica</p>
+            </div>
+            
+            <div class="space-y-4">
+              <!-- Mensaje de razón si hay incoherencia -->
+              <div id="razon-alert" class="alert alert-warning mb-4 hidden">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <div>
+                  <div class="font-semibold mb-1">Razón de incoherencia:</div>
+                  <div id="razon-text"></div>
+                </div>
+              </div>
+              
+              <form id="datos-generales-form" class="space-y-6">
+                <!-- Actividad y Unidad de medida en una fila -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- Actividad -->
+                  <div class="form-control w-full">
+                    <label class="label" for="titulo">
+                      <span class="label-text font-semibold flex items-center gap-2">
+                        <i class="fa-regular fa-file-lines text-primary"></i>
+                        Actividad
+                      </span>
+                      <span class="label-text-alt text-error font-bold">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      name="titulo" 
+                      id="titulo"
+                      class="input input-bordered input-primary w-full focus:input-primary" 
+                      placeholder="Ingrese el nombre de la actividad"
+                      value="{{ datos_paso1.titulo|default:'' }}"
+                      required
+                    >
+                    <label class="label hidden" id="titulo-error-label">
+                      <span class="label-text-alt text-error" id="titulo-error"></span>
+                    </label>
+                  </div>
+                  
+                  <!-- Unidad de Medida -->
+                  <div class="form-control w-full">
+                    <label class="label" for="unidad_medida">
+                      <span class="label-text font-semibold flex items-center gap-2">
+                        <i class="fas fa-ruler text-primary"></i>
+                        Unidad de medida
+                      </span>
+                      <span class="label-text-alt text-error font-bold">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      name="unidad_medida" 
+                      id="unidad_medida"
+                      class="input input-bordered input-primary w-full focus:input-primary" 
+                      placeholder="Ej: glb, pz, m²"
+                      value="{{ datos_paso1.unidad_medida|default:'' }}"
+                      maxlength="10"
+                      required
+                    >
+                    <label class="label">
+                      <span class="label-text-alt text-base-content/60">Máximo 10 caracteres</span>
+                    </label>
+                    <label class="label hidden" id="unidad-medida-error-label">
+                      <span class="label-text-alt text-error" id="unidad-medida-error"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Tipo de Servicio -->
+                <div class="form-control w-full">
+                  <label class="label" for="tipo_servicio">
+                    <span class="label-text font-semibold flex items-center gap-2">
+                      <i class="fas fa-cogs text-primary"></i>
+                      Tipo de Servicio
+                    </span>
+                    <span class="label-text-alt text-error font-bold">*</span>
+                  </label>
+                  <select 
+                    name="tipo_servicio" 
+                    id="tipo_servicio"
+                    class="select select-bordered select-primary w-full focus:select-primary" 
+                    required
+                  >
+                    <option value="">Seleccione un tipo de servicio</option>
+                    <option value="Mecánico" {% if datos_paso1.tipo_servicio == "Mecánico" %}selected{% endif %}>Mecánico</option>
+                    <option value="Eléctrico" {% if datos_paso1.tipo_servicio == "Eléctrico" %}selected{% endif %}>Eléctrico</option>
+                    <option value="Instrumentación" {% if datos_paso1.tipo_servicio == "Instrumentación" %}selected{% endif %}>Instrumentación</option>
+                    <option value="SSMA (Seguridad, Salud y Medio Ambiente)" {% if datos_paso1.tipo_servicio == "SSMA (Seguridad, Salud y Medio Ambiente)" %}selected{% endif %}>SSMA (Seguridad, Salud y Medio Ambiente)</option>
+                    <option value="Infraestructura / Obras Civiles" {% if datos_paso1.tipo_servicio == "Infraestructura / Obras Civiles (OOCC)" %}selected{% endif %}>Infraestructura / Obras Civiles (OOCC)</option>
+                    <option value="Mantenimiento de Vehículos" {% if datos_paso1.tipo_servicio == "Mantenimiento de Vehículos" %}selected{% endif %}>Mantenimiento de Vehículos</option>
+                    <option value="Laboratorio y Aseguramiento de la Calidad" {% if datos_paso1.tipo_servicio == "Laboratorio y Aseguramiento de la Calidad" %}selected{% endif %}>Laboratorio y Aseguramiento de la Calidad</option>
+                    <option value="Logística y Distribución" {% if datos_paso1.tipo_servicio == "Logística y Distribución" %}selected{% endif %}>Logística y Distribución</option>
+                  </select>
+                  <label class="label hidden" id="tipo-servicio-error-label">
+                    <span class="label-text-alt text-error" id="tipo-servicio-error"></span>
+                  </label>
+                </div>
+
+                <!-- Descripción -->
+                <div class="form-control w-full">
+                  <label class="label" for="descripcion">
+                    <span class="label-text font-semibold flex items-center gap-2">
+                      <i class="fas fa-align-left text-primary"></i>
+                      Descripción
+                    </span>
+                    <span class="label-text-alt text-error font-bold">*</span>
+                  </label>
+                  <textarea 
+                    name="descripcion" 
+                    id="descripcion"
+                    class="textarea textarea-bordered textarea-primary w-full focus:textarea-primary" 
+                    rows="3"
+                    placeholder="Ingrese la descripción detallada..."
+                    required
+                  >{{ datos_paso1.descripcion|default:'' }}</textarea>
+                  <label class="label hidden" id="descripcion-error-label">
+                    <span class="label-text-alt text-error" id="descripcion-error"></span>
+                  </label>
+                </div>
+
+                <!-- Botón de acción -->
+                <div class="flex justify-end mt-8 pt-6 border-t border-base-300">
+                  <button type="button" id="btn-continuar-datos" class="btn btn-primary">
+                    <span class="normal-text flex items-center gap-2">
+                      <i class="fas fa-arrow-right"></i>
+                      Continuar
+                    </span>
+                    <span class="loading loading-spinner loading-sm hidden"></span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Paso 3: Ajustar Título -->
+  {% include 'pliego_licitacion/pasos/paso3_titulo.html' %}
+
+  <dialog id="modal-respuesta-json" class="modal fixed inset-0 z-50 flex items-start justify-center pt-16">
+    <div class="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-2xl font-bold">
+          <i class="fas fa-code mr-2 text-primary"></i>
+          Respuesta del Servidor
+        </h3>
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+        </form>
+      </div>
+      <div class="divider my-4"></div>
+      
+      <div class="mb-4">
+        <div class="bg-base-200 rounded-lg p-4 overflow-x-auto max-h-96">
+          <pre id="modal-respuesta-json-content" class="text-sm font-mono whitespace-pre text-left"></pre>
+        </div>
+      </div>
+      
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn btn-primary" id="modal-respuesta-json-cerrar">
+            <i class="fas fa-times mr-2"></i>
+            Cerrar
+          </button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>Cerrar</button>
+    </form>
+  </dialog>
+
+  <!-- Paso 2: Parámetros Técnicos -->
+  {% include 'pliego_licitacion/pasos/paso2_parametros.html' %}
+
+  <!-- Paso 4: Actividades Adicionales -->
+  {% include 'pliego_licitacion/pasos/paso4_actividades.html' %}
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+<script>
+(function() {
+  'use strict';
+  
+  // Función auxiliar: obtener valores del formulario visible
+  function obtenerValoresFormulario() {
+    const form = document.getElementById('datos-generales-form');
+    if (!form) return { titulo: '', descripcion: '', tipoServicio: '', unidadMedida: '' };
+    
+    return {
+      titulo: (form.querySelector('input[name="titulo"]')?.value || '').trim(),
+      descripcion: (form.querySelector('textarea[name="descripcion"]')?.value || '').trim(),
+      tipoServicio: (form.querySelector('select[name="tipo_servicio"]')?.value || '').trim(),
+      unidadMedida: (form.querySelector('input[name="unidad_medida"]')?.value || '').trim()
+    };
+  }
+  
+  // Función auxiliar: mostrar error de validación
+  function mostrarError(campo, mensaje) {
+    const errorEl = document.getElementById(`${campo}-error`);
+    const errorLabel = document.getElementById(`${campo}-error-label`);
+    if (errorEl) errorEl.textContent = mensaje;
+    if (errorLabel) errorLabel.classList.remove('hidden');
+  }
+  
+  // Función auxiliar: ocultar todos los errores
+  function ocultarErrores() {
+    ['titulo', 'descripcion', 'tipo-servicio', 'unidad-medida'].forEach(campo => {
+      const errorLabel = document.getElementById(`${campo}-error-label`);
+      if (errorLabel) errorLabel.classList.add('hidden');
+    });
+  }
+  
+  // Función auxiliar: obtener cookie CSRF
+  function getCookie(name) {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + '=')) {
+        return decodeURIComponent(cookie.substring(name.length + 1));
+      }
+    }
+    return null;
+  }
+  
+  // Event listener para el botón continuar
+  document.addEventListener('click', async function(e) {
+    const btn = e.target.closest('#btn-continuar-datos');
+    if (!btn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const submitBtn = document.getElementById('btn-continuar-datos');
+    const normalText = submitBtn?.querySelector('.normal-text');
+    const loadingSpinner = submitBtn?.querySelector('.loading-spinner');
+    
+    // Ocultar errores anteriores
+    ocultarErrores();
+    
+    try {
+      // Mostrar loading
+      if (normalText) normalText.classList.add('hidden');
+      if (loadingSpinner) loadingSpinner.classList.remove('hidden');
+      if (submitBtn) submitBtn.disabled = true;
+      
+      // Leer valores del formulario
+      const valores = obtenerValoresFormulario();
+      
+      // Validar campos
+      if (!valores.titulo) {
+        mostrarError('titulo', 'El título es requerido');
+        throw new Error('Título requerido');
+      }
+      if (!valores.descripcion) {
+        mostrarError('descripcion', 'La descripción es requerida');
+        throw new Error('Descripción requerida');
+      }
+      if (!valores.tipoServicio) {
+        mostrarError('tipo-servicio', 'El tipo de servicio es requerido');
+        throw new Error('Tipo de servicio requerido');
+      }
+      if (!valores.unidadMedida) {
+        mostrarError('unidad-medida', 'La unidad de medida es requerida');
+        throw new Error('Unidad de medida requerida');
+      }
+      
+      // Guardar valores globales
+      window.n8nTitulo = valores.titulo;
+      window.n8nDescripcion = valores.descripcion;
+      window.n8nTipoServicio = valores.tipoServicio;
+      window.n8nUnidadMedida = valores.unidadMedida;
+      
+      // Ocultar formulario
+      const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+      if (formWrapper) {
+        const formCard = formWrapper.querySelector('.card');
+        if (formCard) formCard.style.display = 'none';
+        formWrapper.style.display = 'none';
+      }
+      
+      // Mostrar spinner
+      toggleSpinner(true);
+      
+      // Enviar datos
+      const sessionID = '{{ request.session.session_key|default:"" }}';
+      const urlEnviarEspecificacion = window.n8nUrls?.enviarEspecificacion || '/pliego_licitacion/enviar-especificacion/';
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      
+      let apiResponse;
+      try {
+        apiResponse = await fetch(urlEnviarEspecificacion, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            titulo: valores.titulo,
+            descripcion: valores.descripcion,
+            tipo_servicio: valores.tipoServicio,
+            unidad_medida: valores.unidadMedida,
+            sessionID: sessionID
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('La solicitud tardó más de 2 minutos. Por favor, intente nuevamente.');
+        }
+        throw error;
+      }
+      
+      if (!apiResponse.ok) {
+        const contentType = apiResponse.headers.get('content-type') || '';
+        let errorData;
+        try {
+          errorData = await apiResponse.json();
+        } catch (e) {
+          const errorText = await apiResponse.text();
+          if (contentType.includes('text/html') || errorText.includes('<html')) {
+            errorData = { error: apiResponse.status >= 500 
+              ? 'Error interno del servidor. Por favor, contacte al administrador.' 
+              : `Error del servidor (${apiResponse.status}).` };
+          } else {
+            errorData = { error: errorText.substring(0, 200) };
+          }
+        }
+        throw new Error(errorData.error || errorData.message || `Error HTTP: ${apiResponse.status}`);
+      }
+      
+      const contentType = apiResponse.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Respuesta inesperada del servidor.');
+      }
+      
+      const djangoResponse = await apiResponse.json();
+      
+      // Guardar ID de especificación
+      if (djangoResponse.especificacion_id) {
+        window.especificacionTecnicaId = djangoResponse.especificacion_id;
+        sessionStorage.setItem('especificacionTecnicaId', djangoResponse.especificacion_id);
+        const idDisplay = document.getElementById('especificacion-id-display');
+        const idValue = document.getElementById('especificacion-id-value');
+        if (idDisplay && idValue) {
+          idValue.textContent = djangoResponse.especificacion_id;
+          idDisplay.classList.remove('hidden');
+        }
+      }
+      
+      const apiResult = djangoResponse.response_data || djangoResponse;
+      toggleSpinner(false);
+      
+      // Verificar coherencia
+      let coherente = true;
+      let razon = null;
+      
+      if (Array.isArray(apiResult) && apiResult.length > 0) {
+        const firstItem = apiResult[0];
+        if (firstItem.content?.[0]?.text?.coherente === false) {
+          coherente = false;
+          razon = firstItem.content[0].text.razon;
+        }
+      } else if (apiResult?.coherente === false) {
+        coherente = false;
+        razon = apiResult.razon || apiResult.observacion;
+      }
+      
+      // Si no es coherente o hay observación, mostrar formulario con observación
+      if ((!coherente && razon) || apiResult.requiere_respuesta || apiResult.observacion) {
+        mostrarFormularioConObservacion(
+          { observacion: razon || apiResult.observacion, ...apiResult },
+          valores.titulo,
+          valores.descripcion,
+          valores.tipoServicio,
+          valores.unidadMedida
+        );
+        return;
+      }
+      
+      // Buscar parámetros en diferentes formatos
+      let parametrosData = null;
+      if (Array.isArray(apiResult) && apiResult[0]?.body?.parametros) {
+        parametrosData = { parametros: apiResult[0].body.parametros };
+      } else if (apiResult.body?.parametros) {
+        parametrosData = { parametros: apiResult.body.parametros };
+      } else if (apiResult.output?.parametros) {
+        parametrosData = apiResult.output;
+      }
+      
+      if (parametrosData?.parametros?.length > 0) {
+        renderizarTablaParametros(parametrosData, valores.titulo, valores.descripcion, valores.tipoServicio, valores.unidadMedida);
+      } else {
+        mostrarModalJSON(apiResult);
+      }
+      
+    } catch (error) {
+      toggleSpinner(false);
+      let errorMessage = error.message || 'Error desconocido';
+      if (errorMessage.includes('<html') || errorMessage.includes('<!DOCTYPE')) {
+        errorMessage = 'Error interno del servidor. Por favor, contacte al administrador.';
+      }
+      if (errorMessage.length > 300) {
+        errorMessage = errorMessage.substring(0, 300) + '...';
+      }
+      alert('Hubo un error: ' + errorMessage);
+    } finally {
+      if (normalText) normalText.classList.remove('hidden');
+      if (loadingSpinner) loadingSpinner.classList.add('hidden');
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+})();
+
+// Función global: mostrar/ocultar spinner
+function toggleSpinner(mostrar) {
+  let spinner = document.getElementById('spinner-container');
+  if (!spinner && mostrar) {
+    const mainContainer = document.querySelector('div.flex.flex-col.items-center');
+    if (mainContainer) {
+      spinner = document.createElement('div');
+      spinner.id = 'spinner-container';
+      spinner.className = 'flex flex-col items-center justify-center mt-12 mb-8';
+      spinner.innerHTML = `
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+        <p class="mt-4 text-lg font-semibold text-primary">Generando parámetros técnicos...</p>
+        <div class="flex gap-2 mt-4">
+          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0s;"></div>
+          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
+          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
+        </div>
+      `;
+      mainContainer.insertBefore(spinner, mainContainer.firstChild);
+    }
+  }
+  if (spinner) {
+    spinner.style.display = mostrar ? 'flex' : 'none';
+    if (mostrar) {
+      spinner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+}
+
+// Función para mostrar modal con JSON
+function mostrarModalJSON(data) {
+  const modal = document.getElementById('modal-respuesta-json');
+  const content = document.getElementById('modal-respuesta-json-content');
+  
+  if (!modal || !content) {
+    console.error('Modal de respuesta JSON no encontrado');
+    return;
+  }
+  
+  content.textContent = JSON.stringify(data, null, 2);
+  
+  if (modal.showModal) {
+    modal.showModal();
+  } else {
+    modal.setAttribute('open', '');
+    modal.classList.add('modal-open');
+  }
+}
+
+// Función para renderizar tabla de parámetros
+function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, unidadMedida) {
+  window.n8nTitulo = titulo;
+  window.n8nDescripcion = descripcion;
+  window.n8nTipoServicio = tipoServicio;
+  window.n8nUnidadMedida = unidadMedida || '';
+  
+  toggleSpinner(false);
+  
+  const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+  if (formWrapper) formWrapper.style.display = 'none';
+  
+  try {
+    sessionStorage.setItem('n8n_parametros', JSON.stringify(output.parametros));
+    sessionStorage.setItem('n8n_actividad', output.actividad || '');
+    sessionStorage.setItem('n8n_titulo', titulo);
+    sessionStorage.setItem('n8n_descripcion', descripcion);
+    sessionStorage.setItem('n8n_tipo_servicio', tipoServicio);
+    sessionStorage.setItem('n8n_unidad_medida', unidadMedida || '');
+  } catch (error) {
+    console.error('Error al guardar en sessionStorage:', error);
+  }
+  
+  const modal = document.getElementById('modal-parametros-tecnicos');
+  if (!modal) {
+    mostrarModalJSON({error: 'No se encontró el modal de parámetros'});
+    return;
+  }
+  
+  const modalTitulo = document.getElementById('modal-parametros-titulo');
+  if (modalTitulo) {
+    modalTitulo.textContent = output.actividad 
+      ? `Parámetros Técnicos - ${output.actividad}` 
+      : 'Parámetros Técnicos';
+  }
+  
+  const tableBody = document.getElementById('parametros-table-body');
+  if (!tableBody) {
+    mostrarModalJSON({error: 'No se encontró el cuerpo de la tabla'});
+    return;
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  tableBody.innerHTML = '';
+  
+  const parametros = output.parametros || [];
+  parametros.forEach((parametro, index) => {
+    const row = document.createElement('tr');
+    row.className = 'parametro-row';
+    row.setAttribute('data-index', index);
+    const unidad = parametro.unidad_medida || '';
+    
+    row.innerHTML = `
+      <td>
+        <input 
+          type="checkbox" 
+          class="checkbox checkbox-primary parametro-checkbox" 
+          data-parametro="${escapeHtml(parametro.parametro || '')}"
+          data-valor="${escapeHtml(parametro.valor_recomendado || '')}"
+          data-detalle="${escapeHtml(parametro.detalle || '')}"
+          data-unidad="${escapeHtml(unidad)}"
+          id="param-${index}"
+          ${parametro.check ? 'checked' : ''}
+        >
+      </td>
+      <td class="font-semibold">${escapeHtml(parametro.parametro || '')}</td>
+      <td class="text-right">
+        <input 
+          type="text" 
+          class="input input-bordered input-primary input-sm w-full valor-recomendado-input focus:input-primary text-right" 
+          value="${escapeHtml(parametro.valor_recomendado || '')}"
+          data-original-value="${escapeHtml(parametro.valor_recomendado || '')}"
+        >
+      </td>
+      <td class="text-sm text-base-content/70 font-medium text-center">${escapeHtml(unidad)}</td>
+      <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap: break-word; white-space: pre-wrap; min-width: 200px;">${escapeHtml(parametro.detalle || '')}</td>
+    `;
+    tableBody.appendChild(row);
+  });
+  
+  const nuevaFilaRow = document.createElement('tr');
+  nuevaFilaRow.id = 'nuevo-parametro-row';
+  nuevaFilaRow.className = 'bg-base-200';
+  nuevaFilaRow.innerHTML = `
+    <td>
+      <button class="btn btn-sm btn-success" id="agregar-parametro-btn" title="Agregar parámetro">
+        <i class="fas fa-plus"></i>
+      </button>
+    </td>
+    <td>
+      <input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-nombre" placeholder="Nombre del parámetro">
+    </td>
+    <td class="text-right">
+      <input type="text" class="input input-bordered input-sm w-full text-right" id="nuevo-parametro-valor" placeholder="Valor recomendado">
+    </td>
+    <td class="text-center">
+      <input type="text" class="input input-bordered input-sm w-full text-center" id="nuevo-parametro-unidad" placeholder="Unidad de medida">
+    </td>
+    <td>
+      <input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-detalle" placeholder="Detalle (opcional)">
+    </td>
+  `;
+  tableBody.appendChild(nuevaFilaRow);
+  
+  setTimeout(() => {
+    if (typeof cargarScriptParametros === 'function') {
+      cargarScriptParametros();
+    }
+  }, 100);
+  
+  if (modal.showModal) {
+    modal.showModal();
+  } else {
+    modal.setAttribute('open', '');
+    modal.classList.add('modal-open');
+  }
+}
+
+// Función para mostrar formulario con observación
+function mostrarFormularioConObservacion(apiResult, tituloOriginal, descripcionOriginal, tipoServicioOriginal, unidadMedidaOriginal) {
+  const titulo = apiResult.titulo || apiResult.titulo_actual || tituloOriginal || '';
+  const descripcion = apiResult.descripcion || apiResult.descripcion_actual || descripcionOriginal || '';
+  const tipoServicio = tipoServicioOriginal || '';
+  const unidadMedida = (apiResult.unidad_medida !== undefined && apiResult.unidad_medida !== null && apiResult.unidad_medida !== '') 
+    ? apiResult.unidad_medida 
+    : (unidadMedidaOriginal || '');
+  const observacion = apiResult.observacion || apiResult.pregunta || '';
+  
+  window.especificacionTecnicaId = null;
+  sessionStorage.removeItem('especificacionTecnicaId');
+  
+  const idDisplay = document.getElementById('especificacion-id-display');
+  if (idDisplay) idDisplay.classList.add('hidden');
+  
+  toggleSpinner(false);
+  
+  // Buscar y eliminar contenedores duplicados del formulario
+  const allContainers = document.querySelectorAll('.flex.flex-col.items-center.justify-center.mt-8');
+  let formContainer = null;
+  
+  // Buscar el contenedor que contiene el formulario original
+  const formOriginal = document.getElementById('datos-generales-form');
+  if (formOriginal) {
+    formContainer = formOriginal.closest('.flex.flex-col.items-center.justify-center.mt-8');
+  }
+  
+  // Si no se encontró, usar el primero que exista
+  if (!formContainer && allContainers.length > 0) {
+    formContainer = allContainers[0];
+  }
+  
+  // Eliminar otros contenedores duplicados (mantener solo uno)
+  allContainers.forEach((container, index) => {
+    if (container !== formContainer) {
+      container.remove();
+    }
+  });
+  
+  // Si no existe ningún contenedor, crear uno nuevo
+  if (!formContainer) {
+    const mainContainer = document.querySelector('div.flex.flex-col.items-center') || document.body;
+    formContainer = document.createElement('div');
+    formContainer.className = 'flex flex-col items-center justify-center mt-8 w-full max-w-5xl';
+    if (mainContainer === document.body) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex flex-col items-center';
+      wrapper.appendChild(formContainer);
+      mainContainer.appendChild(wrapper);
+    } else {
+      mainContainer.appendChild(formContainer);
+    }
+  }
+  
+  // Asegurarse de que esté visible
+  formContainer.style.display = 'flex';
+  
+  const observacionHTML = observacion ? `
+    <div class="alert alert-warning mb-4">
+      <i class="fas fa-exclamation-triangle mr-2"></i>
+      <div>
+        <div class="font-semibold mb-1">Observación:</div>
+        <div>${observacion.replace(/\n/g, '<br>')}</div>
+      </div>
+    </div>
+  ` : '';
+  
+  formContainer.innerHTML = `
+    <div class="card bg-base-100 shadow-2xl w-full hover:shadow-3xl transition-shadow">
+      <div class="card-body p-8">
+        <div class="mb-6">
+          <h2 class="card-title text-2xl mb-2">
+            <div class="flex items-center gap-4">
+              <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg animate-pulse-glow">
+                1
+              </div>
+              <span class="text-primary">
+                <i class="fas fa-database mr-2"></i>
+                Datos Iniciales
+              </span>
+            </div>
+          </h2>
+          <p class="text-sm text-base-content/60 ml-14">Complete los datos para generar la especificación técnica</p>
+        </div>
+        ${observacionHTML}
+        <form id="datos-generales-form" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="form-control w-full">
+              <label class="label" for="titulo">
+                <span class="label-text font-semibold flex items-center gap-2">
+                  <i class="fas fa-heading text-primary"></i>
+                  Actividad
+                </span>
+                <span class="label-text-alt text-error font-bold">*</span>
+              </label>
+              <input type="text" name="titulo" id="titulo" class="input input-bordered input-primary w-full focus:input-primary" placeholder="Ingrese el nombre de la actividad" value="${titulo.replace(/"/g, '&quot;')}" required>
+              <label class="label hidden" id="titulo-error-label">
+                <span class="label-text-alt text-error" id="titulo-error"></span>
+              </label>
+            </div>
+            <div class="form-control w-full">
+              <label class="label" for="unidad_medida">
+                <span class="label-text font-semibold flex items-center gap-2">
+                  <i class="fas fa-ruler text-primary"></i>
+                  Unidad de medida
+                </span>
+                <span class="label-text-alt text-error font-bold">*</span>
+              </label>
+              <input type="text" name="unidad_medida" id="unidad_medida" class="input input-bordered input-primary w-full focus:input-primary" placeholder="Ej: glb, pz, m²" value="${unidadMedida.replace(/"/g, '&quot;')}" maxlength="10" required>
+              <label class="label">
+                <span class="label-text-alt text-base-content/60">Máximo 10 caracteres</span>
+              </label>
+              <label class="label hidden" id="unidad-medida-error-label">
+                <span class="label-text-alt text-error" id="unidad-medida-error"></span>
+              </label>
+            </div>
+          </div>
+          <div class="form-control w-full">
+            <label class="label" for="tipo_servicio">
+              <span class="label-text font-semibold flex items-center gap-2">
+                <i class="fas fa-cogs text-primary"></i>
+                Tipo de Servicio
+              </span>
+              <span class="label-text-alt text-error font-bold">*</span>
+            </label>
+            <select name="tipo_servicio" id="tipo_servicio" class="select select-bordered select-primary w-full focus:select-primary" required>
+              <option value="">Seleccione un tipo de servicio</option>
+              <option value="Mecánico" ${tipoServicio === 'Mecánico' ? 'selected' : ''}>Mecánico</option>
+              <option value="Eléctrico" ${tipoServicio === 'Eléctrico' ? 'selected' : ''}>Eléctrico</option>
+              <option value="Instrumentación" ${tipoServicio === 'Instrumentación' ? 'selected' : ''}>Instrumentación</option>
+              <option value="SSMA (Seguridad, Salud y Medio Ambiente)" ${tipoServicio === 'SSMA (Seguridad, Salud y Medio Ambiente)' ? 'selected' : ''}>SSMA (Seguridad, Salud y Medio Ambiente)</option>
+              <option value="Infraestructura / Obras Civiles" ${tipoServicio === 'Infraestructura / Obras Civiles' ? 'selected' : ''}>Infraestructura / Obras Civiles (OOCC)</option>
+              <option value="Mantenimiento de Vehículos" ${tipoServicio === 'Mantenimiento de Vehículos' ? 'selected' : ''}>Mantenimiento de Vehículos</option>
+              <option value="Laboratorio y Aseguramiento de la Calidad" ${tipoServicio === 'Laboratorio y Aseguramiento de la Calidad' ? 'selected' : ''}>Laboratorio y Aseguramiento de la Calidad</option>
+              <option value="Logística y Distribución" ${tipoServicio === 'Logística y Distribución' ? 'selected' : ''}>Logística y Distribución</option>
+            </select>
+            <label class="label hidden" id="tipo-servicio-error-label">
+              <span class="label-text-alt text-error" id="tipo-servicio-error"></span>
+            </label>
+          </div>
+          <div class="form-control w-full">
+            <label class="label" for="descripcion">
+              <span class="label-text font-semibold flex items-center gap-2">
+                <i class="fas fa-align-left text-primary"></i>
+                Descripción
+              </span>
+              <span class="label-text-alt text-error font-bold">*</span>
+            </label>
+            <textarea name="descripcion" id="descripcion" class="textarea textarea-bordered textarea-primary w-full focus:textarea-primary" rows="3" placeholder="Ingrese la descripción detallada..." required>${descripcion.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+            <label class="label hidden" id="descripcion-error-label">
+              <span class="label-text-alt text-error" id="descripcion-error"></span>
+            </label>
+          </div>
+          <div class="flex justify-end mt-8 pt-6 border-t border-base-300">
+            <button type="button" id="btn-continuar-datos" class="btn btn-primary">
+              <span class="normal-text flex items-center gap-2">
+                <i class="fas fa-arrow-right"></i>
+                Continuar
+              </span>
+              <span class="loading loading-spinner loading-sm hidden"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  setTimeout(() => {
+    formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+// NOTA: Las siguientes funciones han sido movidas a sus respectivos archivos de modal para mejor mantenimiento:
+// - cargarScriptParametros() -> paso2_parametros.html
+// - enviarTituloAjustado() -> paso3_titulo.html  
+// - renderizarTablaActividades() -> paso4_actividades.html
+// - cargarScriptActividades() -> paso4_actividades.html
+</script>
+{% endblock %}
+
