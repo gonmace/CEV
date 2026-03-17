@@ -24,6 +24,7 @@ class Proyecto(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     activo = models.BooleanField(default=True)
+    fecha_eliminacion = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de eliminación")
     publico = models.BooleanField(default=False, verbose_name="Público")
 
     class Meta:

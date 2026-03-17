@@ -29,83 +29,59 @@ from .models import Proyecto, Especificacion, EspecificacionImagen
 from .forms import ProyectoForm, EspecificacionForm
 
 
-def replace_header_placeholders(doc, proyecto, proyecto_nombre=None, solicitante=None, servicio=None, revision="1", fecha=None):
+def replace_header_placeholders(doc, proyecto, **overrides):
     """
-    Reemplaza los placeholders en el encabezado del documento Word con datos del proyecto.
-    
-    Args:
-        doc: Documento Word
-        proyecto: Instancia del modelo Proyecto
-        proyecto_nombre: Nombre del proyecto personalizado (opcional)
-        solicitante: Solicitante personalizado (opcional)
-        servicio: Servicio personalizado (opcional)
-        revision: Número de revisión (por defecto "1")
-        fecha: Fecha personalizada (opcional, formato DD/MM/YYYY)
+    Reemplaza placeholders <<...>> en encabezados y body del documento Word.
+
+    Para agregar un nuevo placeholder, añadir una entrada al dict `placeholders`.
+
+    Overrides opcionales (kwargs):
+        proyecto_nombre, solicitante, servicio, revision (default "1"), fecha
     """
-    # Usar valores personalizados si se proporcionan, sino usar los del proyecto
-    proyecto_val = proyecto_nombre if proyecto_nombre is not None else (proyecto.nombre or '')
-    solicitante_val = solicitante if solicitante is not None else (proyecto.solicitante or '')
-    servicio_val = servicio if servicio is not None else (proyecto.descripcion or proyecto.ubicacion or '')
-    fecha_val = fecha if fecha is not None else (proyecto.fecha_creacion.strftime("%d/%m/%Y") if proyecto.fecha_creacion else '')
-    
-    # Mapeo de placeholders a valores
-    replacements = {
-        '<<PROYECTO>>': proyecto_val,
-        '<<SOLICITANTE>>': solicitante_val,
-        '<<SERVICIO>>': servicio_val,
-        '<<REV>>': revision,
-        '<<REV.>>': revision,  # Por si tiene punto
-        '<<FECHA>>': fecha_val,
+    fecha_proyecto = proyecto.fecha_creacion.strftime("%d/%m/%Y") if proyecto.fecha_creacion else ''
+
+    proyecto_nombre = overrides.get('proyecto_nombre') or proyecto.nombre or ''
+
+    placeholders = {
+        '<<PROYECTO>>':    proyecto_nombre,
+        '<<SOLICITANTE>>': overrides.get('solicitante')     or proyecto.solicitante or '',
+        '<<SERVICIO>>':    overrides.get('servicio')        or proyecto.descripcion or proyecto.ubicacion or '',
+        '<<REV>>':         overrides.get('revision', '1'),
+        '<<REV.>>':        overrides.get('revision', '1'),
+        '<<FECHA>>':       overrides.get('fecha') or fecha_proyecto,
+        # Para agregar un nuevo placeholder:
+        # '<<TITULO>>': overrides.get('titulo') or '',
     }
-    
-    def replace_in_element(element):
-        """Función auxiliar para reemplazar placeholders en un elemento"""
-        # Si es un párrafo, trabajar con su texto completo
-        if hasattr(element, 'runs'):
-            # Primero obtener todo el texto del párrafo
-            full_text = ''.join([run.text for run in element.runs])
-            
-            # Si hay algún placeholder, reemplazar
-            if any(ph in full_text for ph in replacements.keys()):
-                # Aplicar reemplazos
-                new_text = full_text
-                for placeholder, value in replacements.items():
-                    new_text = new_text.replace(placeholder, value)
-                
-                # Limpiar todos los runs y agregar el texto reemplazado
-                # Preservar el formato del primer run si existe
-                if element.runs:
-                    # Guardar formato del primer run
-                    first_run = element.runs[0]
-                    # Limpiar todos los runs
-                    for run in element.runs:
-                        run.text = ''
-                    # Agregar texto con el formato del primer run
-                    first_run.text = new_text
-                else:
-                    element.add_run(new_text)
-        elif hasattr(element, 'text'):
-            # Para otros elementos con texto directo
-            if element.text:
-                for placeholder, value in replacements.items():
-                    if placeholder in element.text:
-                        element.text = element.text.replace(placeholder, value)
-    
-    # Reemplazar en todas las secciones del documento
-    for section in doc.sections:
-        # Reemplazar en el encabezado
-        header = section.header
-        
-        # Reemplazar en párrafos del encabezado
-        for paragraph in header.paragraphs:
-            replace_in_element(paragraph)
-        
-        # También buscar en tablas del encabezado
-        for table in header.tables:
+
+    placeholders_body = {**placeholders, '<<PROYECTO>>': proyecto_nombre.upper()}
+
+    def replace_in_paragraph(para, ph_map):
+        full_text = ''.join(r.text for r in para.runs)
+        if not any(ph in full_text for ph in ph_map):
+            return
+        for ph, val in ph_map.items():
+            full_text = full_text.replace(ph, val)
+        for run in para.runs:
+            run.text = ''
+        if para.runs:
+            para.runs[0].text = full_text
+        else:
+            para.add_run(full_text)
+
+    def replace_in_container(container, ph_map):
+        for para in container.paragraphs:
+            replace_in_paragraph(para, ph_map)
+        for table in container.tables:
             for row in table.rows:
                 for cell in row.cells:
-                    for paragraph in cell.paragraphs:
-                        replace_in_element(paragraph)
+                    replace_in_container(cell, ph_map)
+
+    # Encabezados: nombre normal
+    for section in doc.sections:
+        replace_in_container(section.header, placeholders)
+
+    # Body: <<PROYECTO>> en mayúsculas
+    replace_in_container(doc, placeholders_body)
 
 
 def _get_especificaciones_accesibles(request):
@@ -419,11 +395,10 @@ def exportar_proyecto_word_view(request, proyecto_id):
     os.makedirs(template_dir, exist_ok=True)
     
     if os.path.exists(template_path):
-        # Cargar el template (conserva encabezados y pies de página)
+        # Cargar el template (conserva header/footer/estilos)
         doc = Document(template_path)
-        # Reemplazar placeholders en el encabezado con datos del proyecto (o valores personalizados)
         replace_header_placeholders(
-            doc, 
+            doc,
             proyecto,
             proyecto_nombre=proyecto_nombre,
             solicitante=solicitante,
@@ -431,16 +406,72 @@ def exportar_proyecto_word_view(request, proyecto_id):
             revision=revision,
             fecha=fecha
         )
+        usa_template = True
     else:
-        # Crear documento nuevo sin template
         doc = Document()
+        usa_template = False
+
+    # Solo aplicar estilos base cuando no hay template
+    if not usa_template:
+        style = doc.styles['Normal']
+        style.font.name = 'Arial'
+        style.font.size = Pt(11)
+
+    # Tabla de contenidos — Word la actualiza automáticamente al abrir (dirty=true)
+    toc_para = doc.add_paragraph()
+    p = toc_para._p
+
+    def _make_run_with(child):
+        r = OxmlElement('w:r')
+        r.append(child)
+        return r
+
+    fld_begin = OxmlElement('w:fldChar')
+    fld_begin.set(qn('w:fldCharType'), 'begin')
+    fld_begin.set(qn('w:dirty'), 'true')
+    p.append(_make_run_with(fld_begin))
+
+    instr = OxmlElement('w:instrText')
+    instr.set(qn('xml:space'), 'preserve')
+    instr.text = ' TOC \\o "2-4" \\h \\z \\u '
+    p.append(_make_run_with(instr))
+
+    fld_sep = OxmlElement('w:fldChar')
+    fld_sep.set(qn('w:fldCharType'), 'separate')
+    p.append(_make_run_with(fld_sep))
+
+    placeholder = OxmlElement('w:r')
+    t = OxmlElement('w:t')
+    t.text = 'Actualizando tabla de contenidos...'
+    placeholder.append(t)
+    p.append(placeholder)
+
+    fld_end = OxmlElement('w:fldChar')
+    fld_end.set(qn('w:fldCharType'), 'end')
+    p.append(_make_run_with(fld_end))
+
+    # Forzar actualización de campos al abrir — eliminar duplicados primero
+    doc_settings = doc.settings.element
+    for existing in doc_settings.findall(qn('w:updateFields')):
+        doc_settings.remove(existing)
+    update_fields = OxmlElement('w:updateFields')
+    update_fields.set(qn('w:val'), '1')
+    doc_settings.insert(0, update_fields)
     
-    # Configurar estilos
-    style = doc.styles['Normal']
-    font = style.font
-    font.name = 'Arial'
-    font.size = Pt(11)
-    
+    # Helper: agrega párrafo de caption respetando el template
+    def add_caption(text):
+        style_name = 'Caption' if usa_template and 'Caption' in doc.styles else None
+        if style_name:
+            p = doc.add_paragraph(style=style_name)
+        else:
+            p = doc.add_paragraph()
+        run = p.add_run(text)
+        if not style_name:
+            run.font.size = Pt(9)
+            run.font.italic = True
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        return p
+
     # Función para agregar texto con formato a un párrafo
     def add_formatted_text(para, elem):
         """Agrega texto con formato (negritas, cursivas, etc.) a un párrafo"""
@@ -732,10 +763,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
                                 if child.name.lower() in ['em', 'i']:
                                     text = child.get_text().strip()
                                     if text and ('Figura' in text or 'figura' in text):
-                                        caption_para = doc.add_paragraph(text)
-                                        caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                        caption_para.style.font.size = Pt(9)
-                                        caption_para.style.font.italic = True
+                                        caption_para = add_caption(text)
                                     else:
                                         para = doc.add_paragraph()
                                         add_formatted_text(para, child)
@@ -754,19 +782,13 @@ def exportar_proyecto_word_view(request, proyecto_id):
                             if prev_elem:
                                 if prev_elem.name == 'img':
                                     # Ya se procesó la imagen, solo agregar el pie de figura
-                                    caption_para = doc.add_paragraph(text)
-                                    caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                    caption_para.style.font.size = Pt(9)
-                                    caption_para.style.font.italic = True
+                                    caption_para = add_caption(text)
                                     return
                                 elif prev_elem.name == 'p':
                                     prev_img = prev_elem.find('img')
                                     if prev_img:
                                         # Ya se procesó la imagen, solo agregar el pie de figura
-                                        caption_para = doc.add_paragraph(text)
-                                        caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                        caption_para.style.font.size = Pt(9)
-                                        caption_para.style.font.italic = True
+                                        caption_para = add_caption(text)
                                         return
                     
                     # Procesamiento normal del párrafo
@@ -978,10 +1000,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
                                     caption_text = em_or_i_after.get_text().strip()
                                     if caption_text and ('Figura' in caption_text or 'figura' in caption_text):
                                         # Agregar el pie de figura después de la imagen
-                                        caption_para = doc.add_paragraph(caption_text)
-                                        caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                        caption_para.style.font.size = Pt(9)
-                                        caption_para.style.font.italic = True
+                                        caption_para = add_caption(caption_text)
                                         return
                                 
                                 # Si no está en el mismo párrafo, buscar en el siguiente párrafo hermano
@@ -992,10 +1011,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
                                         caption_text = em_or_i.get_text().strip()
                                         if caption_text and ('Figura' in caption_text or 'figura' in caption_text):
                                             # Agregar el pie de figura después de la imagen
-                                            caption_para = doc.add_paragraph(caption_text)
-                                            caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                            caption_para.style.font.size = Pt(9)
-                                            caption_para.style.font.italic = True
+                                            caption_para = add_caption(caption_text)
                                             # Marcar este elemento para que no se procese de nuevo
                                             next_p['_processed'] = True
                                             return
@@ -1008,20 +1024,14 @@ def exportar_proyecto_word_view(request, proyecto_id):
                                         caption_text = em_or_i.get_text().strip()
                                         if caption_text and ('Figura' in caption_text or 'figura' in caption_text):
                                             # Agregar el pie de figura después de la imagen
-                                            caption_para = doc.add_paragraph(caption_text)
-                                            caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                            caption_para.style.font.size = Pt(9)
-                                            caption_para.style.font.italic = True
+                                            caption_para = add_caption(caption_text)
                                             # Marcar este elemento para que no se procese de nuevo
                                             next_elem['_processed'] = True
                                             return
                             
                             # Si no hay pie de figura siguiente, usar el texto alternativo si existe
                             if alt:
-                                caption_para = doc.add_paragraph(alt)
-                                caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                caption_para.style.font.size = Pt(9)
-                                caption_para.style.font.italic = True
+                                caption_para = add_caption(alt)
                     except Exception as e:
                         # Si hay error, agregar texto alternativo
                         para = doc.add_paragraph()
@@ -1174,24 +1184,27 @@ def exportar_proyecto_word_view(request, proyecto_id):
                             ratio = min(max_width_inches / width_inches, max_height_inches / height_inches)
                             width_inches *= ratio
                             height_inches *= ratio
-                        
+
+                        width_inches *= 0.9
+
                         run = para.add_run()
                         run.add_picture(mapa_path, width=Inches(width_inches))
                         
                         # Agregar pie de figura
-                        caption_para = doc.add_paragraph(f"Mapa satelital del sitio {ubicacion.nombre}")
-                        caption_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        caption_para.style.font.size = Pt(9)
-                        caption_para.style.font.italic = True
+                        caption_para = add_caption(f"Mapa satelital del sitio {ubicacion.nombre}")
                 except Exception as e:
                     # Si hay error al agregar la imagen, continuar sin ella
                     pass
             
             # Espacio después de la ubicación
             doc.add_paragraph()
-            doc.add_paragraph('─' * 50)
-            doc.add_paragraph()
-    
+
+    # Título de sección antes de las especificaciones
+    if especificaciones:
+        doc.add_heading("Especificaciones Técnicas", level=2)
+
+    resumen_cantidades = []  # acumulador para el resumen final
+
     # Agregar cada especificación
     for especificacion in especificaciones:
         # Procesar el contenido markdown de la especificación usando la función común
@@ -1200,14 +1213,12 @@ def exportar_proyecto_word_view(request, proyecto_id):
         # Agregar imágenes si existen
         imagenes = especificacion.imagenes.all()
         if imagenes:
-            doc.add_paragraph()
-            
             num_imagenes = imagenes.count()
             num_filas = (num_imagenes + 1) // 2
-            
+
             # Crear tabla con 2 columnas sin bordes
             table = doc.add_table(rows=num_filas, cols=2)
-            
+
             # Eliminar bordes de la tabla
             for row in table.rows:
                 for cell in row.cells:
@@ -1215,12 +1226,10 @@ def exportar_proyecto_word_view(request, proyecto_id):
                     if tcPr is None:
                         tcPr = OxmlElement('w:tcPr')
                         cell._element.append(tcPr)
-                    
                     tcBorders = tcPr.find(qn('w:tcBorders'))
                     if tcBorders is None:
                         tcBorders = OxmlElement('w:tcBorders')
                         tcPr.append(tcBorders)
-                    
                     for border_name in ['top', 'left', 'bottom', 'right']:
                         border = tcBorders.find(qn(f'w:{border_name}'))
                         if border is None:
@@ -1229,7 +1238,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
                         border.set(qn('w:val'), 'nil')
                         border.set(qn('w:sz'), '0')
                         border.set(qn('w:space'), '0')
-            
+
             # Llenar la tabla con las imágenes
             imagen_index = 0
             for row in table.rows:
@@ -1237,85 +1246,105 @@ def exportar_proyecto_word_view(request, proyecto_id):
                     if imagen_index < num_imagenes:
                         imagen = imagenes[imagen_index]
                         imagen_path = imagen.imagen.path
-                        
+
                         if os.path.exists(imagen_path):
                             try:
-                                paragraph = cell.paragraphs[0]
-                                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                
+                                img_para = cell.paragraphs[0]
+                                img_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
                                 img = Image.open(imagen_path)
                                 max_width_inches = 3.0
                                 max_height_inches = 3.0
-                                
-                                img_width_px = img.width
-                                img_height_px = img.height
-                                
+
                                 try:
                                     dpi = img.info.get('dpi', (96, 96))[0]
-                                except:
+                                except Exception:
                                     dpi = 96
-                                
-                                width_inches = img_width_px / dpi
-                                height_inches = img_height_px / dpi
-                                
+
+                                width_inches = img.width / dpi
+                                height_inches = img.height / dpi
+
                                 if width_inches > max_width_inches or height_inches > max_height_inches:
                                     ratio = min(max_width_inches / width_inches, max_height_inches / height_inches)
                                     width_inches *= ratio
-                                    height_inches *= ratio
-                                
-                                run = paragraph.add_run()
+
+                                width_inches *= 0.8  # reducir al 80%
+
+                                run = img_para.add_run()
                                 run.add_picture(imagen_path, width=Inches(width_inches))
-                                
+
                                 if imagen.descripcion:
-                                    desc_para = cell.add_paragraph(imagen.descripcion)
+                                    desc_para = cell.add_paragraph()
                                     desc_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                    desc_para.style.font.size = Pt(9)
-                            except Exception as e:
-                                error_para = cell.paragraphs[0]
-                                error_para.add_run('[Error al cargar imagen]')
-                                error_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
+                                    desc_run = desc_para.add_run(imagen.descripcion)
+                                    desc_run.font.size = Pt(8)
+                                    desc_run.font.italic = True
+                            except Exception:
+                                cell.paragraphs[0].add_run('[Error al cargar imagen]')
+
                         imagen_index += 1
-            
-            doc.add_paragraph()
         
         # Agregar tabla de cantidades al final de la especificación
         # Solo si hay elementos con cantidad
         elementos_con_cantidad = []
-        
-        # Verificar si la especificación tiene cantidad
-        if especificacion.cantidad and especificacion.cantidad.strip():
-            elementos_con_cantidad.append({
+
+        # Fila principal de la especificación (solo si mostrar=True y tiene cantidad)
+        if especificacion.mostrar and especificacion.cantidad and especificacion.cantidad.strip():
+            item = {
                 'nombre': especificacion.titulo,
                 'unidad': especificacion.unidad_medida or '',
                 'cantidad': especificacion.cantidad.strip()
-            })
+            }
+            elementos_con_cantidad.append(item)
+            resumen_cantidades.append(item)
+
+        # Actividades adicionales con mostrar=True
+        if especificacion.actividades_adicionales:
+            for actividad in especificacion.actividades_adicionales:
+                if actividad.get('mostrar', False):
+                    nombre = actividad.get('nombre', '').strip()
+                    cantidad = str(actividad.get('cantidad', '')).strip()
+                    unidad = actividad.get('unidad', especificacion.unidad_medida or '')
+                    if nombre and cantidad:
+                        item = {
+                            'nombre': nombre,
+                            'unidad': unidad,
+                            'cantidad': cantidad
+                        }
+                        elementos_con_cantidad.append(item)
+                        resumen_cantidades.append(item)
         
         # Si hay elementos con cantidad, crear la tabla
         if elementos_con_cantidad:
-            doc.add_paragraph()  # Espacio antes de la tabla
-            
-            # Crear tabla con 3 columnas: Nombre, Unidad, Cantidad
+            doc.add_heading("Cantidades", level=4)
+
+            # Crear tabla con 3 columnas: Actividad, Unidad, Cantidad
             tabla_cantidades = doc.add_table(rows=len(elementos_con_cantidad) + 1, cols=3)
             tabla_cantidades.style = 'Light Grid Accent 1'  # Estilo de tabla
             
             # Centrar la tabla horizontalmente en el documento
             tabla_cantidades.alignment = WD_TABLE_ALIGNMENT.CENTER
             
-            # Ancho estándar de página en Word (papel carta): ~6.5 pulgadas
-            # Aplicar 80% del ancho de página
-            # 1 pulgada = 1440 twips (unidad que usa Word internamente)
-            ancho_total_tabla_pulgadas = 6.5 * 0.8  # 80% del ancho de página en pulgadas
-            ancho_total_tabla_twips = int(ancho_total_tabla_pulgadas * 1440)  # Convertir a twips
-            
-            # Configurar ancho de columnas (Nombre: 50%, Unidad: 20%, Cantidad: 30%)
-            tabla_cantidades.columns[0].width = int(ancho_total_tabla_twips * 0.5)  # Nombre: 50%
-            tabla_cantidades.columns[1].width = int(ancho_total_tabla_twips * 0.2)  # Unidad: 20%
-            tabla_cantidades.columns[2].width = int(ancho_total_tabla_twips * 0.3)  # Cantidad: 30%
-            
+            # Ancho total: 80% de página carta (6.5") en twips (1" = 1440 twips)
+            ancho_total = int(6.5 * 0.8 * 1440)
+            col_widths = [int(ancho_total * 0.70), int(ancho_total * 0.10), int(ancho_total * 0.20)]
+
+            # python-docx ignora column.width; hay que setear celda por celda
+            for row in tabla_cantidades.rows:
+                for i, cell in enumerate(row.cells):
+                    tc = cell._tc
+                    tcPr = tc.get_or_add_tcPr()
+                    tcW = OxmlElement('w:tcW')
+                    tcW.set(qn('w:w'), str(col_widths[i]))
+                    tcW.set(qn('w:type'), 'dxa')
+                    existing = tcPr.find(qn('w:tcW'))
+                    if existing is not None:
+                        tcPr.remove(existing)
+                    tcPr.append(tcW)
+
             # Agregar encabezados
             header_cells = tabla_cantidades.rows[0].cells
-            header_cells[0].text = 'Nombre'
+            header_cells[0].text = 'Actividad'
             header_cells[1].text = 'Unidad'
             header_cells[2].text = 'Cantidad'
             
@@ -1333,20 +1362,68 @@ def exportar_proyecto_word_view(request, proyecto_id):
                 row_cells[0].text = elemento['nombre']
                 row_cells[1].text = elemento['unidad']
                 row_cells[2].text = elemento['cantidad']
-                
-                # Centrar todas las celdas (horizontal y verticalmente)
-                for cell in row_cells:
+
+                for i, cell in enumerate(row_cells):
                     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                     for paragraph in cell.paragraphs:
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if i == 0 else WD_ALIGN_PARAGRAPH.CENTER
+                        for run in paragraph.runs:
+                            run.bold = False
             
             doc.add_paragraph()  # Espacio después de la tabla
         
         # Espacio entre especificaciones
         doc.add_paragraph()
-        doc.add_paragraph('─' * 50)
-        doc.add_paragraph()
-    
+
+    # Resumen de cantidades al final del documento
+    if resumen_cantidades:
+        doc.add_heading("Resumen de Cantidades", level=2)
+
+        ancho_total = int(6.5 * 0.8 * 1440)
+        col_widths_res = [int(ancho_total * 0.70), int(ancho_total * 0.10), int(ancho_total * 0.20)]
+
+        tabla_resumen = doc.add_table(rows=len(resumen_cantidades) + 1, cols=3)
+        tabla_resumen.style = 'Light Grid Accent 1'
+        tabla_resumen.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+        # Anchos celda por celda
+        for row in tabla_resumen.rows:
+            for i, cell in enumerate(row.cells):
+                tc = cell._tc
+                tcPr = tc.get_or_add_tcPr()
+                tcW = OxmlElement('w:tcW')
+                tcW.set(qn('w:w'), str(col_widths_res[i]))
+                tcW.set(qn('w:type'), 'dxa')
+                existing = tcPr.find(qn('w:tcW'))
+                if existing is not None:
+                    tcPr.remove(existing)
+                tcPr.append(tcW)
+
+        # Encabezados
+        hdr = tabla_resumen.rows[0].cells
+        hdr[0].text = 'Descripción'
+        hdr[1].text = 'Unidad'
+        hdr[2].text = 'Cantidad'
+        for cell in hdr:
+            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            for para in cell.paragraphs:
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in para.runs:
+                    run.bold = True
+
+        # Filas de datos
+        for idx, item in enumerate(resumen_cantidades, start=1):
+            row_cells = tabla_resumen.rows[idx].cells
+            row_cells[0].text = item['nombre']
+            row_cells[1].text = item['unidad']
+            row_cells[2].text = item['cantidad']
+            for i, cell in enumerate(row_cells):
+                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                for para in cell.paragraphs:
+                    para.alignment = WD_ALIGN_PARAGRAPH.LEFT if i == 0 else WD_ALIGN_PARAGRAPH.CENTER
+                    for run in para.runs:
+                        run.bold = False
+
     # Preparar la respuesta
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     # Usar nombre personalizado si está disponible
@@ -1494,7 +1571,9 @@ def eliminar_proyecto_view(request, proyecto_id):
         return redirect('proyectos:lista_proyectos')
     
     if request.method == 'POST':
+        from django.utils import timezone
         proyecto.activo = False
+        proyecto.fecha_eliminacion = timezone.now()
         proyecto.save()
         messages.success(request, f'Proyecto "{proyecto.nombre}" eliminado exitosamente.')
         return redirect('proyectos:lista_proyectos')

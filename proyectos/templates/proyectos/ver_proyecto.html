@@ -30,7 +30,7 @@
 
       <!-- Ubicación (colapsable) -->
       <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
-        <details class="group">
+        <details class="group" {% if not ubicaciones %}open{% endif %}>
           <summary class="flex items-center justify-between px-5 py-3.5 cursor-pointer list-none select-none">
             <div class="flex items-center gap-2">
               <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
@@ -42,7 +42,7 @@
               {% endif %}
             </div>
             <div class="flex items-center gap-2">
-              {% if es_propietario %}
+              {% if es_propietario and not ubicaciones %}
                 <a href="{% url 'ubi_web:crear_ubicacion' proyecto.id %}"
                    onclick="event.stopPropagation()"
                    class="flex items-center gap-1 text-xs font-semibold text-success hover:bg-success/10 px-2 py-1 rounded-lg transition-colors">
@@ -143,6 +143,7 @@
                 </th>
                 <th class="py-2.5 w-24 text-center">Cantidad</th>
                 <th class="py-2.5 w-20 text-center">Unidad</th>
+                <th class="py-2.5 w-14 text-center">ACTs</th>
                 <th class="py-2.5 pr-3 text-center">Acciones</th>
               </tr>
             </thead>
@@ -202,19 +203,23 @@
                   {% endif %}
                 </td>
 
+                <!-- ACTs -->
+                <td class="py-2 text-center">
+                  <button type="button" class="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-base-200 transition-colors ver-actividades-btn"
+                          title="Ver actividades adicionales"
+                          data-especificacion-id="{{ especificacion.id }}"
+                          data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+                    {% if especificaciones_con_cantidad|get_item:especificacion.id %}
+                      <i class="fa-solid fa-table text-xs text-success"></i>
+                    {% else %}
+                      <i class="fa-solid fa-table text-xs text-base-content/20"></i>
+                    {% endif %}
+                  </button>
+                </td>
+
                 <!-- Acciones -->
                 <td class="py-2 pr-3">
                   <div class="flex items-center justify-end gap-0.5">
-                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-base-200 transition-colors ver-actividades-btn"
-                            title="Ver actividades adicionales"
-                            data-especificacion-id="{{ especificacion.id }}"
-                            data-especificacion-titulo="{{ especificacion.titulo|escape }}">
-                      {% if especificaciones_con_cantidad|get_item:especificacion.id %}
-                        <i class="fa-solid fa-table text-xs text-success"></i>
-                      {% else %}
-                        <i class="fa-solid fa-table text-xs text-base-content/20"></i>
-                      {% endif %}
-                    </button>
                     {% if es_propietario %}
                     <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-accent hover:bg-accent/10 transition-colors mover-especificacion-btn"
                             title="Mover posición"
@@ -223,7 +228,7 @@
                             data-especificacion-posicion="{{ especificacion.orden }}"
                             data-proyecto-id="{{ proyecto.id }}"
                             data-total-especificaciones="{{ especificaciones|length }}">
-                      <i class="fas fa-arrows-alt text-xs"></i>
+                      <i class="fas fa-arrows-alt-v text-xs"></i>
                     </button>
                     {% endif %}
                     <a href="{% url 'proyectos:ver_especificacion' especificacion.id %}?from=proyecto"

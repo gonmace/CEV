@@ -141,6 +141,9 @@ if config('EMAIL_HOST', default=''):
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# ── Google Maps ────────────────────────────────────────────────────────────────
+GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default='')
+
 # ── Seguridad ──────────────────────────────────────────────────────────────────
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())

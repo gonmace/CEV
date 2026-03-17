@@ -73,7 +73,7 @@
                       </button>
                       {% if es_propietario %}
                         <button type="button"
-                                class="w-7 h-7 rounded-md flex items-center justify-center text-secondary hover:bg-secondary/10 transition-colors copy-especificacion-btn"
+                                class="w-7 h-7 rounded-md flex items-center justify-center text-copy hover:bg-copy/10 transition-colors copy-especificacion-btn"
                                 title="Copiar al proyecto actual"
                                 data-title="{{ especificacion.titulo|escape }}"
                                 data-copy-url="{% url 'proyectos:copiar_especificacion' especificacion.id %}">
@@ -116,7 +116,7 @@
     <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/10">
       <div class="flex items-center gap-2">
         <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center">
-          <i class="fas fa-copy text-secondary text-xs"></i>
+          <i class="fas fa-copy text-copy text-xs"></i>
         </span>
         <span class="text-sm font-semibold text-base-content">Copiar especificación</span>
       </div>

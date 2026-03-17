@@ -1,14 +1,12 @@
 {% extends 'base_pliego.html' %}
-{% load static crispy_forms_tags tailwind_tags %}
+{% load static tailwind_tags %}
 
 {% block css %}
   {% tailwind_css %}
   <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
 {% endblock %}
 
-{% block title %}
-  Eliminar Proyecto
-{% endblock %}
+{% block title %}Eliminar Proyecto — {{ proyecto.nombre }}{% endblock %}
 
 {% block breadcrumbs %}
   <li class="flex items-center gap-2">
@@ -17,9 +15,7 @@
   </li>
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
-    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">
-      {{ proyecto.nombre }}
-    </a>
+    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto.nombre }}</a>
   </li>
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
@@ -28,59 +24,64 @@
 {% endblock %}
 
 {% block content %}
-  <div class="flex flex-col items-center justify-center mt-6 px-4">
-    <div class="w-full max-w-2xl">
-      <!-- Mensajes -->
-      {% if messages %}
-        {# Las notificaciones se muestran mediante Flashy.js en la plantilla base #}
-      {% endif %}
-    </div>
-    
-    <div class="card w-full max-w-2xl bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title text-2xl font-bold mb-4 text-error">
-          <i class="fas fa-exclamation-triangle mr-2"></i>
-          Eliminar Proyecto
-        </h2>
-        
-        <div class="alert alert-warning mb-6">
-          <i class="fas fa-exclamation-triangle"></i>
-          <span>¿Está seguro de que desea eliminar este proyecto? Esta acción no se puede deshacer.</span>
+<div class="min-h-screen bg-base-200 py-6 px-4">
+  <div class="max-w-lg mx-auto">
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+
+      <!-- Header -->
+      <div class="bg-primary px-6 py-4 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-trash text-primary-content text-sm"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Proyecto</p>
+          <h2 class="text-sm font-bold text-primary-content">Eliminar proyecto</h2>
+        </div>
+      </div>
+
+      <!-- Info del proyecto -->
+      <div class="px-6 pt-5 pb-3 flex flex-col gap-3">
+        <div class="rounded-lg bg-base-200/60 border border-base-300 px-4 py-3 flex flex-col gap-2">
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Nombre</p>
+            <p class="text-sm font-semibold text-base-content">{{ proyecto.nombre }}</p>
+          </div>
+          {% if proyecto.solicitante %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Solicitante</p>
+            <p class="text-sm text-base-content">{{ proyecto.solicitante }}</p>
+          </div>
+          {% endif %}
+          {% if proyecto.ubicacion %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Ubicación</p>
+            <p class="text-sm text-base-content">{{ proyecto.ubicacion }}</p>
+          </div>
+          {% endif %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Creado</p>
+            <p class="text-xs text-base-content/60">{{ proyecto.fecha_creacion|date:"d/m/Y H:i" }}</p>
+          </div>
         </div>
 
-        <div class="bg-base-200 p-4 rounded-lg mb-6">
-          <h3 class="font-semibold text-lg mb-2">Información del Proyecto:</h3>
-          <div class="space-y-2">
-            <p><span class="font-semibold">Nombre:</span> {{ proyecto.nombre }}</p>
-            <p><span class="font-semibold">Solicitante:</span> {{ proyecto.solicitante }}</p>
-            <p><span class="font-semibold">Ubicación:</span> {{ proyecto.ubicacion }}</p>
-            {% if proyecto.descripcion %}
-            <p><span class="font-semibold">Descripción:</span> {{ proyecto.descripcion }}</p>
-            {% endif %}
-            <p><span class="font-semibold">Fecha de creación:</span> {{ proyecto.fecha_creacion|date:"d/m/Y H:i" }}</p>
-          </div>
-        </div>
-        
-        <form method="post" class="space-y-6">
-          {% csrf_token %}
-          
-          <!-- Botones de acción -->
-          <div class="card-actions justify-end mt-6">
-            <a href="{% url 'proyectos:lista_proyectos' %}" class="btn btn-outline">
-              <i class="fas fa-times mr-2"></i>
-              Cancelar
-            </a>
-            <button type="submit" class="btn btn-error">
-              <i class="fas fa-trash mr-2"></i>
-              Eliminar Proyecto
-            </button>
-          </div>
-        </form>
+        <p class="text-xs text-error/80 flex items-start gap-1.5 leading-relaxed">
+          <i class="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+          El proyecto pasará a estado inactivo y dejará de aparecer en la lista. Esta acción no elimina los datos permanentemente.
+        </p>
       </div>
+
+      <!-- Botones -->
+      <form method="post" class="px-6 pb-5">
+        {% csrf_token %}
+        <div class="flex justify-end gap-2 pt-1">
+          <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-ghost btn-sm">Cancelar</a>
+          <button type="submit" class="btn btn-error btn-sm">
+            <i class="fas fa-trash text-xs"></i> Eliminar proyecto
+          </button>
+        </div>
+      </form>
+
     </div>
   </div>
+</div>
 {% endblock %}
-
-{% block js %}
-{% endblock %}
-
