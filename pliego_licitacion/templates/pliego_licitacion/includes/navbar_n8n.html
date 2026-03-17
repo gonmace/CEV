@@ -10,7 +10,7 @@
         </div>
         <div class="flex-1 flex items-center justify-center">
             <span class="text-lg font-semibold tracking-wide uppercase">
-                {% block navbar_title %}IA - Especificación Técnica{% endblock %}
+                {{ proyecto_nombre|default:"IA - Especificación Técnica" }}
             </span>
         </div>
         <div class="flex items-center gap-4 pr-1">

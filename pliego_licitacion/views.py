@@ -149,6 +149,18 @@ def pasos_view(request):
                 'resume_label': next_label,
             })
 
+        # Nombre del proyecto para el header
+        proyecto_nombre_ctx = ''
+        proyecto_obj = None
+        if pid:
+            try:
+                from proyectos.models import Proyecto
+                proyecto_obj = Proyecto.objects.filter(id=pid).first()
+                if proyecto_obj:
+                    proyecto_nombre_ctx = proyecto_obj.nombre
+            except Exception:
+                pass
+
         return render(request, template_name, {
             'pasos': pasos,
             'paso_actual': paso_actual,
@@ -159,6 +171,8 @@ def pasos_view(request):
             'form': EspecificacionTecnicaForm(),
             'borradores': borradores_ctx,
             'proyecto_id': pid,
+            'proyecto_nombre': proyecto_nombre_ctx,
+            'proyecto': proyecto_obj,
         })
     except Exception as e:
         logger.error(f"Error inesperado en pasos_view: {str(e)}", exc_info=True)
