@@ -25,6 +25,7 @@ urlpatterns = [
     path('', include('home.urls')),
     path('proyectos/', include('proyectos.urls')),
     path('pliego/', include('pliego_licitacion.urls')),
+    path('ubicaciones/', include('ubi_web.urls')),
 ]
 
 if settings.DEBUG:

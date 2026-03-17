@@ -1,79 +1,82 @@
-<!-- Modal para exportar a Word con campos editables -->
+<!-- Modal Exportar a Word -->
 <dialog id="exportar-word-modal" class="modal">
-  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden w-11/12 max-w-2xl">
+  <div class="modal-box w-11/12 max-w-2xl p-0 overflow-hidden">
+
     <!-- Header -->
-    <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/10">
-      <div class="flex items-center gap-2">
-        <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 392 512.3" class="w-4 h-4">
+    <div class="bg-primary px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 392 512.3" class="w-5 h-5">
             <path fill="#26a9f1" d="M59 0h204l129 140v313c0 33-27 59-59 59H59c-32 0-59-26-59-59V59C0 26 26 0 59 0"/>
             <path fill="#bce2f9" d="m263 0 129 140h-56q-69-3-73-63z"/>
             <path fill="#1c7bb0" fill-rule="nonzero" d="M108 403a13 13 0 0 1 0-26h141a13 13 0 0 1 0 26zm0-152a13 13 0 0 1 0-26h176a13 13 0 0 1 0 26zm0 73a13 13 0 0 1 0-26h167a13 13 0 0 1 0 26z"/>
             <path fill="#1f89c3" d="m310 137 82 68v-65h-56q-14 0-26-3"/>
           </svg>
         </span>
-        <span class="text-sm font-semibold text-base-content">Exportar a Word</span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Documento</p>
+          <h3 class="text-sm font-bold text-primary-content">Exportar a Word</h3>
+        </div>
       </div>
       <button type="button" onclick="document.getElementById('exportar-word-modal').close()"
-              class="w-7 h-7 rounded-lg flex items-center justify-center text-base-content/40 hover:bg-base-200 hover:text-base-content transition-colors">
-        <i class="fas fa-times text-xs"></i>
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors">
+        <i class="fas fa-times text-sm"></i>
       </button>
     </div>
 
-    <!-- Body -->
+    <!-- Form -->
     <form id="exportar-word-form" method="POST" action="{% url 'proyectos:exportar_proyecto_word' proyecto.id %}">
       {% csrf_token %}
-      <div class="px-5 py-5 space-y-4">
+      <div class="px-6 py-5 flex flex-col gap-4">
+
         <div>
-          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1">Proyecto</label>
+          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Proyecto</label>
           <input type="text" id="export-proyecto" name="proyecto" value="{{ proyecto.nombre }}"
-                 class="input input-bordered input-sm w-full text-sm" required />
+                 class="input input-bordered input-sm w-full" required>
         </div>
-        <div>
-          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1">Solicitante</label>
-          <input type="text" id="export-solicitante" name="solicitante" value="{{ proyecto.solicitante }}"
-                 class="input input-bordered input-sm w-full text-sm" required />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Solicitante</label>
+            <input type="text" id="export-solicitante" name="solicitante" value="{{ proyecto.solicitante }}"
+                   class="input input-bordered input-sm w-full" required>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Servicio</label>
+            <input type="text" id="export-servicio" name="servicio"
+                   value="{% if proyecto.descripcion %}{{ proyecto.descripcion }}{% else %}{{ proyecto.ubicacion }}{% endif %}"
+                   class="input input-bordered input-sm w-full" required>
+          </div>
         </div>
-        <div>
-          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1">Servicio</label>
-          <input type="text" id="export-servicio" name="servicio"
-                 value="{% if proyecto.descripcion %}{{ proyecto.descripcion }}{% else %}{{ proyecto.ubicacion }}{% endif %}"
-                 class="input input-bordered input-sm w-full text-sm" required />
-        </div>
+
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1">Revisión</label>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Revisión</label>
             <input type="text" id="export-rev" name="revision" value="1"
-                   class="input input-bordered input-sm w-full text-sm" required />
+                   class="input input-bordered input-sm w-full" required>
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1">Fecha</label>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Fecha</label>
             <input type="text" id="export-fecha" name="fecha" value="{{ proyecto.fecha_creacion|date:'d/m/Y' }}"
-                   class="input input-bordered input-sm w-full text-sm" required />
+                   class="input input-bordered input-sm w-full" required>
           </div>
         </div>
+
       </div>
 
       <!-- Footer -->
-      <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-secondary/10">
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-base-200">
         <button type="button" onclick="document.getElementById('exportar-word-modal').close()"
-                class="flex items-center gap-1.5 text-xs font-semibold text-base-content/60 hover:bg-base-200 px-3 py-2 rounded-lg transition-colors">
+                class="btn btn-ghost btn-sm">
           Cancelar
         </button>
-        <button type="submit"
-                class="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded-lg transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 392 512.3" class="w-3.5 h-3.5">
-            <path fill="#26a9f1" d="M59 0h204l129 140v313c0 33-27 59-59 59H59c-32 0-59-26-59-59V59C0 26 26 0 59 0"/>
-            <path fill="#bce2f9" d="m263 0 129 140h-56q-69-3-73-63z"/>
-            <path fill="#1c7bb0" fill-rule="nonzero" d="M108 403a13 13 0 0 1 0-26h141a13 13 0 0 1 0 26zm0-152a13 13 0 0 1 0-26h176a13 13 0 0 1 0 26zm0 73a13 13 0 0 1 0-26h167a13 13 0 0 1 0 26z"/>
-            <path fill="#1f89c3" d="m310 137 82 68v-65h-56q-14 0-26-3"/>
-          </svg>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-download text-xs"></i>
           Exportar
         </button>
       </div>
     </form>
+
   </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>close</button>
-  </form>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
 </dialog>

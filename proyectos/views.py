@@ -27,7 +27,6 @@ from bs4 import BeautifulSoup
 from PIL import Image
 from .models import Proyecto, Especificacion, EspecificacionImagen
 from .forms import ProyectoForm, EspecificacionForm
-from pliego_licitacion.models import ActividadesAdicionales
 
 
 def replace_header_placeholders(doc, proyecto, proyecto_nombre=None, solicitante=None, servicio=None, revision="1", fecha=None):
@@ -156,8 +155,7 @@ def _copiar_especificaciones(user, especificaciones_ids, proyecto_destino):
             proyecto=proyecto_destino,
             titulo=nuevo_titulo,
             contenido=especificacion.contenido,
-            token_cost=especificacion.token_cost,
-            especificacion_tecnica=especificacion.especificacion_tecnica,  # Copiar vinculación si existe
+            actividades_adicionales=especificacion.actividades_adicionales,
         )
 
         slug = slugify(nueva_especificacion.titulo) or 'especificacion'
@@ -267,6 +265,16 @@ def lista_proyectos_view(request):
         Q(proyecto__publico=True) | Q(proyecto__creado_por=request.user)
     ).count()
 
+    from pliego_licitacion.models import EspecificacionTecnica
+    from django.contrib.auth.models import User
+    total_borradores = EspecificacionTecnica.objects.filter(
+        creado_por=request.user,
+        eliminado=False,
+        paso__gte=2,
+        paso__lt=8,
+    ).count()
+    total_usuarios = User.objects.filter(is_active=True).count()
+
     return render(request, 'main/index.html', {
         'proyectos': page_obj.object_list,
         'page_obj': page_obj,
@@ -277,6 +285,8 @@ def lista_proyectos_view(request):
         'per_page': per_page,
         'per_page_options': per_page_options,
         'total_especificaciones': total_especificaciones,
+        'total_borradores': total_borradores,
+        'total_usuarios': total_usuarios,
     })
 
 
@@ -292,11 +302,8 @@ def proyecto_detalle_view(request, proyecto_id):
     request.session['proyecto_actual_id'] = proyecto.id
     request.session['proyecto_actual_nombre'] = proyecto.nombre
 
-    especificaciones = proyecto.especificaciones.prefetch_related(
-        'imagenes',
-        'especificacion_tecnica__actividades_adicionales'
-    ).all()
-    
+    especificaciones = proyecto.especificaciones.prefetch_related('imagenes').all()
+
     # Inicializar el campo orden si no está establecido (solo si todas tienen orden 0)
     especificaciones_list = list(especificaciones)
     if especificaciones_list and all(spec.orden == 0 for spec in especificaciones_list):
@@ -304,27 +311,13 @@ def proyecto_detalle_view(request, proyecto_id):
             spec.orden = i
             spec.save(update_fields=['orden'])
         # Recargar las especificaciones con el nuevo orden
-        especificaciones = proyecto.especificaciones.prefetch_related(
-            'imagenes',
-            'especificacion_tecnica__actividades_adicionales'
-        ).all()
+        especificaciones = proyecto.especificaciones.prefetch_related('imagenes').all()
     
     # Calcular si cada especificación tiene cantidades
-    especificaciones_con_cantidad = {}
-    for especificacion in especificaciones:
-        tiene_cantidad = False
-        if especificacion.especificacion_tecnica:
-            # Verificar cantidad en la especificación técnica
-            if especificacion.especificacion_tecnica.cantidad and especificacion.especificacion_tecnica.cantidad.strip():
-                tiene_cantidad = True
-            else:
-                # Verificar cantidad en las actividades adicionales
-                actividades = especificacion.especificacion_tecnica.actividades_adicionales.all()
-                tiene_cantidad = any(
-                    actividad.valor_recomendado and actividad.valor_recomendado.strip() 
-                    for actividad in actividades
-                )
-        especificaciones_con_cantidad[especificacion.id] = tiene_cantidad
+    especificaciones_con_cantidad = {
+        e.id: bool(e.cantidad and e.cantidad.strip())
+        for e in especificaciones
+    }
     
     # Obtener ubicaciones del proyecto
     try:
@@ -366,7 +359,7 @@ def proyecto_detalle_view(request, proyecto_id):
         reverse=(spec_order == 'desc')
     )
 
-    return render(request, 'proyectos/proyecto_detalle.html', {
+    return render(request, 'proyectos/ver_proyecto.html', {
         'proyecto': proyecto,
         'especificaciones': especificaciones,
         'tiene_ubicacion_con_pdf': tiene_ubicacion_con_pdf,
@@ -408,8 +401,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
     
     # Obtener todas las especificaciones ordenadas con relaciones necesarias
     especificaciones = proyecto.especificaciones.prefetch_related(
-        'imagenes',
-        'especificacion_tecnica__actividades_adicionales'
+        'imagenes'
     ).all().order_by('orden', '-fecha_creacion')
     
     # Obtener ubicaciones del proyecto
@@ -1084,8 +1076,9 @@ def exportar_proyecto_word_view(request, proyecto_id):
                 para.add_run(element.strip())
     
     # Agregar contenido de ubicación al principio si existe
-    if ubicaciones.exists():
-        ubicacion = ubicaciones.first()  # Tomar la primera ubicación
+    ubicaciones_list = list(ubicaciones) if not isinstance(ubicaciones, list) else ubicaciones
+    if ubicaciones_list:
+        ubicacion = ubicaciones_list[0]  # Tomar la primera ubicación
         if ubicacion.contenido:
             # Filtrar Plus Codes del contenido antes de procesarlo
             contenido_limpio = filtrar_plus_codes(ubicacion.contenido)
@@ -1290,25 +1283,13 @@ def exportar_proyecto_word_view(request, proyecto_id):
         # Solo si hay elementos con cantidad
         elementos_con_cantidad = []
         
-        # Verificar si la especificación técnica tiene cantidad
-        if especificacion.especificacion_tecnica:
-            especificacion_tecnica = especificacion.especificacion_tecnica
-            if especificacion_tecnica.cantidad and especificacion_tecnica.cantidad.strip():
-                elementos_con_cantidad.append({
-                    'nombre': especificacion.titulo,
-                    'unidad': especificacion_tecnica.unidad_medida or '',
-                    'cantidad': especificacion_tecnica.cantidad.strip()
-                })
-            
-            # Verificar actividades adicionales con cantidad
-            actividades = especificacion_tecnica.actividades_adicionales.all()
-            for actividad in actividades:
-                if actividad.valor_recomendado and actividad.valor_recomendado.strip():
-                    elementos_con_cantidad.append({
-                        'nombre': actividad.nombre,
-                        'unidad': actividad.unidad_medida or '',
-                        'cantidad': actividad.valor_recomendado.strip()
-                    })
+        # Verificar si la especificación tiene cantidad
+        if especificacion.cantidad and especificacion.cantidad.strip():
+            elementos_con_cantidad.append({
+                'nombre': especificacion.titulo,
+                'unidad': especificacion.unidad_medida or '',
+                'cantidad': especificacion.cantidad.strip()
+            })
         
         # Si hay elementos con cantidad, crear la tabla
         if elementos_con_cantidad:
@@ -1708,6 +1689,25 @@ def editar_proyecto_view(request, proyecto_id):
 
 @login_required
 @require_http_methods(["POST"])
+def actualizar_cantidad_especificacion_view(request, especificacion_id):
+    """Vista AJAX para actualizar la cantidad de una Especificacion."""
+    especificacion = get_object_or_404(Especificacion, id=especificacion_id)
+    if especificacion.proyecto.creado_por != request.user:
+        return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
+    try:
+        data = json.loads(request.body)
+        cantidad = data.get('cantidad', '').strip()
+        if len(cantidad) > 10:
+            cantidad = cantidad[:10]
+        especificacion.cantidad = cantidad if cantidad else None
+        especificacion.save(update_fields=['cantidad'])
+        return JsonResponse({'success': True, 'cantidad': especificacion.cantidad or ''})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
 def mover_especificacion_view(request, proyecto_id):
     """
     Vista AJAX para mover una especificación a una nueva posición
@@ -1946,94 +1946,75 @@ def obtener_actividades_adicionales_view(request, especificacion_id):
     """
     Vista AJAX para obtener las actividades adicionales de una especificación
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Usar select_related y prefetch_related para optimizar la consulta
     especificacion = get_object_or_404(
-        Especificacion.objects.select_related('especificacion_tecnica', 'proyecto'),
+        Especificacion.objects.select_related('proyecto'),
         id=especificacion_id,
         proyecto__activo=True
     )
-    
-    # Verificar permisos
+
     if not (especificacion.proyecto.publico or especificacion.proyecto.creado_por == request.user):
         return JsonResponse({'error': 'No tienes permisos para ver las actividades adicionales de esta especificación.'}, status=403)
-    
-    logger.info(f"Buscando actividades para especificación {especificacion_id}")
-    logger.info(f"Especificacion tiene especificacion_tecnica: {bool(especificacion.especificacion_tecnica)}")
-    
-    # Verificar que la especificación tenga una especificacion_tecnica asociada
-    especificacion_tecnica = especificacion.especificacion_tecnica
-    
-    # Si no tiene vinculación directa, intentar buscar por título (para especificaciones antiguas)
-    if not especificacion_tecnica:
-        logger.warning(f"Especificacion {especificacion_id} no tiene especificacion_tecnica asociada directamente")
-        logger.info(f"Intentando buscar EspecificacionTecnica por título: '{especificacion.titulo}'")
-        
-        from pliego_licitacion.models import EspecificacionTecnica
-        try:
-            especificacion_tecnica = EspecificacionTecnica.objects.filter(titulo=especificacion.titulo).order_by('-fecha_creacion').first()
-            if especificacion_tecnica:
-                logger.info(f"Encontrada EspecificacionTecnica por título con ID: {especificacion_tecnica.id}")
-                # Actualizar la vinculación para futuras consultas
-                especificacion.especificacion_tecnica = especificacion_tecnica
-                especificacion.save(update_fields=['especificacion_tecnica'])
-                logger.info(f"Vinculación actualizada para especificación {especificacion_id}")
-            else:
-                logger.warning(f"No se encontró EspecificacionTecnica con título '{especificacion.titulo}'")
-        except Exception as e:
-            logger.error(f"Error al buscar EspecificacionTecnica por título: {str(e)}", exc_info=True)
-    
-    if not especificacion_tecnica:
-        logger.warning(f"Especificacion {especificacion_id} no tiene especificacion_tecnica asociada")
-        return JsonResponse({
-            'success': True,
-            'actividades': [],
-            'debug': 'No hay especificacion_tecnica asociada'
-        })
-    
-    especificacion_tecnica_id = especificacion_tecnica.id
-    logger.info(f"EspecificacionTecnica ID: {especificacion_tecnica_id}")
-    
-    # Obtener las actividades adicionales usando prefetch para optimizar
-    actividades = especificacion_tecnica.actividades_adicionales.all()
-    actividades_count = actividades.count()
-    logger.info(f"Encontradas {actividades_count} actividades adicionales")
-    
-    # Log detallado de las actividades encontradas
-    for actividad in actividades:
-        logger.info(f"Actividad: id={actividad.id}, nombre={actividad.nombre}, unidad={actividad.unidad_medida}, valor={actividad.valor_recomendado}, descripcion={actividad.descripcion[:50] if actividad.descripcion else None}")
-    
+
+    actividades = especificacion.actividades_adicionales or []
+
     actividades_data = [{
-        'id': actividad.id,
-        'nombre': actividad.nombre,
-        'descripcion': actividad.descripcion or '',
-        'unidad_medida': actividad.unidad_medida or '',
-        'valor_recomendado': actividad.valor_recomendado or ''
-    } for actividad in actividades]
-    
-    # Verificar si hay alguna cantidad (en la especificación o en las actividades)
-    tiene_cantidad_especificacion = bool(especificacion_tecnica.cantidad and especificacion_tecnica.cantidad.strip()) if especificacion_tecnica else False
-    tiene_cantidad_actividades = any(actividad.valor_recomendado and actividad.valor_recomendado.strip() for actividad in actividades)
-    tiene_cantidad = tiene_cantidad_especificacion or tiene_cantidad_actividades
-    
-    logger.info(f"Datos de actividades preparados: {len(actividades_data)} actividades")
-    logger.info(f"Tiene cantidad: {tiene_cantidad} (especificacion: {tiene_cantidad_especificacion}, actividades: {tiene_cantidad_actividades})")
-    
+        'id': i,
+        'nombre': actividad.get('nombre', ''),
+        'unidad_medida': actividad.get('unidad_medida', ''),
+        'cantidad': actividad.get('cantidad', ''),
+        'mostrar': actividad.get('mostrar', False),
+    } for i, actividad in enumerate(actividades)]
+
     return JsonResponse({
         'success': True,
         'actividades': actividades_data,
         'especificacion': {
+            'id': especificacion.id,
             'titulo': especificacion.titulo,
             'unidad_medida': especificacion.unidad_medida or '',
-            'cantidad': especificacion_tecnica.cantidad or '' if especificacion_tecnica else '',
-            'especificacion_tecnica_id': especificacion_tecnica_id
+            'cantidad': especificacion.cantidad or '',
+            'mostrar': especificacion.mostrar,
+            'es_propietario': especificacion.proyecto.creado_por == request.user,
         },
-        'tiene_cantidad': tiene_cantidad,
-        'debug': {
-            'especificacion_tecnica_id': especificacion_tecnica_id,
-            'actividades_count': actividades_count
-        }
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def actualizar_actividad_view(request, especificacion_id, actividad_idx):
+    especificacion = get_object_or_404(Especificacion, id=especificacion_id)
+    if especificacion.proyecto.creado_por != request.user:
+        return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
+    try:
+        data = json.loads(request.body)
+        actividades = list(especificacion.actividades_adicionales or [])
+        if actividad_idx < 0 or actividad_idx >= len(actividades):
+            return JsonResponse({'success': False, 'error': 'Índice inválido'}, status=400)
+        act = actividades[actividad_idx]
+        if 'cantidad' in data:
+            act['cantidad'] = data['cantidad'].strip()
+        if 'nombre' in data:
+            act['nombre'] = data['nombre'].strip()
+        if 'mostrar' in data:
+            act['mostrar'] = bool(data['mostrar'])
+        especificacion.actividades_adicionales = actividades
+        especificacion.save(update_fields=['actividades_adicionales'])
+        return JsonResponse({'success': True, 'actividad': act})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def actualizar_especificacion_mostrar_view(request, especificacion_id):
+    especificacion = get_object_or_404(Especificacion, id=especificacion_id)
+    if especificacion.proyecto.creado_por != request.user:
+        return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
+    try:
+        data = json.loads(request.body)
+        especificacion.mostrar = bool(data.get('mostrar', True))
+        especificacion.save(update_fields=['mostrar'])
+        return JsonResponse({'success': True, 'mostrar': especificacion.mostrar})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

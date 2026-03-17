@@ -8,24 +8,24 @@ class ProyectoForm(forms.ModelForm):
         fields = ['nombre', 'solicitante', 'ubicacion', 'descripcion', 'publico']
         widgets = {
             'nombre': forms.TextInput(attrs={
-                'class': 'input input-bordered w-full',
+                'class': 'input input-bordered input-primary w-full focus:input-primary',
                 'placeholder': 'Ingrese el nombre del proyecto'
             }),
             'solicitante': forms.TextInput(attrs={
-                'class': 'input input-bordered w-full',
+                'class': 'input input-bordered input-primary w-full focus:input-primary',
                 'placeholder': 'Ingrese el nombre del solicitante'
             }),
             'ubicacion': forms.TextInput(attrs={
-                'class': 'input input-bordered w-full',
+                'class': 'input input-bordered input-primary w-full focus:input-primary',
                 'placeholder': 'Ingrese la ubicación del proyecto'
             }),
             'descripcion': forms.Textarea(attrs={
-                'class': 'textarea textarea-bordered w-full',
+                'class': 'textarea textarea-bordered textarea-primary w-full focus:textarea-primary',
                 'rows': 4,
                 'placeholder': 'Ingrese una descripción del proyecto (opcional)'
             }),
             'publico': forms.CheckboxInput(attrs={
-                'class': 'checkbox checkbox-primary'
+                'class': 'toggle toggle-primary'
             }),
         }
         labels = {

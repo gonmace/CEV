@@ -1,0 +1,721 @@
+{% load static crispy_forms_tags tailwind_tags %}
+
+<!-- Paso 2: Parámetros Técnicos - Modal -->
+<dialog id="modal-parametros-tecnicos" class="modal fixed inset-0 z-[100]" data-especificacion-id="">
+  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden max-w-7xl flex flex-col max-h-[95vh] relative">
+
+    <!-- Spinner interno (dentro del top-layer del dialog) -->
+    <div id="spinner-modal-params" class="ai-spinner--inline hidden">
+      <div class="ai-spinner__sheet">
+        <div class="ai-spinner__rings">
+          <div class="ai-spinner__ring ai-spinner__ring--outer"></div>
+          <div class="ai-spinner__ring ai-spinner__ring--inner"></div>
+          <div class="ai-spinner__dot-track">
+            <div class="ai-spinner__dot"></div>
+          </div>
+        </div>
+        <p id="spinner-modal-params-label" class="ai-spinner__label">Procesando...</p>
+        <p class="ai-spinner__sub">Sistema IA en proceso</p>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/10">
+      <div class="flex items-center gap-3">
+        <span class="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-sliders-h text-primary text-xs"></i>
+        </span>
+        <div class="flex items-center gap-3">
+          <span class="badge badge-primary px-3 py-3 rounded-lg text-white font-bold text-sm animate-pulse-glow whitespace-nowrap" id="modal-parametros-badge">2</span>
+          <span class="text-sm font-semibold text-base-content" id="modal-parametros-titulo">Parámetros materiales</span>
+        </div>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-base-content/40 hover:bg-base-200 transition-colors" id="modal-parametros-close">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+
+    <!-- Body -->
+    <div class="px-5 py-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+      <p class="text-xs text-base-content/60 mb-3">
+        Seleccione los parámetros que desea incluir en la especificación técnica:
+      </p>
+      <div class="overflow-auto rounded-lg flex-1">
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr class="bg-primary text-primary-content">
+              <th class="w-1/12">
+                <input type="checkbox" id="select-all" class="checkbox checkbox-primary border-white checkbox-sm">
+              </th>
+              <th class="w-3/12 text-xs">Parámetro</th>
+              <th class="w-1/12 text-center text-xs col-valor-recomendado">Valor Recomendado</th>
+              <th class="w-2/12 text-center text-xs col-unidad">Unidad</th>
+              <th class="w-5/12 text-xs">Descripción</th>
+            </tr>
+          </thead>
+          <tbody id="parametros-table-body">
+            <!-- Las filas se llenarán dinámicamente con JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end px-5 py-4 border-t border-secondary/10 gap-2">
+      <form method="dialog">
+        <button class="flex items-center gap-1.5 text-xs font-semibold text-base-content/60 hover:bg-base-200 px-3 py-2 rounded-lg transition-colors">
+          Cancelar
+        </button>
+      </form>
+      <button class="btn btn-primary btn-sm" id="enviar-parametros-btn">
+        <i class="fas fa-arrow-right mr-1.5"></i>
+        Continuar
+      </button>
+    </div>
+
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+// Función global para escapar HTML (disponible para todas las funciones del módulo)
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text ?? '';
+  return div.innerHTML;
+}
+
+// Función global para renderizar la tabla de parámetros (llamada desde paso1)
+function renderizarTablaParametros(output, titulo, descripcion, tipoServicio) {
+  console.log('Renderizando tabla de parámetros:', output);
+  
+  // Guardar valores en variables globales
+  window.n8nTitulo = titulo;
+  window.n8nDescripcion = descripcion;
+  window.n8nTipoServicio = tipoServicio;
+  
+  // Ocultar spinner primero
+  if (typeof hideSpinner === 'function') hideSpinner();
+
+  // Ocultar el contenedor de "Datos Iniciales"
+  const formCardContainer = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+  if (formCardContainer) {
+    formCardContainer.style.display = 'none';
+  }
+  
+  // Obtener el modal de parámetros
+  const modalParametros = document.getElementById('modal-parametros-tecnicos');
+  if (!modalParametros) {
+    console.error('No se encontró el modal modal-parametros-tecnicos');
+    if (typeof mostrarModalJSON === 'function') {
+      mostrarModalJSON({error: 'No se encontró el modal de parámetros', output: output});
+    }
+    return;
+  }
+  
+  // El título del modal lo gestiona el código que llama a esta función (no sobreescribir)
+  
+  // Obtener el tbody de la tabla
+  const tableBody = document.getElementById('parametros-table-body');
+  if (!tableBody) {
+    console.error('No se encontró el tbody de la tabla');
+    if (typeof mostrarModalJSON === 'function') {
+      mostrarModalJSON({error: 'No se encontró el cuerpo de la tabla', output: output});
+    }
+    return;
+  }
+  
+  // Limpiar el tbody antes de llenarlo
+  tableBody.innerHTML = '';
+
+  // Agregar filas de parámetros
+  const parametros = output.parametros || [];
+  if (parametros.length > 0) {
+    console.log('[parametros] primer objeto recibido:', JSON.stringify(parametros[0]));
+  }
+  parametros.forEach((parametro, index) => {
+    const checked = parametro.check ? 'checked' : '';
+    const unidadMedida = parametro.unidad_medida || '';
+    const descripcionValor = parametro.descripcion || parametro.detalle || '';
+    
+    const row = document.createElement('tr');
+    row.className = 'parametro-row';
+    row.setAttribute('data-index', index);
+    
+    row.innerHTML = `
+      <td>
+        <input
+          type="checkbox"
+          class="checkbox checkbox-primary parametro-checkbox"
+          data-parametro="${escapeHtml(parametro.parametro || '')}"
+          data-valor="${escapeHtml(parametro.valor_recomendado || '')}"
+          data-descripcion="${escapeHtml(descripcionValor)}"
+          data-unidad="${escapeHtml(unidadMedida)}"
+          id="param-${index}"
+          ${checked}
+        >
+      </td>
+      <td class="font-semibold">${escapeHtml(parametro.parametro || '')}</td>
+      <td class="col-valor-recomendado">
+        <input
+          type="text"
+          class="input input-bordered input-primary input-sm w-full valor-recomendado-input focus:input-primary text-center"
+          value="${escapeHtml(parametro.valor_recomendado || '')}"
+          data-original-value="${escapeHtml(parametro.valor_recomendado || '')}"
+        >
+      </td>
+      <td class="col-unidad">
+        <input
+          type="text"
+          class="input input-bordered input-sm w-full unidad-input text-center"
+          value="${escapeHtml(unidadMedida)}"
+          data-original-value="${escapeHtml(unidadMedida)}"
+        >
+      </td>
+      <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap: break-word; white-space: pre-wrap; min-width: 200px; max-width: none;">${escapeHtml(descripcionValor)}</td>
+    `;
+    
+    tableBody.appendChild(row);
+  });
+  
+  // Agregar fila para nuevo parámetro
+  const nuevaFilaRow = document.createElement('tr');
+  nuevaFilaRow.id = 'nuevo-parametro-row';
+  nuevaFilaRow.className = 'bg-base-200';
+  nuevaFilaRow.innerHTML = `
+    <td>
+      <button class="btn btn-sm btn-success" id="agregar-parametro-btn" title="Agregar parámetro">
+        <i class="fas fa-plus"></i>
+      </button>
+    </td>
+    <td>
+      <input 
+        type="text" 
+        class="input input-bordered input-sm w-full" 
+        id="nuevo-parametro-nombre"
+        placeholder="Nombre del parámetro"
+      >
+    </td>
+    <td class="col-valor-recomendado text-right">
+      <input
+        type="text"
+        class="input input-bordered input-sm w-full text-right"
+        id="nuevo-parametro-valor"
+        placeholder="Valor recomendado"
+      >
+    </td>
+    <td class="col-unidad text-center">
+      <input
+        type="text"
+        class="input input-bordered input-sm w-full text-center"
+        id="nuevo-parametro-unidad"
+        placeholder="Unidad de medida"
+      >
+    </td>
+    <td>
+      <input 
+        type="text" 
+        class="input input-bordered input-sm w-full" 
+        id="nuevo-parametro-descripcion"
+        placeholder="Descripción (opcional)"
+      >
+    </td>
+  `;
+  tableBody.appendChild(nuevaFilaRow);
+  
+  // Cargar el script de manejo de parámetros
+  setTimeout(() => {
+    cargarScriptParametros();
+  }, 100);
+  
+  // Mostrar el modal
+  console.log('Mostrando modal de parámetros técnicos');
+  if (typeof modalParametros.showModal === 'function') {
+    modalParametros.showModal();
+  } else {
+    modalParametros.setAttribute('open', '');
+    modalParametros.classList.add('modal-open');
+  }
+}
+
+// Función para cargar el script de manejo de parámetros
+function cargarScriptParametros() {
+  console.log('Cargando script de parámetros para modal...');
+  
+  const selectAllCheckbox = document.getElementById('select-all');
+  let parametrosCheckboxes = document.querySelectorAll('.parametro-checkbox');
+  const enviarBtn = document.getElementById('enviar-parametros-btn');
+  const agregarParametroBtn = document.getElementById('agregar-parametro-btn');
+  const nuevoParametroNombre = document.getElementById('nuevo-parametro-nombre');
+  const nuevoParametroValor = document.getElementById('nuevo-parametro-valor');
+  const nuevoParametroUnidad = document.getElementById('nuevo-parametro-unidad');
+  const nuevoParametroDescripcion = document.getElementById('nuevo-parametro-descripcion');
+  const nuevoParametroRow = document.getElementById('nuevo-parametro-row');
+  const parametrosTableBody = document.getElementById('parametros-table-body');
+  
+  if (!selectAllCheckbox || !enviarBtn) {
+    console.error('No se encontraron elementos necesarios para parámetros');
+    return;
+  }
+  
+  // Función para obtener cookie CSRF
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  
+  // Función para actualizar el botón de enviar
+  function updateEnviarButton() {
+    const allCheckboxes = document.querySelectorAll('.parametro-checkbox');
+    const selectedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+    if (enviarBtn) {
+      enviarBtn.disabled = selectedCount === 0;
+      enviarBtn.innerHTML = `<i class="fas fa-arrow-right mr-2"></i> Continuar`;
+    }
+  }
+  
+  // Manejar seleccionar/deseleccionar todos
+  if (selectAllCheckbox) {
+    // Remover listeners anteriores si existen
+    const newSelectAll = selectAllCheckbox.cloneNode(true);
+    selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+    
+    newSelectAll.addEventListener('change', function() {
+      const allCheckboxes = document.querySelectorAll('.parametro-checkbox');
+      allCheckboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+      });
+      updateEnviarButton();
+    });
+  }
+  
+  // Manejar cambios en checkboxes individuales
+  parametrosCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      if (selectAllCheckbox) {
+        const allCheckboxes = document.querySelectorAll('.parametro-checkbox');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+      }
+      updateEnviarButton();
+    });
+  });
+  
+  // Manejar agregar nuevo parámetro
+  if (agregarParametroBtn && nuevoParametroNombre && nuevoParametroValor && nuevoParametroUnidad) {
+    agregarParametroBtn.addEventListener('click', function() {
+      const nombre = nuevoParametroNombre.value.trim();
+      const valor = nuevoParametroValor.value.trim();
+      const unidad = nuevoParametroUnidad.value.trim();
+      const descripcion = nuevoParametroDescripcion ? nuevoParametroDescripcion.value.trim() : '';
+      
+      const currentBadge = SUB_PASOS[(window.subPasoActual || 1) - 1]?.badge;
+      const valorRequerido = currentBadge !== '4';  // badge 4 (normas) no tiene columna valor
+      if (!nombre || (valorRequerido && !valor)) {
+        alert(valorRequerido
+          ? 'Por favor, complete al menos el nombre y el valor del parámetro'
+          : 'Por favor, complete el nombre del parámetro');
+        return;
+      }
+
+      const newRow = document.createElement('tr');
+      newRow.className = 'parametro-row nuevo-parametro-row';
+      const index = parametrosCheckboxes.length;
+
+      newRow.innerHTML = `
+        <td>
+          <input
+            type="checkbox"
+            class="checkbox checkbox-primary parametro-checkbox"
+            data-parametro="${nombre.replace(/"/g, '&quot;')}"
+            data-valor="${valor.replace(/"/g, '&quot;')}"
+            data-descripcion="${descripcion.replace(/"/g, '&quot;')}"
+            data-unidad="${unidad.replace(/"/g, '&quot;')}"
+            id="param-${index}"
+            checked
+          >
+        </td>
+        <td class="font-semibold">${nombre}</td>
+        <td class="col-valor-recomendado text-right">
+          <input
+            type="text"
+            class="input input-bordered input-sm w-full valor-recomendado-input text-right"
+            value="${valor.replace(/"/g, '&quot;')}"
+            data-original-value="${valor.replace(/"/g, '&quot;')}"
+          >
+        </td>
+        <td class="col-unidad">
+          <input
+            type="text"
+            class="input input-bordered input-sm w-full unidad-input text-center"
+            value="${unidad.replace(/"/g, '&quot;')}"
+          >
+        </td>
+        <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap: break-word; white-space: pre-wrap; min-width: 200px; max-width: none;">${descripcion || ''}</td>
+      `;
+      
+      if (parametrosTableBody && nuevoParametroRow) {
+        parametrosTableBody.insertBefore(newRow, nuevoParametroRow);
+      }
+      
+      nuevoParametroNombre.value = '';
+      nuevoParametroValor.value = '';
+      if (nuevoParametroUnidad) nuevoParametroUnidad.value = '';
+      if (nuevoParametroDescripcion) nuevoParametroDescripcion.value = '';
+      
+      const newCheckbox = newRow.querySelector('.parametro-checkbox');
+      newCheckbox.addEventListener('change', function() {
+        if (selectAllCheckbox) {
+          const allCheckboxes = document.querySelectorAll('.parametro-checkbox');
+          const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+          const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+          selectAllCheckbox.checked = allChecked;
+          selectAllCheckbox.indeterminate = someChecked && !allChecked;
+        }
+        updateEnviarButton();
+      });
+      
+      parametrosCheckboxes = document.querySelectorAll('.parametro-checkbox');
+      updateEnviarButton();
+    });
+  }
+  
+  // Configuración de sub-pasos 1-1 a 1-4
+  const SUB_PASOS = [
+    { urlKey: 'parametrosMaterial',  saveKey: 'guardarParametrosMateriales', badge: '2',   titulo: 'Parámetros materiales',  spinnerLabel: 'Analizando parámetros de materiales...' },
+    { urlKey: 'parametrosEjecucion', saveKey: 'guardarParametrosEjecucion',  badge: '3',   titulo: 'Parámetros ejecución',   spinnerLabel: 'Analizando parámetros de ejecución...' },
+    { urlKey: 'normasAplicables',    saveKey: 'guardarNormasAplicables',     badge: '4',   titulo: 'Normas aplicables',      spinnerLabel: 'Identificando normas aplicables...' },
+    { urlKey: 'criteriosCalidad',    saveKey: 'guardarCriteriosCalidad',     badge: '5',   titulo: 'Criterios de calidad',   spinnerLabel: 'Definiendo criterios de calidad...' },
+  ];
+
+  // Función para re-poblar la tabla con nuevos parámetros (sin cerrar el modal)
+  function poblarFilasTabla(parametros) {
+    const tableBody = document.getElementById('parametros-table-body');
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+    parametros.forEach((parametro, index) => {
+      const row = document.createElement('tr');
+      row.className = 'parametro-row';
+      row.setAttribute('data-index', index);
+      const unidad = parametro.unidad_medida || '';
+      const desc = parametro.descripcion || parametro.detalle || '';
+      row.innerHTML = `
+        <td><input type="checkbox" class="checkbox checkbox-primary parametro-checkbox"
+          data-parametro="${escapeHtml(parametro.parametro || '')}"
+          data-valor="${escapeHtml(parametro.valor_recomendado || '')}"
+          data-descripcion="${escapeHtml(desc)}"
+          data-unidad="${escapeHtml(unidad)}"
+          id="param-${index}"
+          ${parametro.check ? 'checked' : ''}
+        ></td>
+        <td class="font-semibold">${escapeHtml(parametro.parametro || '')}</td>
+        <td class="col-valor-recomendado"><input type="text" class="input input-bordered input-primary input-sm w-full valor-recomendado-input focus:input-primary text-center"
+          value="${escapeHtml(parametro.valor_recomendado || '')}"
+          data-original-value="${escapeHtml(parametro.valor_recomendado || '')}"></td>
+        <td class="col-unidad"><input type="text" class="input input-bordered input-sm w-full unidad-input text-center"
+          value="${escapeHtml(unidad)}"
+          data-original-value="${escapeHtml(unidad)}"></td>
+        <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap: break-word; white-space: pre-wrap; min-width: 200px; max-width: none;">${escapeHtml(desc)}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+    // Fila para agregar nuevo parámetro
+    const nuevaFila = document.createElement('tr');
+    nuevaFila.id = 'nuevo-parametro-row';
+    nuevaFila.className = 'bg-base-200';
+    nuevaFila.innerHTML = `
+      <td><button class="btn btn-sm btn-success" id="agregar-parametro-btn" title="Agregar parámetro"><i class="fas fa-plus"></i></button></td>
+      <td><input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-nombre" placeholder="Nombre del parámetro"></td>
+      <td class="col-valor-recomendado text-right"><input type="text" class="input input-bordered input-sm w-full text-right" id="nuevo-parametro-valor" placeholder="Valor recomendado"></td>
+      <td class="col-unidad text-center"><input type="text" class="input input-bordered input-sm w-full text-center" id="nuevo-parametro-unidad" placeholder="Unidad de medida"></td>
+      <td><input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-descripcion" placeholder="Descripción (opcional)"></td>
+    `;
+    tableBody.appendChild(nuevaFila);
+  }
+
+  // Mostrar/ocultar columnas Valor Recomendado y Unidad según el sub-paso actual
+  function actualizarColumnasVisibles() {
+    const badge = SUB_PASOS[(window.subPasoActual || 1) - 1]?.badge;
+    const ocultarAmbas = badge === '4';
+    const ocultarUnidad = badge === '5';
+    document.querySelectorAll('.col-valor-recomendado').forEach(el => {
+      el.classList.toggle('hidden', ocultarAmbas);
+    });
+    document.querySelectorAll('.col-unidad').forEach(el => {
+      el.classList.toggle('hidden', ocultarAmbas || ocultarUnidad);
+    });
+  }
+
+  // Función para extraer parámetros de la respuesta del webhook
+  function extraerParametros(apiResult) {
+    if (Array.isArray(apiResult)) {
+      const first = apiResult[0] || {};
+      return first?.output?.parametros || first?.body?.parametros || first?.parametros || [];
+    }
+    return apiResult?.output?.parametros || apiResult?.body?.parametros || apiResult?.parametros || [];
+  }
+
+  // Manejar envío de parámetros seleccionados
+  if (enviarBtn) {
+    const newEnviarBtn = enviarBtn.cloneNode(true);
+    enviarBtn.parentNode.replaceChild(newEnviarBtn, enviarBtn);
+
+    newEnviarBtn.addEventListener('click', async function() {
+      // Resolver el ID con múltiples fuentes en orden de confiabilidad
+      const modalEl = document.getElementById('modal-parametros-tecnicos');
+      const idFromModal   = modalEl ? parseInt(modalEl.dataset.especificacionId) || null : null;
+      const idFromWindow  = parseInt(window.especificacionTecnicaId) || null;
+      const idFromSession = parseInt(sessionStorage.getItem('especificacionTecnicaId')) || null;
+      const especId = idFromModal || idFromWindow || idFromSession;
+
+      // Recoger parámetros seleccionados en este paso
+      const selectedParametros = [];
+      document.querySelectorAll('.parametro-checkbox').forEach(checkbox => {
+        if (checkbox.checked) {
+          const row = checkbox.closest('tr');
+          const valorInput = row.querySelector('.valor-recomendado-input');
+          const unidadInput = row.querySelector('.unidad-input');
+          selectedParametros.push({
+            parametro: checkbox.getAttribute('data-parametro'),
+            valor_recomendado: valorInput ? valorInput.value : checkbox.getAttribute('data-valor'),
+            unidad_medida: unidadInput ? unidadInput.value : (checkbox.getAttribute('data-unidad') || ''),
+            descripcion: checkbox.getAttribute('data-descripcion')
+          });
+        }
+      });
+
+      // Acumular
+      window.parametrosAcumulados = (window.parametrosAcumulados || []).concat(selectedParametros);
+
+      const subPasoActual = window.subPasoActual || 1;
+
+      newEnviarBtn.disabled = true;
+      const originalText = newEnviarBtn.innerHTML;
+      newEnviarBtn.innerHTML = '<span class="loading loading-spinner loading-sm mr-2"></span> Cargando...';
+
+      if (subPasoActual < SUB_PASOS.length) {
+        // ── Quedan sub-pasos: spinner DENTRO del modal (dialog está en top-layer) ──
+        const nextSubPaso = SUB_PASOS[subPasoActual];
+
+        const inlineSpinner = document.getElementById('spinner-modal-params');
+        const inlineLabel   = document.getElementById('spinner-modal-params-label');
+        if (inlineLabel) inlineLabel.textContent = nextSubPaso.spinnerLabel;
+        if (inlineSpinner) inlineSpinner.classList.remove('hidden');
+        if (window.startSpinnerStep) window.startSpinnerStep(nextSubPaso.spinnerLabel);
+
+        try {
+          // Guardar los seleccionados del sub-paso actual en su campo correspondiente
+          const currentSubPaso = SUB_PASOS[subPasoActual - 1];
+          const saveUrl = window.n8nUrls[currentSubPaso.saveKey];
+          if (saveUrl) {
+            const parametrosParaGuardar = currentSubPaso.badge === '4'
+              ? selectedParametros.map(({ parametro, descripcion }) => ({ parametro, descripcion }))
+              : currentSubPaso.badge === '5'
+              ? selectedParametros.map(({ parametro, valor_recomendado, descripcion }) => ({ parametro, valor_recomendado, descripcion }))
+              : selectedParametros;
+            const saveResp = await fetch(saveUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ especificacion_id: especId, parametros: parametrosParaGuardar })
+            });
+            if (!saveResp.ok) {
+              const saveErr = await saveResp.json().catch(() => ({}));
+              console.error('Error guardando ' + currentSubPaso.saveKey + ':', saveErr);
+              throw new Error(saveErr.error || 'Error al guardar ' + currentSubPaso.titulo);
+            }
+          }
+
+          const resp = await fetch(window.n8nUrls[nextSubPaso.urlKey], {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ especificacion_id: especId })
+          });
+          const data = await resp.json();
+          if (!resp.ok || !data.success) throw new Error(data.error || 'Error en sub-paso');
+
+          // Actualizar ID global y data attribute con el que llega en la respuesta
+          if (data.especificacion_id) {
+            window.especificacionTecnicaId = data.especificacion_id;
+            if (modalEl) modalEl.dataset.especificacionId = data.especificacion_id;
+          }
+
+          window.subPasoActual = subPasoActual + 1;
+
+          // Actualizar badge y título del modal
+          const badgeEl = document.getElementById('modal-parametros-badge');
+          if (badgeEl) badgeEl.textContent = nextSubPaso.badge;
+          const tituloEl = document.getElementById('modal-parametros-titulo');
+          if (tituloEl) tituloEl.textContent = nextSubPaso.titulo;
+
+          // Re-poblar tabla sin cerrar el modal
+          const parametros = extraerParametros(data.response_data);
+          poblarFilasTabla(parametros);
+          actualizarColumnasVisibles();
+          setTimeout(cargarScriptParametros, 100);
+
+        } catch (error) {
+          alert('Error: ' + error.message);
+        } finally {
+          const inlineSpinner = document.getElementById('spinner-modal-params');
+          if (inlineSpinner) inlineSpinner.classList.add('hidden');
+          newEnviarBtn.disabled = false;
+          newEnviarBtn.innerHTML = originalText;
+        }
+
+      } else {
+        // ── Todos los sub-pasos completados: guardar en BD y obtener propuesta de título ──
+        const modalParametros = document.getElementById('modal-parametros-tecnicos');
+        if (modalParametros) modalParametros.close();
+
+        if (typeof showSpinner === 'function') showSpinner('Guardando parámetros técnicos...');
+
+        try {
+          // Guardar criterios de calidad (último sub-paso) antes de continuar
+          const lastSubPaso = SUB_PASOS[SUB_PASOS.length - 1];
+          const saveUrlLast = window.n8nUrls[lastSubPaso.saveKey];
+          if (saveUrlLast) {
+            const saveRespLast = await fetch(saveUrlLast, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ especificacion_id: especId, parametros: selectedParametros })
+            });
+            if (!saveRespLast.ok) {
+              const saveErrLast = await saveRespLast.json().catch(() => ({}));
+              throw new Error(saveErrLast.error || 'Error al guardar ' + lastSubPaso.titulo);
+            }
+          }
+
+          // Paso 2: guardar en BD
+          const confirmarResp = await fetch(window.n8nUrls?.confirmarParametros || '/pliego/paso2/confirmar/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ parametros: window.parametrosAcumulados, especificacion_id: window.especificacionTecnicaId })
+          });
+          const confirmarData = await confirmarResp.json();
+          if (!confirmarResp.ok || !confirmarData.success) throw new Error(confirmarData.error || 'Error al guardar parámetros');
+
+          // Paso 3: obtener propuesta de título
+          if (typeof showSpinner === 'function') showSpinner('Generando propuesta de título...');
+          const propuestaResp = await fetch(window.n8nUrls?.propuestaTitulo || '/pliego/paso3/propuesta/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ especificacion_id: window.especificacionTecnicaId })
+          });
+          const propuestaData = await propuestaResp.json();
+          if (!propuestaResp.ok || !propuestaData.success) throw new Error(propuestaData.error || 'Error al obtener propuesta de título');
+
+          if (typeof hideSpinner === 'function') hideSpinner();
+
+          // Mostrar modal de título (paso 3)
+          const modalRespuestaApi = document.getElementById('modal-respuesta-api');
+          const modalTituloInicial = document.getElementById('modal-titulo-inicial');
+          const modalTituloPropuesto = document.getElementById('modal-titulo-propuesto');
+          const modalAceptarBtn = document.getElementById('modal-aceptar-btn');
+          const modalRechazarBtn = document.getElementById('modal-rechazar-btn');
+
+          if (propuestaData.titulo_inicial && propuestaData.titulo_propuesto && modalRespuestaApi && modalTituloInicial && modalTituloPropuesto) {
+            modalTituloInicial.value = propuestaData.titulo_inicial || '';
+            modalTituloPropuesto.value = propuestaData.titulo_propuesto || '';
+            modalRespuestaApi.dataset.resumeUrl = propuestaData.resume_url || '';
+            modalRespuestaApi.dataset.tituloInicial = propuestaData.titulo_inicial || '';
+
+            if (modalAceptarBtn) {
+              modalAceptarBtn.onclick = async function() {
+                const tituloFinal = modalTituloPropuesto.value.trim() || propuestaData.titulo_propuesto || '';
+                await enviarTituloAjustado(tituloFinal, true, propuestaData.resume_url, propuestaData.titulo_inicial, propuestaData.titulo_propuesto);
+              };
+            }
+            if (modalRechazarBtn) {
+              modalRechazarBtn.onclick = async function() {
+                await enviarTituloAjustado(propuestaData.titulo_inicial || '', false, propuestaData.resume_url, propuestaData.titulo_inicial, propuestaData.titulo_propuesto);
+              };
+            }
+
+            if (typeof modalRespuestaApi.showModal === 'function') {
+              modalRespuestaApi.showModal();
+            } else {
+              modalRespuestaApi.setAttribute('open', '');
+              modalRespuestaApi.classList.add('modal-open');
+            }
+          } else {
+            if (typeof mostrarModalJSON === 'function') mostrarModalJSON(propuestaData);
+          }
+
+        } catch (error) {
+          if (typeof hideSpinner === 'function') hideSpinner();
+          alert('Hubo un error: ' + error.message);
+        } finally {
+          newEnviarBtn.disabled = false;
+          newEnviarBtn.innerHTML = originalText;
+        }
+      }
+    });
+  }
+  
+  // Inicializar estado del botón
+  updateEnviarButton();
+}
+
+// Variable para controlar si el modal se cerró manualmente (con la cruz) o programáticamente
+let modalCerradoManual = false;
+
+// Función para mostrar el contenido del paso 1 (solo cuando se cierra manualmente)
+function mostrarPaso1() {
+  const formCardContainer = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+  if (formCardContainer) {
+    formCardContainer.style.display = 'flex';
+  }
+}
+
+// Agregar event listener para cuando se cierre el modal
+// Usar DOMContentLoaded para asegurar que el modal existe
+document.addEventListener('DOMContentLoaded', function() {
+  const modalParametros = document.getElementById('modal-parametros-tecnicos');
+  if (modalParametros) {
+    modalParametros.addEventListener('close', function() {
+      // Si se cerró manualmente (con la cruz o backdrop), refrescar la página
+      if (modalCerradoManual) {
+        window.location.reload();
+        modalCerradoManual = false; // Resetear el flag
+      }
+    });
+    
+    // Manejar el botón de cerrar específico (X)
+    const closeBtn = document.getElementById('modal-parametros-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        modalCerradoManual = true; // Marcar como cierre manual
+      });
+    }
+    
+    // Manejar el backdrop
+    const backdrop = modalParametros.querySelector('.modal-backdrop');
+    if (backdrop) {
+      const backdropBtn = backdrop.querySelector('button');
+      if (backdropBtn) {
+        backdropBtn.addEventListener('click', function() {
+          modalCerradoManual = true; // Marcar como cierre manual
+        });
+      }
+    }
+  }
+});
+</script>
+

@@ -41,7 +41,16 @@
                 <span class="text-[10px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full">Con PDF</span>
               {% endif %}
             </div>
-            <i class="fas fa-chevron-down text-xs text-base-content/30 transition-transform group-open:rotate-180"></i>
+            <div class="flex items-center gap-2">
+              {% if es_propietario %}
+                <a href="{% url 'ubi_web:crear_ubicacion' proyecto.id %}"
+                   onclick="event.stopPropagation()"
+                   class="flex items-center gap-1 text-xs font-semibold text-success hover:bg-success/10 px-2 py-1 rounded-lg transition-colors">
+                  <i class="fas fa-plus text-xs"></i> Nueva
+                </a>
+              {% endif %}
+              <i class="fas fa-chevron-down text-xs text-base-content/30 transition-transform group-open:rotate-180"></i>
+            </div>
           </summary>
           <div class="px-4 pb-4 border-t border-secondary/10">
             {% if ubicaciones %}
@@ -54,22 +63,30 @@
                       {% endif %}
                       <span class="text-sm font-medium text-base-content truncate">{{ ubicacion.nombre }}</span>
                     </div>
-                    {% if es_propietario %}
                     <div class="flex items-center gap-0.5 flex-shrink-0">
+                      <button type="button"
+                              class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-base-300 transition-colors gestionar-imagenes-ubicacion-btn"
+                              data-ubicacion-id="{{ ubicacion.id }}"
+                              data-ubicacion-nombre="{{ ubicacion.nombre|escape }}"
+                              data-cantidad-imagenes="{{ ubicacion.cantidad_imagenes }}"
+                              title="{% if ubicacion.cantidad_imagenes > 0 %}Ver imágenes ({{ ubicacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}">
+                        <i class="fas fa-images text-sm {% if ubicacion.cantidad_imagenes == 0 %}text-base-content/40{% elif ubicacion.cantidad_imagenes == 1 %}text-warning{% else %}text-success{% endif %}"></i>
+                      </button>
+                      {% if es_propietario %}
                       {% if ubicacion.documento_pdf %}
-                        <a href="#" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors" title="Descargar PDF">
+                        <a href="{% url 'ubi_web:descargar_pdf' ubicacion.id %}" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors" title="Descargar PDF">
                           <i class="fas fa-file-pdf text-xs"></i>
                         </a>
                       {% endif %}
-                      <a href="#" class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
+                      <a href="{% url 'ubi_web:editar_ubicacion' ubicacion.id %}" class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
                         <i class="fas fa-edit text-xs"></i>
                       </a>
                       <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-ubicacion-btn"
                               data-ubicacion-id="{{ ubicacion.id }}" data-ubicacion-nombre="{{ ubicacion.nombre|escape }}">
                         <i class="fas fa-trash text-xs"></i>
                       </button>
+                      {% endif %}
                     </div>
-                    {% endif %}
                   </div>
                 {% endfor %}
               </div>
@@ -79,11 +96,6 @@
                   <i class="fas fa-map-marker-alt text-base-content/25"></i>
                 </div>
                 <p class="text-xs text-base-content/40 font-medium">Sin ubicación registrada</p>
-                {% if es_propietario %}
-                  <a href="#" class="flex items-center gap-1 text-xs font-semibold text-success hover:bg-success/10 px-3 py-1.5 rounded-lg transition-colors">
-                    <i class="fas fa-plus text-xs"></i> Crear ubicación
-                  </a>
-                {% endif %}
               </div>
             {% endif %}
           </div>
@@ -103,6 +115,10 @@
           </div>
           {% if es_propietario %}
           <div class="flex items-center gap-1">
+            <button id="btn-actualizar-cantidades"
+                    class="hidden items-center gap-1 text-xs font-semibold text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors">
+              <i class="fas fa-save text-xs"></i> Actualizar
+            </button>
             <label for="lista-especificaciones-modal" class="flex items-center gap-1 text-xs font-semibold text-secondary hover:bg-secondary/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
               <i class="fas fa-list text-xs"></i> Disponibles
             </label>
@@ -114,71 +130,124 @@
         </div>
 
         {% if especificaciones %}
-          <div id="especificaciones-list" class="divide-y divide-secondary/10" style="overflow-y: auto;">
+          <div class="overflow-x-auto">
+          <table class="table table-sm w-full">
+            <thead>
+              <tr class="bg-primary text-primary-content text-xs uppercase tracking-wider font-bold">
+                <th class="py-2.5 pl-4 w-1/2">
+                  <div class="flex items-center gap-2">
+                    {% if es_propietario %}<span class="w-6 flex-shrink-0"></span>{% endif %}
+                    <span class="w-6 h-6 flex-shrink-0 inline-flex items-center justify-center text-[10px]">IMG</span>
+                    Descripción
+                  </div>
+                </th>
+                <th class="py-2.5 w-24 text-center">Cantidad</th>
+                <th class="py-2.5 w-20 text-center">Unidad</th>
+                <th class="py-2.5 pr-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="especificaciones-list">
             {% for especificacion in especificaciones %}
-              <div class="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-base-200/40 transition-colors especificacion-item" data-especificacion-id="{{ especificacion.id }}">
-                <div class="flex items-center gap-2 flex-1 min-w-0">
+              <tr class="border-b border-base-200/70 last:border-0 hover:bg-base-200/30 transition-colors especificacion-item"
+                  data-especificacion-id="{{ especificacion.id }}">
+
+                <!-- Descripción -->
+                <td class="py-2 pl-4">
+                  <div class="flex items-center gap-2 min-w-0">
+                    {% if es_propietario %}
+                      <div class="cursor-move text-base-content/25 hover:text-base-content/50 transition-colors flex-shrink-0 w-6 flex items-center justify-center">
+                        <i class="fas fa-grip-vertical text-xs"></i>
+                      </div>
+                    {% endif %}
+                    <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 gestionar-imagenes-btn"
+                            title="{% if especificacion.cantidad_imagenes > 0 %}Ver imágenes ({{ especificacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}"
+                            data-especificacion-id="{{ especificacion.id }}"
+                            data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                            data-cantidad-imagenes="{{ especificacion.cantidad_imagenes }}">
+                      {% if especificacion.cantidad_imagenes == 0 %}
+                        <i class="fas fa-image text-sm text-base-content/40"></i>
+                      {% elif especificacion.cantidad_imagenes == 1 %}
+                        <i class="fas fa-image text-sm text-warning"></i>
+                      {% else %}
+                        <i class="fas fa-image text-sm text-success"></i>
+                      {% endif %}
+                    </button>
+                    <span class="text-sm font-medium text-base-content truncate">{{ especificacion.titulo }}</span>
+                  </div>
+                </td>
+
+                <!-- Cantidad -->
+                <td class="py-2 text-center">
                   {% if es_propietario %}
-                    <div class="cursor-move text-base-content/25 hover:text-base-content/50 transition-colors flex-shrink-0">
-                      <i class="fas fa-grip-vertical text-xs"></i>
-                    </div>
+                  <input type="text"
+                         class="input input-bordered input-xs w-16 text-center font-mono cantidad-input"
+                         value="{{ especificacion.cantidad|default:'' }}"
+                         maxlength="10"
+                         data-original="{{ especificacion.cantidad|default:'' }}"
+                         data-especificacion-id="{{ especificacion.id }}"
+                         placeholder="—">
+                  {% else %}
+                  <span class="text-sm font-mono text-base-content">{{ especificacion.cantidad|default:"—" }}</span>
                   {% endif %}
-                  <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 gestionar-imagenes-btn"
-                          title="{% if especificacion.cantidad_imagenes > 0 %}Ver imágenes ({{ especificacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}"
-                          data-especificacion-id="{{ especificacion.id }}"
-                          data-especificacion-titulo="{{ especificacion.titulo|escape }}"
-                          data-cantidad-imagenes="{{ especificacion.cantidad_imagenes }}">
-                    {% if especificacion.cantidad_imagenes == 0 %}
-                      <i class="fas fa-image text-sm text-base-content/20"></i>
-                    {% elif especificacion.cantidad_imagenes == 1 %}
-                      <i class="fas fa-image text-sm text-warning"></i>
-                    {% else %}
-                      <i class="fas fa-image text-sm text-success"></i>
-                    {% endif %}
-                  </button>
-                  <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 ver-actividades-btn"
-                          title="Ver actividades adicionales"
-                          data-especificacion-id="{{ especificacion.id }}"
-                          data-especificacion-titulo="{{ especificacion.titulo|escape }}">
-                    {% if especificaciones_con_cantidad|get_item:especificacion.id %}
-                      <i class="fa-solid fa-table text-sm text-success"></i>
-                    {% else %}
-                      <i class="fa-solid fa-table text-sm text-base-content/20"></i>
-                    {% endif %}
-                  </button>
-                  <span class="text-sm font-medium text-base-content truncate">{{ especificacion.titulo }}</span>
+                </td>
+
+                <!-- Unidad -->
+                <td class="py-2 text-center">
                   {% if especificacion.unidad_medida %}
-                    <span class="text-[10px] font-medium text-secondary/60 bg-secondary/10 px-1.5 py-0.5 rounded flex-shrink-0">{{ especificacion.unidad_medida }}</span>
+                    <span class="text-[10px] font-semibold text-secondary/70 bg-secondary/10 px-1.5 py-0.5 rounded font-mono">
+                      {{ especificacion.unidad_medida }}
+                    </span>
+                  {% else %}
+                    <span class="text-base-content/25 text-xs">—</span>
                   {% endif %}
-                </div>
-                <div class="flex items-center gap-0.5 flex-shrink-0">
-                  {% if es_propietario %}
-                  <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-accent hover:bg-accent/10 transition-colors mover-especificacion-btn"
-                          title="Mover posición"
-                          data-especificacion-id="{{ especificacion.id }}"
-                          data-especificacion-titulo="{{ especificacion.titulo|escape }}"
-                          data-especificacion-posicion="{{ especificacion.orden }}"
-                          data-proyecto-id="{{ proyecto.id }}"
-                          data-total-especificaciones="{{ especificaciones|length }}">
-                    <i class="fas fa-arrows-alt text-xs"></i>
-                  </button>
-                  {% endif %}
-                  <a href="{% url 'proyectos:ver_especificacion' especificacion.id %}?from=proyecto" class="w-7 h-7 rounded-md flex items-center justify-center text-info hover:bg-info/10 transition-colors" title="Ver">
-                    <i class="fas fa-eye text-xs"></i>
-                  </a>
-                  {% if es_propietario %}
-                  <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}" class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
-                    <i class="fas fa-edit text-xs"></i>
-                  </a>
-                  <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-especificacion-btn"
-                          data-especificacion-id="{{ especificacion.id }}"
-                          data-especificacion-titulo="{{ especificacion.titulo|escape }}">
-                    <i class="fas fa-trash text-xs"></i>
-                  </button>
-                  {% endif %}
-                </div>
-              </div>
+                </td>
+
+                <!-- Acciones -->
+                <td class="py-2 pr-3">
+                  <div class="flex items-center justify-end gap-0.5">
+                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-base-200 transition-colors ver-actividades-btn"
+                            title="Ver actividades adicionales"
+                            data-especificacion-id="{{ especificacion.id }}"
+                            data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+                      {% if especificaciones_con_cantidad|get_item:especificacion.id %}
+                        <i class="fa-solid fa-table text-xs text-success"></i>
+                      {% else %}
+                        <i class="fa-solid fa-table text-xs text-base-content/20"></i>
+                      {% endif %}
+                    </button>
+                    {% if es_propietario %}
+                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-accent hover:bg-accent/10 transition-colors mover-especificacion-btn"
+                            title="Mover posición"
+                            data-especificacion-id="{{ especificacion.id }}"
+                            data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                            data-especificacion-posicion="{{ especificacion.orden }}"
+                            data-proyecto-id="{{ proyecto.id }}"
+                            data-total-especificaciones="{{ especificaciones|length }}">
+                      <i class="fas fa-arrows-alt text-xs"></i>
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'proyectos:ver_especificacion' especificacion.id %}?from=proyecto"
+                       class="w-7 h-7 rounded-md flex items-center justify-center text-info hover:bg-info/10 transition-colors" title="Ver">
+                      <i class="fas fa-eye text-xs"></i>
+                    </a>
+                    {% if es_propietario %}
+                    <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}"
+                       class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
+                      <i class="fas fa-edit text-xs"></i>
+                    </a>
+                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-especificacion-btn"
+                            data-especificacion-id="{{ especificacion.id }}"
+                            data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+                      <i class="fas fa-trash text-xs"></i>
+                    </button>
+                    {% endif %}
+                  </div>
+                </td>
+
+              </tr>
             {% endfor %}
+            </tbody>
+          </table>
           </div>
         {% else %}
           <div class="flex flex-col items-center justify-center py-14 gap-3">
@@ -289,8 +358,8 @@
   {% include 'proyectos/modals/gestionar_imagenes_modal.html' %}
   {% include 'proyectos/modals/exportar_word_modal.html' %}
   {% include 'proyectos/modals/ver_actividades_adicionales_modal.html' %}
-  {# {% include 'ubi_web/modals/eliminar_ubicacion_modal.html' %} #}
-  {% comment %} Modal de gestión de imágenes de ubicación eliminado {% endcomment %}
+  {% include 'ubi_web/modals/eliminar_ubicacion_modal.html' %}
+  {% include 'ubi_web/modals/gestionar_imagenes_ubicacion_modal.html' %}
 {% endblock %}
 
 {% block js %}
@@ -544,7 +613,91 @@
     }
   });
 
-  {% comment %} Event listener de gestión de imágenes de ubicación eliminado {% endcomment %}
+  // Gestionar imágenes de ubicación
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.gestionar-imagenes-ubicacion-btn');
+    if (button) {
+      event.preventDefault();
+      if (window.openGestionarImagenesUbicacionModal) {
+        window.openGestionarImagenesUbicacionModal(button.dataset.ubicacionId, button.dataset.ubicacionNombre);
+      }
+    }
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function getCookie(name) {
+    let v = null;
+    if (document.cookie) {
+      document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+      });
+    }
+    return v;
+  }
+
+  // ── Cantidad editable ────────────────────────────────────────────────────────
+  const btnActualizar = document.getElementById('btn-actualizar-cantidades');
+
+  function hayModificaciones() {
+    return !!document.querySelector('.cantidad-input[data-modified="1"]');
+  }
+
+  function actualizarVisibilidadBoton() {
+    if (!btnActualizar) return;
+    if (hayModificaciones()) {
+      btnActualizar.classList.remove('hidden');
+      btnActualizar.classList.add('flex');
+    } else {
+      btnActualizar.classList.add('hidden');
+      btnActualizar.classList.remove('flex');
+    }
+  }
+
+  document.addEventListener('input', function(e) {
+    const input = e.target.closest('.cantidad-input');
+    if (!input) return;
+    const changed = input.value.trim() !== input.dataset.original;
+    input.dataset.modified = changed ? '1' : '0';
+    actualizarVisibilidadBoton();
+  });
+
+  if (btnActualizar) {
+    btnActualizar.addEventListener('click', async function() {
+      const inputs = document.querySelectorAll('.cantidad-input[data-modified="1"]');
+      if (!inputs.length) return;
+
+      btnActualizar.disabled = true;
+      btnActualizar.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Guardando...';
+
+      const promises = Array.from(inputs).map(input => {
+        const especId = input.dataset.especificacionId;
+        const cantidad = input.value.trim();
+        return fetch(`/proyectos/especificacion/${especId}/cantidad/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify({ cantidad })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            input.dataset.original = data.cantidad;
+            input.dataset.modified = '0';
+          }
+        });
+      });
+
+      try {
+        await Promise.all(promises);
+      } catch(err) {
+        console.error('Error guardando cantidades:', err);
+      }
+
+      btnActualizar.disabled = false;
+      btnActualizar.innerHTML = '<i class="fas fa-save text-xs"></i> Actualizar';
+      actualizarVisibilidadBoton();
+    });
+  }
 </script>
 {% endblock %}
 

@@ -241,7 +241,6 @@ El diseño estructural cumple con las normativas vigentes y considera:
                     titulo=titulo,
                     contenido=contenido,
                     orden=j + 1,
-                    token_cost=random.uniform(0.5, 5.0),
                     fecha_creacion=fecha_esp,
                     fecha_actualizacion=fecha_esp + timedelta(days=random.randint(0, 20))
                 )

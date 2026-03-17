@@ -1,0 +1,128 @@
+{% load main_tags %}
+<dialog id="eliminar-ubicacion-modal" class="modal">
+  <div class="modal-box p-0 rounded-xl overflow-hidden max-w-sm">
+
+    <!-- Header -->
+    <div class="bg-primary px-5 py-4 flex items-center gap-3">
+      <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-trash text-primary-content text-sm"></i>
+      </span>
+      <div>
+        <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Ubicación</p>
+        <h3 class="text-sm font-bold text-primary-content">Eliminar ubicación</h3>
+      </div>
+      <form method="dialog" class="ml-auto">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-5 flex flex-col gap-3">
+      <p class="text-sm text-base-content/70 leading-relaxed">
+        ¿Está seguro de que desea eliminar
+        <span class="font-semibold text-base-content" id="eliminar-ubicacion-nombre"></span>?
+      </p>
+      <p class="text-xs text-error/70 flex items-center gap-1.5">
+        <i class="fas fa-exclamation-triangle text-xs"></i>
+        Se eliminarán todas las imágenes asociadas. Esta acción no se puede deshacer.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-5 pb-5 flex justify-end gap-2">
+      <form method="dialog">
+        <button type="button" id="eliminar-ubicacion-cancel" class="btn btn-ghost btn-sm">Cancelar</button>
+      </form>
+      <form id="eliminar-ubicacion-form" method="post">
+        {% csrf_token %}
+        <input type="hidden" id="eliminar-ubicacion-id" name="ubicacion_id" value="">
+        <button type="submit" class="btn btn-error btn-sm">
+          <i class="fas fa-trash text-xs"></i> Eliminar
+        </button>
+      </form>
+    </div>
+
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('eliminar-ubicacion-modal');
+    const form = document.getElementById('eliminar-ubicacion-form');
+    const cancelButton = document.getElementById('eliminar-ubicacion-cancel');
+    const nombreElement = document.getElementById('eliminar-ubicacion-nombre');
+    const idInput = document.getElementById('eliminar-ubicacion-id');
+
+    function resetSubmitButton() {
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-trash text-xs"></i> Eliminar';
+      }
+    }
+
+    window.openEliminarUbicacionModal = function(ubicacionId, ubicacionNombre) {
+      resetSubmitButton();
+      nombreElement.textContent = `"${ubicacionNombre}"`;
+      idInput.value = ubicacionId;
+      modal.showModal();
+    };
+
+    cancelButton.addEventListener('click', function () {
+      resetSubmitButton();
+      modal.close();
+    });
+
+    modal.addEventListener('close', resetSubmitButton);
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const ubicacionId = idInput.value;
+      if (!ubicacionId) return;
+
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Eliminando...';
+
+      function getCookie(name) {
+        let v = null;
+        document.cookie.split(';').forEach(c => {
+          c = c.trim();
+          if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+        });
+        return v;
+      }
+
+      try {
+        const response = await fetch(`/ubicaciones/ubicacion/eliminar/${ubicacionId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({})
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.success) {
+          modal.close();
+          if (window.flashy) flashy.success(data.message || 'Ubicación eliminada correctamente.');
+          setTimeout(() => window.location.reload(), 400);
+        } else {
+          throw new Error(data.error || 'Error al eliminar');
+        }
+      } catch (error) {
+        if (window.flashy) flashy.error('Error al eliminar la ubicación. Inténtelo de nuevo.');
+        else alert('Error al eliminar la ubicación. Inténtelo de nuevo.');
+        resetSubmitButton();
+      }
+    });
+  })();
+</script>

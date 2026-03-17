@@ -6,20 +6,16 @@
   <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
 {% endblock %}
 
-{% block title %}
-  Editar Proyecto
-{% endblock %}
+{% block title %}Editar Proyecto{% endblock %}
 
 {% block breadcrumbs %}
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
-    <a href="{% url 'proyectos:proyecto_main' %}" class="hover:text-primary transition-colors">Proyectos</a>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
   </li>
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
-    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">
-      {{ proyecto.nombre }}
-    </a>
+    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto.nombre }}</a>
   </li>
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
@@ -28,29 +24,37 @@
 {% endblock %}
 
 {% block content %}
-  <div class="flex flex-col items-center justify-center mt-6 px-4">
-    <div class="w-full max-w-4xl">
-      <!-- Mensajes -->
-      {% if messages %}
-        {# Las notificaciones se manejan con Flashy.js en la plantilla base #}
-      {% endif %}
-    </div>
-    
-    <div class="card w-full max-w-4xl bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title text-2xl font-bold mb-4">
-          <i class="fas fa-edit mr-2 text-secondary"></i>
-          Editar Proyecto: {{ proyecto.nombre }}
+<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+
+  <div class="card bg-base-100 shadow-2xl w-full max-w-3xl hover:shadow-3xl transition-shadow">
+    <div class="card-body p-8">
+
+      <!-- Header -->
+      <div class="mb-6">
+        <h2 class="card-title text-2xl mb-1">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-edit text-secondary"></i>
+            </div>
+            <span class="text-secondary">Editar Proyecto</span>
+          </div>
         </h2>
-        
-        <form method="post" class="space-y-6">
-          {% csrf_token %}
-          
-          <!-- Nombre de Proyecto -->
+        <p class="text-sm text-base-content/60 ml-14">{{ proyecto.nombre }}</p>
+      </div>
+
+      <form method="post" class="space-y-5">
+        {% csrf_token %}
+
+        <!-- Nombre + Solicitante -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
           <div class="form-control w-full">
             <label class="label" for="{{ form.nombre.id_for_label }}">
-              <span class="label-text font-semibold">{{ form.nombre.label }}</span>
-              <span class="label-text-alt text-error">*</span>
+              <span class="label-text font-semibold flex items-center gap-2">
+                <i class="fas fa-folder text-primary text-xs"></i>
+                Nombre de Proyecto
+              </span>
+              <span class="label-text-alt text-error font-bold">*</span>
             </label>
             {{ form.nombre }}
             {% if form.nombre.errors %}
@@ -60,11 +64,13 @@
             {% endif %}
           </div>
 
-          <!-- Solicitante -->
           <div class="form-control w-full">
             <label class="label" for="{{ form.solicitante.id_for_label }}">
-              <span class="label-text font-semibold">{{ form.solicitante.label }}</span>
-              <span class="label-text-alt text-error">*</span>
+              <span class="label-text font-semibold flex items-center gap-2">
+                <i class="fas fa-user text-primary text-xs"></i>
+                Solicitante
+              </span>
+              <span class="label-text-alt text-error font-bold">*</span>
             </label>
             {{ form.solicitante }}
             {% if form.solicitante.errors %}
@@ -74,68 +80,76 @@
             {% endif %}
           </div>
 
-          <!-- Ubicación -->
-          <div class="form-control w-full">
-            <label class="label" for="{{ form.ubicacion.id_for_label }}">
-              <span class="label-text font-semibold">{{ form.ubicacion.label }}</span>
-              <span class="label-text-alt text-error">*</span>
-            </label>
-            {{ form.ubicacion }}
-            {% if form.ubicacion.errors %}
-              <label class="label">
-                <span class="label-text-alt text-error">{{ form.ubicacion.errors.0 }}</span>
-              </label>
-            {% endif %}
-          </div>
+        </div>
 
-          <!-- Descripción -->
-          <div class="form-control w-full">
-            <label class="label" for="{{ form.descripcion.id_for_label }}">
-              <span class="label-text font-semibold">{{ form.descripcion.label }}</span>
-              <span class="label-text-alt">Opcional</span>
-            </label>
-            {{ form.descripcion }}
-            {% if form.descripcion.errors %}
-              <label class="label">
-                <span class="label-text-alt text-error">{{ form.descripcion.errors.0 }}</span>
-              </label>
-            {% endif %}
-          </div>
-
-          <!-- Público -->
-          <div class="form-control w-full">
-            <label class="label cursor-pointer justify-start gap-3">
-              {{ form.publico }}
-              <span class="label-text font-semibold">{{ form.publico.label }}</span>
-              <span class="label-text-alt text-base-content/70">(Opcional)</span>
-            </label>
-            {% if form.publico.errors %}
-              <label class="label">
-                <span class="label-text-alt text-error">{{ form.publico.errors.0 }}</span>
-              </label>
-            {% endif %}
+        <!-- Ubicación -->
+        <div class="form-control w-full">
+          <label class="label" for="{{ form.ubicacion.id_for_label }}">
+            <span class="label-text font-semibold flex items-center gap-2">
+              <i class="fas fa-map-marker-alt text-primary text-xs"></i>
+              Ubicación
+            </span>
+            <span class="label-text-alt text-error font-bold">*</span>
+          </label>
+          {{ form.ubicacion }}
+          {% if form.ubicacion.errors %}
             <label class="label">
-              <span class="label-text-alt text-base-content/70">Marque esta opción si el proyecto debe ser visible para todos los usuarios</span>
+              <span class="label-text-alt text-error">{{ form.ubicacion.errors.0 }}</span>
             </label>
-          </div>
+          {% endif %}
+        </div>
 
-          <!-- Botones de acción -->
-          <div class="card-actions justify-end mt-6">
-            <a href="{% url 'proyectos:proyecto_main' %}" class="btn btn-outline">
-              <i class="fas fa-times mr-2"></i>
-              Cancelar
-            </a>
-            <button type="submit" class="btn btn-secondary">
-              <i class="fas fa-save mr-2"></i>
-              Guardar Cambios
-            </button>
+        <!-- Descripción -->
+        <div class="form-control w-full">
+          <label class="label" for="{{ form.descripcion.id_for_label }}">
+            <span class="label-text font-semibold flex items-center gap-2">
+              <i class="fas fa-align-left text-primary text-xs"></i>
+              Descripción
+            </span>
+            <span class="label-text-alt text-base-content/50">Opcional</span>
+          </label>
+          {{ form.descripcion }}
+          {% if form.descripcion.errors %}
+            <label class="label">
+              <span class="label-text-alt text-error">{{ form.descripcion.errors.0 }}</span>
+            </label>
+          {% endif %}
+        </div>
+
+        <!-- Público -->
+        <div class="rounded-xl border border-base-300 px-4 py-3 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-globe text-info text-xs"></i>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-base-content">Acceso público</p>
+              <p class="text-xs text-base-content/50">Visible para todos los usuarios del sistema</p>
+            </div>
           </div>
-        </form>
-      </div>
+          <label class="label cursor-pointer gap-0">
+            {{ form.publico }}
+          </label>
+        </div>
+        {% if form.publico.errors %}
+          <p class="text-xs text-error -mt-3 ml-1">{{ form.publico.errors.0 }}</p>
+        {% endif %}
+
+        <!-- Acciones -->
+        <div class="flex justify-end gap-3 pt-4 border-t border-base-300 mt-2">
+          <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-outline btn-sm">
+            <i class="fas fa-times mr-1.5"></i>
+            Cancelar
+          </a>
+          <button type="submit" class="btn btn-secondary btn-sm">
+            <i class="fas fa-save mr-1.5"></i>
+            Guardar Cambios
+          </button>
+        </div>
+
+      </form>
     </div>
   </div>
-{% endblock %}
 
-{% block js %}
+</div>
 {% endblock %}
-

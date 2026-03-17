@@ -12,8 +12,7 @@ class ProyectoAdmin(admin.ModelAdmin):
 
 @admin.register(Especificacion)
 class EspecificacionAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'proyecto', 'especificacion_tecnica', 'fecha_creacion')
-    list_filter = ('fecha_creacion', 'proyecto', 'especificacion_tecnica')
-    search_fields = ('titulo', 'proyecto__nombre', 'especificacion_tecnica__titulo')
-    autocomplete_fields = ('especificacion_tecnica',)
+    list_display = ('titulo', 'proyecto', 'fecha_creacion')
+    list_filter = ('fecha_creacion', 'proyecto')
+    search_fields = ('titulo', 'proyecto__nombre')
 

@@ -6,18 +6,9 @@
   
   <!-- Contenido del Paso 1 -->
   <div class="flex flex-col items-center">
-    <!-- Spinner container -->
-    <div id="spinner-container" class="hidden flex flex-col items-center justify-center mt-12 mb-8">
-      <span class="loading loading-spinner loading-lg text-primary"></span>
-      <p class="mt-4 text-lg font-semibold text-primary">
-        Generando parámetros técnicos...
-      </p>
-      <div class="flex gap-2 mt-4">
-        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0s;"></div>
-        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
-        <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
-      </div>
-    </div>
+    <!-- alias de compatibilidad (el spinner real es #ai-spinner) -->
+    <div id="spinner-container" class="hidden"></div>
+
     
     <!-- Contenedor para mostrar el resultado del markdown -->
     <div id="resultado-markdown-container" class="hidden w-full max-w-5xl mt-8">
@@ -50,6 +41,7 @@
         </div>
       </div>
     </div>
+
 
     <!-- Contenido según el paso -->
     {% if respuesta_completa.output and respuesta_completa.output.parametros %}
@@ -205,10 +197,97 @@
         </div>
       </div>
     {% endif %}
+
+    {% if borradores %}
+    <!-- ── Panel de borradores pendientes ─────────────────────────────────── -->
+    <div class="w-full max-w-5xl mt-8 mb-2">
+
+      <!-- Encabezado del panel -->
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-1 h-5 bg-warning rounded-full"></div>
+        <span class="text-sm font-semibold text-base-content/70 uppercase tracking-widest">Borradores pendientes</span>
+        <div class="flex-1 h-px bg-base-300"></div>
+        <span class="badge badge-warning badge-sm">{{ borradores|length }}</span>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        {% for b in borradores %}
+        <div id="borrador-{{ b.obj.id }}"
+             class="bg-base-100 border border-warning/30 rounded-xl shadow-sm overflow-hidden">
+
+          <div class="flex items-stretch">
+
+            <!-- Franja de color lateral -->
+            <div class="w-1 bg-warning shrink-0"></div>
+
+            <!-- Cuerpo de la card -->
+            <div class="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 min-w-0">
+
+              <!-- Título + meta -->
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm text-base-content truncate leading-tight">
+                  {{ b.obj.titulo }}
+                </p>
+                <p class="text-xs text-base-content/50 mt-0.5">
+                  <i class="fas fa-tag mr-1"></i>{{ b.obj.tipo_servicio }}
+                  <span class="mx-1">·</span>
+                  <i class="fas fa-clock mr-1"></i>{{ b.obj.fecha_actualizacion|date:"d/m/Y H:i" }}
+                </p>
+              </div>
+
+              <!-- Siguiente paso a completar -->
+              <div class="shrink-0">
+                {% if b.resume_paso == 8 %}
+                <a href="{% url 'pliego_licitacion:pasos' %}?paso=5&especificacion_id={{ b.obj.id }}"
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold
+                          bg-warning/15 text-warning-content border border-warning/50
+                          hover:bg-warning hover:border-warning hover:text-white
+                          transition-all duration-150 cursor-pointer whitespace-nowrap shadow-sm"
+                   title="Generar resultado final">
+                  <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-warning/40 text-[10px] font-bold leading-none shrink-0">8</span>
+                  {{ b.resume_label }}
+                  <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
+                </a>
+                {% else %}
+                <button type="button"
+                        onclick="resumirDesdePaso({{ b.obj.id }}, {{ b.resume_paso }})"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold
+                               bg-warning/15 text-warning-content border border-warning/50
+                               hover:bg-warning hover:border-warning hover:text-white
+                               transition-all duration-150 cursor-pointer whitespace-nowrap shadow-sm"
+                        title="Continuar en paso {{ b.resume_paso }}: {{ b.resume_label }}">
+                  <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-warning/40 text-[10px] font-bold leading-none shrink-0">{{ b.resume_paso }}</span>
+                  {{ b.resume_label }}
+                  <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
+                </button>
+                {% endif %}
+              </div>
+
+            </div>
+
+            <!-- Botón eliminar -->
+            <div class="flex items-center px-3 border-l border-base-200 shrink-0">
+              <button type="button"
+                      onclick="eliminarBorrador({{ b.obj.id }}, this)"
+                      class="w-7 h-7 flex items-center justify-center rounded-lg
+                             text-base-content/30 hover:text-error hover:bg-error/10
+                             transition-colors duration-150"
+                      title="Descartar borrador">
+                <i class="fas fa-trash-alt text-xs"></i>
+              </button>
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <!-- ── Fin panel borradores ───────────────────────────────────────────── -->
   </div>
 
-  <!-- Paso 3: Ajustar Título -->
-  {% include 'pliego_licitacion/pasos/paso3_titulo.html' %}
+  <!-- Paso 6: Ajustar Título -->
+  {% include 'pliego_licitacion/pasos/paso6_titulo.html' %}
 
   <dialog id="modal-respuesta-json" class="modal fixed inset-0 z-50 flex items-start justify-center pt-16">
     <div class="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -243,11 +322,11 @@
     </form>
   </dialog>
 
-  <!-- Paso 2: Parámetros Técnicos -->
-  {% include 'pliego_licitacion/pasos/paso2_parametros.html' %}
+  <!-- Pasos 2-5: Parámetros Técnicos -->
+  {% include 'pliego_licitacion/pasos/paso2-5_parametros.html' %}
 
-  <!-- Paso 4: Actividades Adicionales -->
-  {% include 'pliego_licitacion/pasos/paso4_actividades.html' %}
+  <!-- Paso 7: Actividades Adicionales -->
+  {% include 'pliego_licitacion/pasos/paso7_actividades.html' %}
 {% endblock %}
 
 {% block js %}
@@ -358,7 +437,7 @@
       
       // Enviar datos
       const sessionID = '{{ request.session.session_key|default:"" }}';
-      const urlEnviarEspecificacion = window.n8nUrls?.enviarEspecificacion || '/pliego_licitacion/enviar-especificacion/';
+      const urlEnviarEspecificacion = window.n8nUrls?.coherencia || '/pliego/paso1/coherencia/';
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -413,8 +492,21 @@
       }
       
       const djangoResponse = await apiResponse.json();
-      
-      // Guardar ID de especificación
+      toggleSpinner(false);
+
+      // Caso 1: incoherencia detectada por n8n
+      if (djangoResponse.coherente === false) {
+        mostrarFormularioConObservacion(
+          djangoResponse.razon,
+          valores.titulo,
+          valores.descripcion,
+          valores.tipoServicio,
+          valores.unidadMedida
+        );
+        return;
+      }
+
+      // Guardar ID de especificación (solo si fue coherente y se creó el registro)
       if (djangoResponse.especificacion_id) {
         window.especificacionTecnicaId = djangoResponse.especificacion_id;
         sessionStorage.setItem('especificacionTecnicaId', djangoResponse.especificacion_id);
@@ -425,47 +517,56 @@
           idDisplay.classList.remove('hidden');
         }
       }
-      
-      const apiResult = djangoResponse.response_data || djangoResponse;
-      toggleSpinner(false);
-      
-      // Verificar coherencia
-      let coherente = true;
-      let razon = null;
-      
-      if (Array.isArray(apiResult) && apiResult.length > 0) {
-        const firstItem = apiResult[0];
-        if (firstItem.content?.[0]?.text?.coherente === false) {
-          coherente = false;
-          razon = firstItem.content[0].text.razon;
-        }
-      } else if (apiResult?.coherente === false) {
-        coherente = false;
-        razon = apiResult.razon || apiResult.observacion;
+
+      // Paso 1-1: parámetros de material
+      showSpinner('Analizando parámetros de materiales...');
+
+      const subResp = await fetch(window.n8nUrls.parametrosMaterial, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ especificacion_id: djangoResponse.especificacion_id })
+      });
+
+      if (!subResp.ok) {
+        let errMsg = `Error HTTP ${subResp.status}`;
+        try { const e = await subResp.json(); errMsg = e.error || errMsg; } catch (_) {}
+        throw new Error(errMsg);
       }
-      
-      // Si no es coherente o hay observación, mostrar formulario con observación
-      if ((!coherente && razon) || apiResult.requiere_respuesta || apiResult.observacion) {
-        mostrarFormularioConObservacion(
-          { observacion: razon || apiResult.observacion, ...apiResult },
-          valores.titulo,
-          valores.descripcion,
-          valores.tipoServicio,
-          valores.unidadMedida
-        );
-        return;
+
+      const subData = await subResp.json();
+      if (!subData.success) throw new Error(subData.error || 'Error al obtener parámetros de material');
+
+      // Garantizar que el ID esté disponible globalmente y en el modal
+      if (subData.especificacion_id) {
+        window.especificacionTecnicaId = subData.especificacion_id;
+        const modalParam = document.getElementById('modal-parametros-tecnicos');
+        if (modalParam) modalParam.dataset.especificacionId = subData.especificacion_id;
       }
-      
+
+      // Inicializar estado de sub-pasos
+      window.subPasoActual = 1;
+      window.parametrosAcumulados = [];
+
+      // Actualizar badge y título del modal para paso 2
+      const badgeEl = document.getElementById('modal-parametros-badge');
+      if (badgeEl) badgeEl.textContent = '2';
+      const tituloEl = document.getElementById('modal-parametros-titulo');
+      if (tituloEl) tituloEl.textContent = 'Parámetros materiales';
+
+      const apiResult = subData.response_data;
+
       // Buscar parámetros en diferentes formatos
       let parametrosData = null;
       if (Array.isArray(apiResult) && apiResult[0]?.body?.parametros) {
         parametrosData = { parametros: apiResult[0].body.parametros };
-      } else if (apiResult.body?.parametros) {
+      } else if (apiResult?.body?.parametros) {
         parametrosData = { parametros: apiResult.body.parametros };
-      } else if (apiResult.output?.parametros) {
+      } else if (apiResult?.output?.parametros) {
         parametrosData = apiResult.output;
+      } else if (Array.isArray(apiResult) && apiResult[0]?.output?.parametros) {
+        parametrosData = apiResult[0].output;
       }
-      
+
       if (parametrosData?.parametros?.length > 0) {
         renderizarTablaParametros(parametrosData, valores.titulo, valores.descripcion, valores.tipoServicio, valores.unidadMedida);
       } else {
@@ -490,33 +591,9 @@
   });
 })();
 
-// Función global: mostrar/ocultar spinner
-function toggleSpinner(mostrar) {
-  let spinner = document.getElementById('spinner-container');
-  if (!spinner && mostrar) {
-    const mainContainer = document.querySelector('div.flex.flex-col.items-center');
-    if (mainContainer) {
-      spinner = document.createElement('div');
-      spinner.id = 'spinner-container';
-      spinner.className = 'flex flex-col items-center justify-center mt-12 mb-8';
-      spinner.innerHTML = `
-        <span class="loading loading-spinner loading-lg text-primary"></span>
-        <p class="mt-4 text-lg font-semibold text-primary">Generando parámetros técnicos...</p>
-        <div class="flex gap-2 mt-4">
-          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0s;"></div>
-          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
-          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
-        </div>
-      `;
-      mainContainer.insertBefore(spinner, mainContainer.firstChild);
-    }
-  }
-  if (spinner) {
-    spinner.style.display = mostrar ? 'flex' : 'none';
-    if (mostrar) {
-      spinner.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }
+// Alias de compatibilidad (showSpinner/hideSpinner definidos en pasos.html)
+function toggleSpinner(mostrar, texto) {
+  mostrar ? showSpinner(texto || 'Generando parámetros técnicos...') : hideSpinner();
 }
 
 // Función para mostrar modal con JSON
@@ -551,29 +628,13 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, un
   const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
   if (formWrapper) formWrapper.style.display = 'none';
   
-  try {
-    sessionStorage.setItem('n8n_parametros', JSON.stringify(output.parametros));
-    sessionStorage.setItem('n8n_actividad', output.actividad || '');
-    sessionStorage.setItem('n8n_titulo', titulo);
-    sessionStorage.setItem('n8n_descripcion', descripcion);
-    sessionStorage.setItem('n8n_tipo_servicio', tipoServicio);
-    sessionStorage.setItem('n8n_unidad_medida', unidadMedida || '');
-  } catch (error) {
-    console.error('Error al guardar en sessionStorage:', error);
-  }
-  
   const modal = document.getElementById('modal-parametros-tecnicos');
   if (!modal) {
     mostrarModalJSON({error: 'No se encontró el modal de parámetros'});
     return;
   }
   
-  const modalTitulo = document.getElementById('modal-parametros-titulo');
-  if (modalTitulo) {
-    modalTitulo.textContent = output.actividad 
-      ? `Parámetros Técnicos - ${output.actividad}` 
-      : 'Parámetros Técnicos';
-  }
+  // El título del modal lo gestiona el código externo (no sobreescribir)
   
   const tableBody = document.getElementById('parametros-table-body');
   if (!tableBody) {
@@ -598,28 +659,35 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, un
     
     row.innerHTML = `
       <td>
-        <input 
-          type="checkbox" 
-          class="checkbox checkbox-primary parametro-checkbox" 
+        <input
+          type="checkbox"
+          class="checkbox checkbox-primary parametro-checkbox"
           data-parametro="${escapeHtml(parametro.parametro || '')}"
           data-valor="${escapeHtml(parametro.valor_recomendado || '')}"
-          data-detalle="${escapeHtml(parametro.detalle || '')}"
+          data-descripcion="${escapeHtml(parametro.descripcion || '')}"
           data-unidad="${escapeHtml(unidad)}"
           id="param-${index}"
           ${parametro.check ? 'checked' : ''}
         >
       </td>
       <td class="font-semibold">${escapeHtml(parametro.parametro || '')}</td>
-      <td class="text-right">
-        <input 
-          type="text" 
-          class="input input-bordered input-primary input-sm w-full valor-recomendado-input focus:input-primary text-right" 
+      <td>
+        <input
+          type="text"
+          class="input input-bordered input-primary input-sm w-full valor-recomendado-input focus:input-primary text-center"
           value="${escapeHtml(parametro.valor_recomendado || '')}"
           data-original-value="${escapeHtml(parametro.valor_recomendado || '')}"
         >
       </td>
-      <td class="text-sm text-base-content/70 font-medium text-center">${escapeHtml(unidad)}</td>
-      <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap: break-word; white-space: pre-wrap; min-width: 200px;">${escapeHtml(parametro.detalle || '')}</td>
+      <td>
+        <input
+          type="text"
+          class="input input-bordered input-sm w-full unidad-input text-center"
+          value="${escapeHtml(unidad)}"
+          data-original-value="${escapeHtml(unidad)}"
+        >
+      </td>
+      <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap: break-word; white-space: pre-wrap; min-width: 200px;">${escapeHtml(parametro.descripcion || '')}</td>
     `;
     tableBody.appendChild(row);
   });
@@ -643,7 +711,7 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, un
       <input type="text" class="input input-bordered input-sm w-full text-center" id="nuevo-parametro-unidad" placeholder="Unidad de medida">
     </td>
     <td>
-      <input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-detalle" placeholder="Detalle (opcional)">
+      <input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-descripcion" placeholder="Descripción (opcional)">
     </td>
   `;
   tableBody.appendChild(nuevaFilaRow);
@@ -663,14 +731,12 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, un
 }
 
 // Función para mostrar formulario con observación
-function mostrarFormularioConObservacion(apiResult, tituloOriginal, descripcionOriginal, tipoServicioOriginal, unidadMedidaOriginal) {
-  const titulo = apiResult.titulo || apiResult.titulo_actual || tituloOriginal || '';
-  const descripcion = apiResult.descripcion || apiResult.descripcion_actual || descripcionOriginal || '';
+function mostrarFormularioConObservacion(razon, tituloOriginal, descripcionOriginal, tipoServicioOriginal, unidadMedidaOriginal) {
+  const titulo = tituloOriginal || '';
+  const descripcion = descripcionOriginal || '';
   const tipoServicio = tipoServicioOriginal || '';
-  const unidadMedida = (apiResult.unidad_medida !== undefined && apiResult.unidad_medida !== null && apiResult.unidad_medida !== '') 
-    ? apiResult.unidad_medida 
-    : (unidadMedidaOriginal || '');
-  const observacion = apiResult.observacion || apiResult.pregunta || '';
+  const unidadMedida = unidadMedidaOriginal || '';
+  const observacion = razon || '';
   
   window.especificacionTecnicaId = null;
   sessionStorage.removeItem('especificacionTecnicaId');
@@ -724,7 +790,7 @@ function mostrarFormularioConObservacion(apiResult, tituloOriginal, descripcionO
     <div class="alert alert-warning mb-4">
       <i class="fas fa-exclamation-triangle mr-2"></i>
       <div>
-        <div class="font-semibold mb-1">Observación:</div>
+        <div class="font-semibold mb-1">Nota:</div>
         <div>${observacion.replace(/\n/g, '<br>')}</div>
       </div>
     </div>
@@ -835,11 +901,186 @@ function mostrarFormularioConObservacion(apiResult, tituloOriginal, descripcionO
   }, 100);
 }
 
+
 // NOTA: Las siguientes funciones han sido movidas a sus respectivos archivos de modal para mejor mantenimiento:
-// - cargarScriptParametros() -> paso2_parametros.html
-// - enviarTituloAjustado() -> paso3_titulo.html  
-// - renderizarTablaActividades() -> paso4_actividades.html
-// - cargarScriptActividades() -> paso4_actividades.html
+// - cargarScriptParametros() -> paso2-5_parametros.html
+// - enviarTituloAjustado() -> paso6_titulo.html
+// - renderizarTablaActividades() -> paso7_actividades.html
+// - cargarScriptActividades() -> paso7_actividades.html
+
+// ── Reanudar borrador: llama a n8n y abre el modal correspondiente ────────────
+
+const _RESUME_CFG = {
+  2: { urlKey: 'parametrosMaterial',  subPaso: 1, badge: '2', titulo: 'Parámetros materiales', spinnerLabel: 'Analizando parámetros de materiales...' },
+  3: { urlKey: 'parametrosEjecucion', subPaso: 2, badge: '3', titulo: 'Parámetros ejecución',  spinnerLabel: 'Analizando parámetros de ejecución...'  },
+  4: { urlKey: 'normasAplicables',    subPaso: 3, badge: '4', titulo: 'Normas aplicables',     spinnerLabel: 'Identificando normas aplicables...'      },
+  5: { urlKey: 'criteriosCalidad',    subPaso: 4, badge: '5', titulo: 'Criterios de calidad',  spinnerLabel: 'Definiendo criterios de calidad...'      },
+};
+
+function _extraerParametros(rd) {
+  const s = Array.isArray(rd) ? rd[0] : rd;
+  return s?.output?.parametros || s?.body?.parametros || s?.parametros || [];
+}
+
+function _extraerActividades(ar) {
+  if (!ar) return [];
+  if (ar.actividades_adicionales) return ar.actividades_adicionales;
+  const s = Array.isArray(ar) ? ar[0] : ar;
+  return s?.output?.actividades_adicionales || s?.actividades_adicionales || [];
+}
+
+async function resumirDesdePaso(especId, pasoNum) {
+  // 1. Cargar spec desde BD para setear globals
+  showSpinner('Cargando borrador...');
+  let spec;
+  try {
+    const r = await fetch(`/pliego/especificacion/${especId}/datos/`);
+    spec = await r.json();
+    if (spec.error) throw new Error(spec.error);
+  } catch (e) {
+    hideSpinner();
+    alert('Error al cargar el borrador: ' + e.message);
+    return;
+  }
+
+  window.especificacionTecnicaId = especId;
+  window.n8nTitulo       = spec.titulo;
+  window.n8nDescripcion  = spec.descripcion;
+  window.n8nTipoServicio = spec.tipo_servicio;
+  window.n8nUnidadMedida = spec.unidad_medida || '';
+
+  const disp = document.getElementById('especificacion-id-display');
+  const val  = document.getElementById('especificacion-id-value');
+  if (disp) { disp.classList.remove('hidden'); disp.style.display = 'flex'; }
+  if (val)  val.textContent = especId;
+
+  const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+  if (formWrapper) formWrapper.style.display = 'none';
+
+  // 2. Llamar a n8n para el paso y abrir el modal
+  try {
+    if (pasoNum <= 5) {
+      const cfg = _RESUME_CFG[pasoNum];
+      window.subPasoActual = cfg.subPaso;
+
+      showSpinner(cfg.spinnerLabel);
+      const resp = await fetch(window.n8nUrls[cfg.urlKey], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ especificacion_id: especId }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) throw new Error(data.error || 'Error en n8n');
+      if (data.especificacion_id) window.especificacionTecnicaId = data.especificacion_id;
+
+      hideSpinner();
+
+      if (typeof renderizarTablaParametros === 'function') {
+        renderizarTablaParametros(
+          { parametros: _extraerParametros(data.response_data), actividad: spec.tipo_servicio },
+          spec.titulo, spec.descripcion, spec.tipo_servicio, spec.unidad_medida
+        );
+        setTimeout(() => {
+          const badgeEl  = document.getElementById('modal-parametros-badge');
+          const tituloEl = document.getElementById('modal-parametros-titulo');
+          if (badgeEl)  badgeEl.textContent  = cfg.badge;
+          if (tituloEl) tituloEl.textContent = cfg.titulo;
+        }, 120);
+      }
+
+    } else if (pasoNum === 6) {
+      // paso 6 → propuesta de título
+      showSpinner('Generando propuesta de título...');
+      const resp = await fetch(window.n8nUrls.propuestaTitulo, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ especificacion_id: especId }),
+      });
+      const data = await resp.json();
+      hideSpinner();
+      if (!resp.ok || !data.success) throw new Error(data.error || 'Error en n8n');
+
+      const modalRespuestaApi   = document.getElementById('modal-respuesta-api');
+      const modalTituloInicial  = document.getElementById('modal-titulo-inicial');
+      const modalTituloPropuesto = document.getElementById('modal-titulo-propuesto');
+      const modalAceptarBtn     = document.getElementById('modal-aceptar-btn');
+      const modalRechazarBtn    = document.getElementById('modal-rechazar-btn');
+
+      if (data.titulo_inicial && data.titulo_propuesto && modalRespuestaApi) {
+        if (modalTituloInicial)   modalTituloInicial.value   = data.titulo_inicial;
+        if (modalTituloPropuesto) modalTituloPropuesto.value = data.titulo_propuesto;
+        modalRespuestaApi.dataset.resumeUrl    = data.resume_url    || '';
+        modalRespuestaApi.dataset.tituloInicial = data.titulo_inicial || '';
+
+        if (modalAceptarBtn) {
+          modalAceptarBtn.onclick = async function() {
+            const tituloFinal = modalTituloPropuesto?.value.trim() || data.titulo_propuesto || '';
+            await enviarTituloAjustado(tituloFinal, true, data.resume_url, data.titulo_inicial, data.titulo_propuesto);
+          };
+        }
+        if (modalRechazarBtn) {
+          modalRechazarBtn.onclick = async function() {
+            await enviarTituloAjustado(data.titulo_inicial || '', false, data.resume_url, data.titulo_inicial, data.titulo_propuesto);
+          };
+        }
+        if (typeof modalRespuestaApi.showModal === 'function') {
+          modalRespuestaApi.showModal();
+        } else {
+          modalRespuestaApi.setAttribute('open', '');
+          modalRespuestaApi.classList.add('modal-open');
+        }
+      } else {
+        if (typeof mostrarModalJSON === 'function') mostrarModalJSON(data);
+      }
+
+    } else {
+      // paso 7 → actividades adicionales
+      showSpinner('Cargando actividades adicionales...');
+      const resp = await fetch(window.n8nUrls.adicionales, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ especificacion_id: especId }),
+      });
+      const data = await resp.json();
+      hideSpinner();
+      if (!resp.ok || !data.success) throw new Error(data.error || 'Error en n8n');
+
+      if (typeof renderizarTablaActividades === 'function') {
+        renderizarTablaActividades(_extraerActividades(data.adicionales_response));
+      }
+    }
+  } catch (e) {
+    hideSpinner();
+    console.error('resumirDesdePaso error:', e);
+    alert('Error al retomar el borrador: ' + e.message);
+  }
+}
+
+// ── Soft-delete borrador ──────────────────────────────────────────────────────
+async function eliminarBorrador(id, btn) {
+  if (!confirm('¿Descartar este borrador? No se podrá recuperar.')) return;
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`/pliego/especificacion/${id}/eliminar/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+      },
+    });
+    const data = await resp.json();
+    if (data.success) {
+      const card = document.getElementById(`borrador-${id}`);
+      if (card) card.remove();
+    } else {
+      alert(data.error || 'No se pudo eliminar.');
+      btn.disabled = false;
+    }
+  } catch (e) {
+    alert('Error al eliminar.');
+    btn.disabled = false;
+  }
+}
 </script>
 {% endblock %}
 

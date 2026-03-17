@@ -9,31 +9,23 @@
     .animate-pulse-glow {
       animation: pulse-glow 2s ease-in-out infinite;
     }
-    
+
     @keyframes pulse-glow {
-      0%, 100% {
-        box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
-      }
-      50% {
-        box-shadow: 0 0 30px rgba(102, 126, 234, 0.8);
-      }
+      0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.4); }
+      50%       { box-shadow: 0 0 30px rgba(102, 126, 234, 0.8); }
     }
-    
+
     /* Espacio para el navbar y breadcrumbs fijos */
-    /* Navbar: ~56px, Breadcrumbs: ~40px */
-    body {
-      padding-top: 96px;
-    }
-    
+    body { padding-top: 96px; }
+
     /* Ocultar el navbar del template base cuando usamos el navbar personalizado */
-    .bg-primary.text-white.shadow.z-50.overflow-visible.relative {
-      display: none;
-    }
-    
+    .bg-primary.text-white.shadow.z-50.overflow-visible.relative { display: none; }
+
     /* Ocultar breadcrumbs del template base */
     {% block breadcrumbs_bar %}
     <div style="display: none;"></div>
     {% endblock %}
+
   </style>
 {% endblock %}
 
@@ -46,6 +38,22 @@
 {% endblock %}
 
 {% block content %}
+  <!-- ── AI Spinner – Cupertino style (shared across all steps) ── -->
+  <div id="ai-spinner" class="ai-spinner hidden" role="status" aria-live="polite">
+    <div class="ai-spinner__backdrop"></div>
+    <div class="ai-spinner__sheet">
+      <div class="ai-spinner__rings">
+        <div class="ai-spinner__ring ai-spinner__ring--outer"></div>
+        <div class="ai-spinner__ring ai-spinner__ring--inner"></div>
+        <div class="ai-spinner__dot-track">
+          <div class="ai-spinner__dot"></div>
+        </div>
+      </div>
+      <p id="ai-spinner-label" class="ai-spinner__label">Procesando...</p>
+      <p class="ai-spinner__sub">Sistema IA en proceso</p>
+    </div>
+  </div>
+
   <!-- Incluir navbar fijo -->
   {% include 'pliego_licitacion/includes/navbar_n8n.html' %}
   
@@ -99,18 +107,127 @@
 
   // URLs para uso en JavaScript dinámico
   window.n8nUrls = {
-    enviarEspecificacion: '{% url "pliego_licitacion:enviar_especificacion" %}',
-    enviarParametros: '{% url "pliego_licitacion:enviar_parametros" %}',
-    enviarTitulo: '{% url "pliego_licitacion:enviar_titulo_ajustado" %}',
-    enviarActividades: '{% url "pliego_licitacion:enviar_actividades" %}'
+    // Paso 1
+    coherencia:          '{% url "pliego_licitacion:coherencia" %}',
+    // Pasos 1-1 a 1-4 (ejecutados en secuencia por el frontend)
+    parametrosMaterial:         '{% url "pliego_licitacion:parametros_material" %}',
+    guardarParametrosMateriales:'{% url "pliego_licitacion:guardar_parametros_materiales" %}',
+    guardarParametrosEjecucion: '{% url "pliego_licitacion:guardar_parametros_ejecucion" %}',
+    guardarNormasAplicables:    '{% url "pliego_licitacion:guardar_normas_aplicables" %}',
+    guardarCriteriosCalidad:    '{% url "pliego_licitacion:guardar_criterios_calidad" %}',
+    parametrosEjecucion:        '{% url "pliego_licitacion:parametros_ejecucion" %}',
+    normasAplicables:           '{% url "pliego_licitacion:normas_aplicables" %}',
+    criteriosCalidad:           '{% url "pliego_licitacion:criterios_calidad" %}',
+    // Paso 2
+    confirmarParametros: '{% url "pliego_licitacion:confirmar_parametros" %}',
+    // Paso 3
+    propuestaTitulo:     '{% url "pliego_licitacion:propuesta_titulo" %}',
+    guardarTitulo:       '{% url "pliego_licitacion:guardar_titulo" %}',
+    // Paso 4
+    adicionales:         '{% url "pliego_licitacion:adicionales" %}',
+    actividades:         '{% url "pliego_licitacion:actividades" %}',
+    // Paso 5
+    generarResultado:    '{% url "pliego_licitacion:generar_resultado" %}',
+    resultado:           '{% url "pliego_licitacion:resultado" %}',
+    guardarResultado:    '{% url "pliego_licitacion:guardar_resultado" %}',
   };
   
   // Variable global para almacenar el ID de la especificación técnica
-  window.especificacionTecnicaId = null;
-  
+  // Inicializar desde URL si viene de un borrador
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var idFromUrl = parseInt(params.get('especificacion_id'));
+    window.especificacionTecnicaId = idFromUrl || null;
+    if (window.especificacionTecnicaId) {
+      var disp = document.getElementById('especificacion-id-display');
+      var val  = document.getElementById('especificacion-id-value');
+      if (disp) disp.classList.remove('hidden');
+      if (val)  val.textContent = window.especificacionTecnicaId;
+    }
+  })();
+
   // Función para obtener el ID de la especificación técnica
   window.getEspecificacionTecnicaId = function() {
     return window.especificacionTecnicaId;
   };
+
+  // ── Global AI Spinner ──────────────────────────────────────────────────────
+  window.showSpinner = function(text) {
+    const el    = document.getElementById('ai-spinner');
+    const label = document.getElementById('ai-spinner-label');
+    if (label) label.textContent = text || 'Procesando...';
+    if (el) { el.classList.remove('hidden'); el.style.display = 'flex'; }
+    window.startSpinnerStep(text || '');
+  };
+  window.hideSpinner = function() {
+    const el = document.getElementById('ai-spinner');
+    if (el) { el.classList.add('hidden'); el.style.display = ''; }
+  };
+
+  // ── Progress dot ───────────────────────────────────────────────────────────
+  // 8 pasos, total 148 s → ángulos acumulados en sentido horario desde 0°
+  // Cada ángulo = duración/148 * 360
+  const _SPINNER_STEPS = [
+    { match: 'parámetros técnicos',  startAngle:   0,      endAngle:  19.46, duration:  8 },
+    { match: 'materiales',           startAngle:  19.46,   endAngle:  58.38, duration: 16 },
+    { match: 'ejecuci',              startAngle:  58.38,   endAngle: 133.78, duration: 31 },
+    { match: 'normas',               startAngle: 133.78,   endAngle: 153.24, duration:  8 },
+    { match: 'criterios',            startAngle: 153.24,   endAngle: 197.03, duration: 18 },
+    { match: 'título',               startAngle: 197.03,   endAngle: 199.46, duration:  1 },
+    { match: 'guardando actividades',startAngle: 199.46,   endAngle: 255.41, duration: 23 },
+    { match: 'generando especificaci',startAngle: 255.41,  endAngle: 360,    duration: 43 },
+  ];
+
+  let _dotRaf = null;
+
+  function _setDotAngle(deg) {
+    document.querySelectorAll('.ai-spinner__dot-track').forEach(function(el) {
+      el.style.transform = 'rotate(' + deg + 'deg)';
+    });
+  }
+
+  function _animateDot(fromDeg, toDeg, durationMs) {
+    if (_dotRaf) cancelAnimationFrame(_dotRaf);
+    var start = null;
+    function step(ts) {
+      if (!start) start = ts;
+      var p = Math.min((ts - start) / durationMs, 1);
+      _setDotAngle(fromDeg + (toDeg - fromDeg) * p);
+      if (p < 1) _dotRaf = requestAnimationFrame(step);
+    }
+    _dotRaf = requestAnimationFrame(step);
+  }
+
+  window.startSpinnerStep = function(text) {
+    var lower = (text || '').toLowerCase();
+    for (var i = 0; i < _SPINNER_STEPS.length; i++) {
+      if (lower.includes(_SPINNER_STEPS[i].match)) {
+        var s = _SPINNER_STEPS[i];
+        _setDotAngle(s.startAngle);          // snapa al inicio del segmento
+        _animateDot(s.startAngle, s.endAngle, s.duration * 1000);
+        return;
+      }
+    }
+  };
+  // Auto-ocultar spinner cuando se abre cualquier dialog
+  (function() {
+    function watchDialogs() {
+      const observer = new MutationObserver(function(mutations) {
+        for (const m of mutations) {
+          if (m.type === 'attributes' && m.attributeName === 'open') {
+            if (m.target.open || m.target.hasAttribute('open')) hideSpinner();
+          }
+        }
+      });
+      document.querySelectorAll('dialog').forEach(function(d) {
+        observer.observe(d, { attributes: true });
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', watchDialogs);
+    } else {
+      watchDialogs();
+    }
+  })();
 </script>
 {% endblock %}

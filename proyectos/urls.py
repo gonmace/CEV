@@ -25,5 +25,8 @@ urlpatterns = [
     path('especificacion/imagen/<int:imagen_id>/actualizar-descripcion/', views.actualizar_descripcion_imagen_view, name='actualizar_descripcion_imagen'),
     path('<int:proyecto_id>/exportar-word/', views.exportar_proyecto_word_view, name='exportar_proyecto_word'),
     path('especificacion/<int:especificacion_id>/actividades/', views.obtener_actividades_adicionales_view, name='obtener_actividades_adicionales'),
+    path('especificacion/<int:especificacion_id>/cantidad/', views.actualizar_cantidad_especificacion_view, name='actualizar_cantidad_especificacion'),
+    path('especificacion/<int:especificacion_id>/actividad/<int:actividad_idx>/', views.actualizar_actividad_view, name='actualizar_actividad'),
+    path('especificacion/<int:especificacion_id>/mostrar/', views.actualizar_especificacion_mostrar_view, name='actualizar_especificacion_mostrar'),
 ]
 

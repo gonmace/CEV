@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     'home',
     'proyectos',
     'pliego_licitacion',
+    'ubi_web',
 
     'crispy_forms',
     'crispy_tailwind',

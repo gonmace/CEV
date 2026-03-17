@@ -1,0 +1,286 @@
+<!-- Modal confirmar eliminar imagen ubicación -->
+<dialog id="confirmar-eliminar-imagen-ubicacion-modal" class="modal">
+  <div class="modal-box p-0 rounded-xl overflow-hidden max-w-sm">
+    <div class="bg-primary px-5 py-4 flex items-center gap-3">
+      <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-trash text-primary-content text-sm"></i>
+      </span>
+      <div>
+        <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Imagen</p>
+        <h3 class="text-sm font-bold text-primary-content">Eliminar imagen</h3>
+      </div>
+      <form method="dialog" class="ml-auto">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+    <div class="px-5 py-5">
+      <p class="text-sm text-base-content/70">¿Eliminar esta imagen? Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="px-5 pb-5 flex justify-end gap-2">
+      <button type="button" class="btn btn-ghost btn-sm" id="confirmar-eliminar-imagen-ubicacion-cancel">Cancelar</button>
+      <button type="button" class="btn btn-error btn-sm" id="confirmar-eliminar-imagen-ubicacion-confirm">
+        <i class="fas fa-trash text-xs"></i> Eliminar
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+
+<!-- Modal gestionar imágenes ubicación -->
+<dialog id="gestionar-imagenes-ubicacion-modal" class="modal">
+  <div class="modal-box p-0 rounded-xl overflow-hidden max-w-3xl">
+
+    <!-- Header -->
+    <div class="bg-primary px-5 py-4 flex items-center gap-3">
+      <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-images text-primary-content text-sm"></i>
+      </span>
+      <div class="flex-1 min-w-0">
+        <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Ubicación</p>
+        <h3 class="text-sm font-bold text-primary-content truncate" id="gestionar-imagenes-ubicacion-nombre"></h3>
+      </div>
+      <form method="dialog" class="ml-auto">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-4 flex flex-col gap-4">
+
+      <!-- Galería -->
+      <div>
+        <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-2">Imágenes</p>
+        <div id="gestionar-imagenes-ubicacion-loading" class="flex items-center justify-center py-8 gap-2 text-base-content/40">
+          <span class="loading loading-spinner loading-sm"></span>
+          <span class="text-xs">Cargando...</span>
+        </div>
+        <div id="gestionar-imagenes-ubicacion-lista" class="grid grid-cols-2 md:grid-cols-3 gap-3 hidden"></div>
+        <div id="gestionar-imagenes-ubicacion-vacio" class="hidden flex flex-col items-center justify-center py-8 gap-2">
+          <div class="w-10 h-10 rounded-xl bg-base-200 flex items-center justify-center">
+            <i class="fas fa-image text-base-content/25"></i>
+          </div>
+          <p class="text-xs text-base-content/40">Sin imágenes agregadas</p>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div class="rounded-xl border-2 border-dashed border-base-300 p-4 flex flex-col gap-3">
+        <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Agregar imágenes</p>
+        <form id="gestionar-imagenes-ubicacion-form" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="hidden" id="gestionar-imagenes-ubicacion-id" value="">
+          <label class="flex flex-col items-center gap-2 cursor-pointer group">
+            <input type="file" id="gestionar-imagenes-ubicacion-input" name="imagenes" accept="image/*" multiple class="hidden">
+            <div id="ubi-upload-label" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-base-200 group-hover:bg-base-300 transition-colors text-xs font-medium text-base-content/60">
+              <i class="fas fa-paperclip text-xs"></i>
+              <span>Seleccionar archivos</span>
+            </div>
+            <p class="text-[10px] text-base-content/40">PNG, JPG, WEBP — se optimizan automáticamente</p>
+          </label>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="px-5 pb-5 flex justify-between items-center gap-2">
+      <button type="button" id="gestionar-imagenes-ubicacion-submit"
+              class="btn btn-primary btn-sm hidden">
+        <i class="fas fa-upload text-xs"></i> Subir imágenes
+      </button>
+      <div class="ml-auto">
+        <form method="dialog">
+          <button type="button" id="gestionar-imagenes-ubicacion-cancel" class="btn btn-ghost btn-sm">Cerrar</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+
+<script>
+  (function () {
+    const modal       = document.getElementById('gestionar-imagenes-ubicacion-modal');
+    const cancelBtn   = document.getElementById('gestionar-imagenes-ubicacion-cancel');
+    const form        = document.getElementById('gestionar-imagenes-ubicacion-form');
+    const nombreEl    = document.getElementById('gestionar-imagenes-ubicacion-nombre');
+    const idInput     = document.getElementById('gestionar-imagenes-ubicacion-id');
+    const lista       = document.getElementById('gestionar-imagenes-ubicacion-lista');
+    const vacio       = document.getElementById('gestionar-imagenes-ubicacion-vacio');
+    const loading     = document.getElementById('gestionar-imagenes-ubicacion-loading');
+    const fileInput   = document.getElementById('gestionar-imagenes-ubicacion-input');
+    const submitBtn   = document.getElementById('gestionar-imagenes-ubicacion-submit');
+    const uploadLabel = document.getElementById('ubi-upload-label');
+
+    let currentId = null;
+    let imagenAEliminar = null;
+
+    function getCookie(name) {
+      let v = null;
+      document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+      });
+      return v;
+    }
+
+    function setState(state) {
+      loading.classList.toggle('hidden', state !== 'loading');
+      lista.classList.toggle('hidden',   state !== 'gallery');
+      vacio.classList.toggle('hidden',   state !== 'empty');
+    }
+
+    fileInput.addEventListener('change', function () {
+      if (this.files.length > 0) {
+        uploadLabel.querySelector('span').textContent = `${this.files.length} archivo(s) seleccionado(s)`;
+        submitBtn.classList.remove('hidden');
+      } else {
+        uploadLabel.querySelector('span').textContent = 'Seleccionar archivos';
+        submitBtn.classList.add('hidden');
+      }
+    });
+
+    async function cargarImagenes(ubicacionId) {
+      setState('loading');
+      try {
+        const r = await fetch(`/ubicaciones/ubicacion/${ubicacionId}/imagenes/`);
+        const data = await r.json();
+        renderImagenes(data.imagenes || []);
+      } catch {
+        setState('empty');
+      }
+    }
+
+    function renderImagenes(imagenes) {
+      if (!imagenes.length) { setState('empty'); return; }
+      setState('gallery');
+      lista.innerHTML = imagenes.map(img => `
+        <div class="rounded-xl overflow-hidden border border-base-200 group relative">
+          <img src="${img.url}" alt="" class="w-full h-36 object-cover">
+          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <button type="button" class="w-8 h-8 rounded-lg bg-error flex items-center justify-center eliminar-img-ubi-btn" data-imagen-id="${img.id}">
+              <i class="fas fa-trash text-white text-xs"></i>
+            </button>
+          </div>
+          <div class="p-2">
+            <input type="text" class="input input-xs input-bordered w-full desc-img-ubi-input"
+                   placeholder="Descripción..." value="${img.descripcion || ''}" data-imagen-id="${img.id}" data-original="${img.descripcion || ''}">
+          </div>
+        </div>
+      `).join('');
+
+      lista.querySelectorAll('.eliminar-img-ubi-btn').forEach(btn => {
+        btn.addEventListener('click', () => abrirConfirmEliminar(btn.dataset.imagenId));
+      });
+
+      lista.querySelectorAll('.desc-img-ubi-input').forEach(input => {
+        input.addEventListener('change', async function () {
+          if (this.value === this.dataset.original) return;
+          try {
+            const r = await fetch(`/ubicaciones/ubicacion/imagen/${this.dataset.imagenId}/actualizar-descripcion/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ descripcion: this.value })
+            });
+            const d = await r.json();
+            if (d.success) { this.dataset.original = this.value; flashy.success('Descripción guardada.'); }
+            else throw new Error();
+          } catch { flashy.error('Error al guardar descripción.'); }
+        });
+      });
+    }
+
+    function abrirConfirmEliminar(imagenId) {
+      imagenAEliminar = imagenId;
+      document.getElementById('confirmar-eliminar-imagen-ubicacion-modal').showModal();
+    }
+
+    function actualizarBotonFila(ubicacionId, cantidad) {
+      const btn = document.querySelector(`.gestionar-imagenes-ubicacion-btn[data-ubicacion-id="${ubicacionId}"]`);
+      if (!btn) return;
+      const i = btn.querySelector('i');
+      i.className = 'fas fa-images text-sm ' + (cantidad === 0 ? 'text-base-content/40' : cantidad === 1 ? 'text-warning' : 'text-success');
+      btn.title = cantidad === 0 ? 'Agregar imágenes' : `Ver imágenes (${cantidad})`;
+      btn.dataset.cantidadImagenes = cantidad;
+    }
+
+    // Confirmar eliminar
+    document.getElementById('confirmar-eliminar-imagen-ubicacion-confirm').addEventListener('click', async function () {
+      if (!imagenAEliminar) return;
+      try {
+        const r = await fetch(`/ubicaciones/ubicacion/imagen/${imagenAEliminar}/eliminar/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+          body: JSON.stringify({})
+        });
+        const d = await r.json();
+        if (d.success) {
+          flashy.success('Imagen eliminada.');
+          document.getElementById('confirmar-eliminar-imagen-ubicacion-modal').close();
+          imagenAEliminar = null;
+          await cargarImagenes(currentId);
+          const r2 = await fetch(`/ubicaciones/ubicacion/${currentId}/imagenes/`);
+          const d2 = await r2.json();
+          actualizarBotonFila(currentId, (d2.imagenes || []).length);
+        }
+      } catch { flashy.error('Error al eliminar imagen.'); }
+    });
+
+    document.getElementById('confirmar-eliminar-imagen-ubicacion-cancel').addEventListener('click', function () {
+      imagenAEliminar = null;
+      document.getElementById('confirmar-eliminar-imagen-ubicacion-modal').close();
+    });
+
+    // Subir imágenes
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!fileInput.files.length) { flashy.warning('Selecciona al menos una imagen.'); return; }
+
+      const formData = new FormData();
+      Array.from(fileInput.files).forEach(f => formData.append('imagenes', f));
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Subiendo...';
+
+      try {
+        const r = await fetch(`/ubicaciones/ubicacion/${currentId}/subir-imagenes/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+          body: formData
+        });
+        const d = await r.json();
+        if (d.success) {
+          flashy.success(d.message || 'Imágenes subidas correctamente.');
+          fileInput.value = '';
+          uploadLabel.querySelector('span').textContent = 'Seleccionar archivos';
+          submitBtn.classList.add('hidden');
+          await cargarImagenes(currentId);
+          actualizarBotonFila(currentId, lista.querySelectorAll('[data-imagen-id]').length);
+        } else throw new Error(d.error);
+      } catch (err) {
+        flashy.error('Error al subir imágenes.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-upload text-xs"></i> Subir imágenes';
+      }
+    });
+
+    cancelBtn.addEventListener('click', () => modal.close());
+
+    window.openGestionarImagenesUbicacionModal = function (ubicacionId, ubicacionNombre) {
+      currentId = ubicacionId;
+      nombreEl.textContent = ubicacionNombre;
+      idInput.value = ubicacionId;
+      fileInput.value = '';
+      uploadLabel.querySelector('span').textContent = 'Seleccionar archivos';
+      submitBtn.classList.add('hidden');
+      cargarImagenes(ubicacionId);
+      modal.showModal();
+    };
+  })();
+</script>

@@ -1,321 +1,306 @@
-<!-- Modal para ver actividades adicionales -->
+<!-- Modal Actividades Adicionales -->
 <dialog id="ver-actividades-modal" class="modal">
-  <div class="modal-box max-w-4xl">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-2xl font-bold flex items-center gap-2">
-        <i class="fas fa-table text-info"></i>
-        Actividades
-      </h3>
+  <div class="modal-box max-w-3xl p-0 overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-primary px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center">
+          <i class="fa-solid fa-table text-primary-content text-sm"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Actividades</p>
+          <h3 id="actividades-modal-titulo" class="text-sm font-bold text-primary-content leading-tight truncate max-w-xs"></h3>
+        </div>
+      </div>
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+        <button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors">
+          <i class="fas fa-times text-sm"></i>
+        </button>
       </form>
     </div>
-    
-    <div class="mb-4">
-      <p class="text-base-content/70">
-        Especificación: <span id="actividades-especificacion-titulo" class="font-semibold"></span>
-      </p>
-    </div>
-    
-    <div id="actividades-table-container">
-        <table class="table table-zebra w-full">
+
+    <!-- Body -->
+    <div class="p-5">
+
+      <!-- Loading -->
+      <div id="actividades-loading" class="flex items-center justify-center py-12 gap-3 text-base-content/40">
+        <span class="loading loading-spinner loading-sm"></span>
+        <span class="text-sm">Cargando actividades...</span>
+      </div>
+
+      <!-- Tabla -->
+      <div id="actividades-table-container" class="hidden overflow-x-auto rounded-xl border border-base-200">
+        <table class="table table-sm w-full">
           <thead>
-            <tr class="bg-base-200">
-              <th class="font-semibold">Nombre</th>
-              <th class="font-semibold text-center">Unidad</th>
-              <th class="font-semibold text-center">Cantidad</th>
+            <tr class="bg-base-200 text-[11px] uppercase tracking-wider font-bold text-base-content/60">
+              <th class="py-2.5 pl-4 w-10 text-center">Mostrar</th>
+              <th class="py-2.5 pl-2">Nombre</th>
+              <th class="py-2.5 w-20 text-center">Unidad</th>
+              <th class="py-2.5 w-24 text-center pr-4">Cantidad</th>
             </tr>
           </thead>
-          <tbody id="actividades-table-body">
-            <!-- Primero se agregará la fila de la especificación, luego las actividades -->
-          </tbody>
+          <tbody id="actividades-table-body"></tbody>
         </table>
-    </div>
-    <div id="actividades-empty-message" class="hidden text-center py-8 text-base-content/60">
-        <i class="fas fa-inbox text-4xl mb-2"></i>
-        <p>No hay actividades adicionales registradas para esta especificación.</p>
       </div>
+
+      <!-- Vacío -->
+      <div id="actividades-empty-message" class="hidden flex flex-col items-center justify-center py-12 gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+          <i class="fas fa-inbox text-xl text-base-content/25"></i>
+        </div>
+        <p class="text-sm font-medium text-base-content/40">Sin actividades adicionales</p>
+      </div>
+
     </div>
-    
-    <div class="modal-action">
+
+    <!-- Footer -->
+    <div class="px-5 pb-5 flex justify-end">
       <form method="dialog">
-        <button class="btn btn-ghost">Cerrar</button>
+        <button class="btn btn-ghost btn-sm">Cerrar</button>
       </form>
     </div>
+
   </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>Cerrar</button>
-  </form>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
 </dialog>
 
 <script>
-// Función para abrir el modal de actividades adicionales
-function openActividadesModal(especificacionId, especificacionTitulo) {
-  const modal = document.getElementById('ver-actividades-modal');
-  const tituloSpan = document.getElementById('actividades-especificacion-titulo');
-  const tableBody = document.getElementById('actividades-table-body');
-  const emptyMessage = document.getElementById('actividades-empty-message');
-  
-  if (!modal || !tituloSpan || !tableBody) {
-    console.error('No se encontraron los elementos del modal de actividades');
-    return;
+(function() {
+  function getCookie(name) {
+    let v = null;
+    if (document.cookie) document.cookie.split(';').forEach(c => {
+      c = c.trim();
+      if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+    });
+    return v;
   }
-  
-  // Establecer el título
-  tituloSpan.textContent = especificacionTitulo;
-  
-  // Limpiar la tabla
-  tableBody.innerHTML = '';
-  
-  // Obtener las actividades desde el servidor
-  fetch(`/proyecto/especificacion/${especificacionId}/actividades/`, {
-    method: 'GET',
-    headers: {
-      'X-Requested-With': 'XMLHttpRequest',
-      'X-CSRFToken': getCookie('csrftoken')
+
+  function esc(text) {
+    const d = document.createElement('div');
+    d.textContent = String(text ?? '');
+    return d.innerHTML;
+  }
+
+  async function post(url, body) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify(body),
+    });
+    return r.json();
+  }
+
+  function buildToggle(checked, editable, dataset) {
+    if (!editable) {
+      return `<input type="checkbox" class="checkbox checkbox-primary checkbox-xs" ${checked ? 'checked' : ''} disabled>`;
     }
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Error al obtener las actividades');
+    const attrs = Object.entries(dataset).map(([k,v]) => `data-${k}="${esc(v)}"`).join(' ');
+    return `<input type="checkbox" class="checkbox checkbox-primary checkbox-xs mostrar-toggle" ${checked ? 'checked' : ''} ${attrs}>`;
+  }
+
+  function buildNombre(nombre, editable, dataset) {
+    if (!editable) {
+      return `<span class="text-sm text-base-content/80">${esc(nombre)}</span>`;
     }
-    return response.json();
-  })
-  .then(data => {
-    console.log('Datos recibidos del servidor:', data);
-    console.log('data.success:', data.success);
-    console.log('data.actividades:', data.actividades);
-    console.log('data.actividades length:', data.actividades ? data.actividades.length : 0);
-    console.log('data.debug:', data.debug);
-    
-    const tableContainer = document.getElementById('actividades-table-container');
-    
-    // Verificar si hay datos para mostrar
-    if (data.success && data.especificacion) {
-      console.log('Mostrando tabla con especificación y', data.actividades ? data.actividades.length : 0, 'actividades');
-      // Mostrar la tabla y ocultar el mensaje vacío
-      if (tableContainer) tableContainer.classList.remove('hidden');
-      emptyMessage.classList.add('hidden');
-      
-      // Agregar fila de la especificación como primera fila
-      const especificacionRow = document.createElement('tr');
-      especificacionRow.className = 'bg-base-300 font-semibold';
-      especificacionRow.innerHTML = `
-        <td class="whitespace-normal">${escapeHtml(data.especificacion.titulo || '-')}</td>
-        <td class="text-center">${escapeHtml(data.especificacion.unidad_medida || '-')}</td>
-        <td class="text-center">
-          <input 
-            type="text" 
-            class="input input-bordered input-sm w-20 text-center cantidad-input" 
-            value="${escapeHtml(data.especificacion.cantidad || '')}"
-            data-tipo="especificacion"
-            data-id="${data.especificacion.especificacion_tecnica_id || data.debug.especificacion_tecnica_id || ''}"
-            maxlength="10"
-            placeholder="-"
-          >
+    const attrs = Object.entries(dataset).map(([k,v]) => `data-${k}="${esc(v)}"`).join(' ');
+    return `<input type="text" class="input input-bordered input-xs w-full font-medium nombre-input"
+                   value="${esc(nombre)}" data-original="${esc(nombre)}" ${attrs} placeholder="Nombre">`;
+  }
+
+  function buildCantidad(cantidad, editable, dataset) {
+    if (!editable) {
+      return `<span class="text-sm font-mono">${esc(cantidad || '—')}</span>`;
+    }
+    const attrs = Object.entries(dataset).map(([k,v]) => `data-${k}="${esc(v)}"`).join(' ');
+    return `<input type="text" class="input input-bordered input-xs w-20 text-center font-mono cantidad-modal-input"
+                   value="${esc(cantidad || '')}" data-original="${esc(cantidad || '')}" ${attrs} maxlength="10" placeholder="—">`;
+  }
+
+  function flashInput(input, ok) {
+    const cls = ok ? 'input-success' : 'input-error';
+    input.classList.add(cls);
+    setTimeout(() => input.classList.remove(cls), 1200);
+  }
+
+  function attachEvents(tbody, especId) {
+    // Toggle mostrar
+    tbody.addEventListener('change', async function(e) {
+      const toggle = e.target.closest('.mostrar-toggle');
+      if (toggle) {
+        const checked = toggle.checked;
+        const tipo = toggle.dataset.tipo;
+        let data, url;
+        if (tipo === 'espec') {
+          url = `/proyectos/especificacion/${especId}/mostrar/`;
+          data = { mostrar: checked };
+        } else {
+          const idx = parseInt(toggle.dataset.idx);
+          url = `/proyectos/especificacion/${especId}/actividad/${idx}/`;
+          data = { mostrar: checked };
+        }
+        try {
+          const res = await post(url, data);
+          if (!res.success) toggle.checked = !checked;
+        } catch { toggle.checked = !checked; }
+        return;
+      }
+
+      // Cantidad
+      const cantInput = e.target.closest('.cantidad-modal-input');
+      if (cantInput) {
+        const newVal = cantInput.value.trim();
+        if (newVal === cantInput.dataset.original) return;
+        cantInput.disabled = true;
+        const tipo = cantInput.dataset.tipo;
+        let url, data;
+        if (tipo === 'espec') {
+          url = `/proyectos/especificacion/${especId}/cantidad/`;
+          data = { cantidad: newVal };
+        } else {
+          const idx = parseInt(cantInput.dataset.idx);
+          url = `/proyectos/especificacion/${especId}/actividad/${idx}/`;
+          data = { cantidad: newVal };
+        }
+        try {
+          const res = await post(url, data);
+          if (res.success) {
+            cantInput.dataset.original = newVal;
+            flashInput(cantInput, true);
+          } else {
+            cantInput.value = cantInput.dataset.original;
+            flashInput(cantInput, false);
+          }
+        } catch {
+          cantInput.value = cantInput.dataset.original;
+        } finally {
+          cantInput.disabled = false;
+        }
+        return;
+      }
+
+      // Nombre
+      const nombreInput = e.target.closest('.nombre-input');
+      if (nombreInput) {
+        const newVal = nombreInput.value.trim();
+        if (newVal === nombreInput.dataset.original || !newVal) {
+          nombreInput.value = nombreInput.dataset.original;
+          return;
+        }
+        nombreInput.disabled = true;
+        const idx = parseInt(nombreInput.dataset.idx);
+        try {
+          const res = await post(`/proyectos/especificacion/${especId}/actividad/${idx}/`, { nombre: newVal });
+          if (res.success) {
+            nombreInput.dataset.original = newVal;
+            flashInput(nombreInput, true);
+          } else {
+            nombreInput.value = nombreInput.dataset.original;
+            flashInput(nombreInput, false);
+          }
+        } catch {
+          nombreInput.value = nombreInput.dataset.original;
+        } finally {
+          nombreInput.disabled = false;
+        }
+      }
+    });
+
+    // Enter → blur para disparar change
+    tbody.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        const input = e.target.closest('.cantidad-modal-input, .nombre-input');
+        if (input) { e.preventDefault(); input.blur(); }
+      }
+    });
+  }
+
+  window.openActividadesModal = function(especificacionId, especificacionTitulo) {
+    const modal     = document.getElementById('ver-actividades-modal');
+    const titulo    = document.getElementById('actividades-modal-titulo');
+    const loading   = document.getElementById('actividades-loading');
+    const container = document.getElementById('actividades-table-container');
+    const tbody     = document.getElementById('actividades-table-body');
+    const empty     = document.getElementById('actividades-empty-message');
+
+    titulo.textContent = especificacionTitulo;
+    tbody.innerHTML = '';
+    loading.classList.remove('hidden');
+    container.classList.add('hidden');
+    empty.classList.add('hidden');
+    modal.showModal();
+
+    fetch(`/proyectos/especificacion/${especificacionId}/actividades/`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      loading.classList.add('hidden');
+      if (!data.success) { empty.classList.remove('hidden'); return; }
+
+      const esp = data.especificacion;
+      const editable = esp.es_propietario;
+
+      // ── Fila de la especificación principal ──
+      const trEsp = document.createElement('tr');
+      trEsp.className = 'bg-primary/5 font-semibold border-b-2 border-primary/20';
+      trEsp.innerHTML = `
+        <td class="py-2 pl-4 text-center">
+          ${buildToggle(esp.mostrar, editable, { tipo: 'espec' })}
+        </td>
+        <td class="py-2 pl-2">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+            <span class="text-sm font-semibold">${esc(esp.titulo)}</span>
+          </div>
+        </td>
+        <td class="py-2 text-center">
+          <span class="text-[10px] font-bold text-secondary/70 bg-secondary/10 px-1.5 py-0.5 rounded font-mono">
+            ${esc(esp.unidad_medida || 'glb')}
+          </span>
+        </td>
+        <td class="py-2 text-center pr-4">
+          ${buildCantidad(esp.cantidad, editable, { tipo: 'espec' })}
         </td>
       `;
-      tableBody.appendChild(especificacionRow);
-      
-      // Llenar la tabla con las actividades
-      if (data.actividades && Array.isArray(data.actividades) && data.actividades.length > 0) {
-        data.actividades.forEach((actividad, index) => {
-          console.log(`Procesando actividad ${index}:`, actividad);
-          const row = document.createElement('tr');
-          // Mostrar solo el nombre
-          const nombre = actividad.nombre || '-';
-          row.innerHTML = `
-            <td class="whitespace-normal">${escapeHtml(nombre)}</td>
-            <td class="text-center">${escapeHtml(actividad.unidad_medida || '-')}</td>
-            <td class="text-center">
-              <input 
-                type="text" 
-                class="input input-bordered input-sm w-20 text-center cantidad-input" 
-                value="${escapeHtml(actividad.valor_recomendado || '')}"
-                data-tipo="actividad"
-                data-id="${actividad.id}"
-                maxlength="255"
-                placeholder="-"
-              >
+      tbody.appendChild(trEsp);
+
+      // ── Actividades ──
+      if (!data.actividades || data.actividades.length === 0) {
+        const trEmpty = document.createElement('tr');
+        trEmpty.innerHTML = `<td colspan="4" class="py-6 text-center text-sm text-base-content/40">Sin actividades adicionales</td>`;
+        tbody.appendChild(trEmpty);
+      } else {
+        data.actividades.forEach((act, i) => {
+          const tr = document.createElement('tr');
+          tr.className = 'border-b border-base-200/60 last:border-0 hover:bg-base-200/30 transition-colors';
+          tr.innerHTML = `
+            <td class="py-2 pl-4 text-center">
+              ${buildToggle(act.mostrar, editable, { tipo: 'act', idx: i })}
+            </td>
+            <td class="py-2 pl-2 pr-2">
+              ${buildNombre(act.nombre, editable, { idx: i })}
+            </td>
+            <td class="py-2 text-center">
+              ${act.unidad_medida
+                ? `<span class="text-[10px] font-bold text-secondary/70 bg-secondary/10 px-1.5 py-0.5 rounded font-mono">${esc(act.unidad_medida)}</span>`
+                : `<span class="text-base-content/30 text-xs">—</span>`}
+            </td>
+            <td class="py-2 text-center pr-4">
+              ${buildCantidad(act.cantidad, editable, { tipo: 'act', idx: i })}
             </td>
           `;
-          tableBody.appendChild(row);
+          tbody.appendChild(tr);
         });
       }
-      
-      // Agregar event listeners para los inputs de cantidad
-      agregarEventListenersCantidad();
-    } else {
-      console.log('No hay actividades o array vacío. Mostrando mensaje vacío.');
-      console.log('data.success:', data.success);
-      console.log('data.actividades existe:', !!data.actividades);
-      console.log('data.actividades es array:', Array.isArray(data.actividades));
-      console.log('data.actividades length:', data.actividades ? data.actividades.length : 'N/A');
-      
-      // Ocultar la tabla y mostrar el mensaje vacío
-      if (tableContainer) tableContainer.classList.add('hidden');
-      emptyMessage.classList.remove('hidden');
-      
-      // Si hay información de debug, mostrarla en el mensaje vacío
-      if (data.debug) {
-        const debugInfo = document.createElement('p');
-        debugInfo.className = 'text-xs text-base-content/50 mt-2';
-        debugInfo.textContent = `Debug: ${JSON.stringify(data.debug)}`;
-        emptyMessage.appendChild(debugInfo);
-      }
-    }
-    
-    // Mostrar el modal
-    modal.showModal();
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert('Error al cargar las actividades adicionales. Por favor, inténtelo de nuevo.');
-  });
-}
 
-// Función auxiliar para escapar HTML
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// Función para obtener el token CSRF
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-
-// Función para agregar event listeners a los inputs de cantidad
-function agregarEventListenersCantidad() {
-  const cantidadInputs = document.querySelectorAll('.cantidad-input');
-  
-  cantidadInputs.forEach(input => {
-    // Guardar valor original
-    input.dataset.originalValue = input.value;
-    
-    // Manejar blur (cuando pierde el foco)
-    input.addEventListener('blur', function() {
-      guardarCantidad(this);
-    });
-    
-    // Manejar Enter
-    input.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.blur(); // Esto disparará el evento blur
-      }
-    });
-  });
-}
-
-// Función para guardar la cantidad
-function guardarCantidad(input) {
-  const nuevoValor = input.value.trim();
-  const valorOriginal = input.dataset.originalValue || '';
-  const tipo = input.dataset.tipo; // 'especificacion' o 'actividad'
-  const id = input.dataset.id;
-  
-  // Si no cambió, no hacer nada
-  if (nuevoValor === valorOriginal) {
-    return;
-  }
-  
-  // Mostrar indicador de guardado
-  const originalValue = input.value;
-  input.disabled = true;
-  input.classList.add('loading');
-  
-  // Determinar la URL según el tipo
-  let url;
-  if (tipo === 'especificacion') {
-    url = `/n8n/especificacion-tecnica/${id}/actualizar-cantidad/`;
-  } else if (tipo === 'actividad') {
-    url = `/n8n/actividad-adicional/${id}/actualizar-cantidad/`;
-  } else {
-    console.error('Tipo desconocido:', tipo);
-    input.disabled = false;
-    input.classList.remove('loading');
-    return;
-  }
-  
-  console.log('Guardando cantidad:', { tipo, id, nuevoValor, url });
-  
-  // Enviar petición al servidor
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCookie('csrftoken'),
-      'X-Requested-With': 'XMLHttpRequest'
-    },
-    body: JSON.stringify({
-      cantidad: nuevoValor
+      attachEvents(tbody, esp.id);
+      container.classList.remove('hidden');
     })
-  })
-  .then(response => {
-    console.log('Response status:', response.status);
-    console.log('Response ok:', response.ok);
-    
-    // Intentar parsear la respuesta como JSON incluso si hay error
-    return response.json().then(data => {
-      if (!response.ok) {
-        throw new Error(data.error || `Error HTTP ${response.status}`);
-      }
-      return data;
-    }).catch(err => {
-      // Si no se puede parsear como JSON, lanzar error con el texto de respuesta
-      return response.text().then(text => {
-        throw new Error(`Error del servidor: ${text || `HTTP ${response.status}`}`);
-      });
+    .catch(() => {
+      loading.classList.add('hidden');
+      empty.classList.remove('hidden');
     });
-  })
-  .then(data => {
-    console.log('Datos recibidos:', data);
-    if (data.success) {
-      // Actualizar valor original
-      input.dataset.originalValue = nuevoValor;
-      // Mostrar mensaje de éxito breve
-      input.classList.remove('loading');
-      input.classList.add('input-success');
-      setTimeout(() => {
-        input.classList.remove('input-success');
-      }, 1000);
-    } else {
-      throw new Error(data.error || 'Error al guardar');
-    }
-  })
-  .catch(error => {
-    console.error('Error al guardar cantidad:', error);
-    console.error('URL:', url);
-    console.error('Tipo:', tipo);
-    console.error('ID:', id);
-    console.error('Valor:', nuevoValor);
-    // Restaurar valor original
-    input.value = valorOriginal;
-    input.classList.add('input-error');
-    setTimeout(() => {
-      input.classList.remove('input-error');
-    }, 2000);
-    alert('Error al guardar la cantidad: ' + error.message);
-  })
-  .finally(() => {
-    input.disabled = false;
-    input.classList.remove('loading');
-  });
-}
-
-// Hacer la función disponible globalmente
-window.openActividadesModal = openActividadesModal;
+  };
+})();
 </script>

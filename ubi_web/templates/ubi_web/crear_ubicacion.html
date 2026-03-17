@@ -1,0 +1,106 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}Nueva Ubicación — {{ proyecto.nombre }}{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto.nombre }}</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">Nueva Ubicación</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-200 py-6 px-4">
+  <div class="max-w-2xl mx-auto">
+
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+
+      <!-- Header -->
+      <div class="bg-primary px-6 py-4 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-map-marker-alt text-primary-content text-sm"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">{{ proyecto.nombre }}</p>
+          <h2 class="text-sm font-bold text-primary-content">Nueva Ubicación</h2>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form method="post" class="px-6 py-5 flex flex-col gap-5">
+        {% csrf_token %}
+
+        <!-- Nombre -->
+        <div>
+          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5" for="{{ form.nombre.id_for_label }}">
+            Nombre <span class="text-error">*</span>
+          </label>
+          {{ form.nombre }}
+          {% if form.nombre.errors %}<p class="text-xs text-error mt-1">{{ form.nombre.errors|join:", " }}</p>{% endif %}
+        </div>
+
+        <!-- Descripción -->
+        <div>
+          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5" for="{{ form.descripcion.id_for_label }}">
+            Descripción
+          </label>
+          {{ form.descripcion }}
+          {% if form.descripcion.errors %}<p class="text-xs text-error mt-1">{{ form.descripcion.errors|join:", " }}</p>{% endif %}
+        </div>
+
+        <!-- Información geográfica -->
+        <div class="rounded-xl border border-base-200 p-4 flex flex-col gap-4">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-md bg-info/10 flex items-center justify-center">
+              <i class="fas fa-globe text-info text-xs"></i>
+            </span>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Información Geográfica</p>
+          </div>
+          <p class="text-xs text-base-content/50 -mt-2">
+            <i class="fas fa-info-circle mr-1 text-info"></i>
+            Si completa las coordenadas, se generará el mapa y contenido automáticamente.
+          </p>
+
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5" for="{{ form.coordenadas.id_for_label }}">Coordenadas <span class="text-error">*</span></label>
+            {{ form.coordenadas }}
+            {% if form.coordenadas.errors %}<p class="text-xs text-error mt-1">{{ form.coordenadas.errors|join:", " }}</p>{% endif %}
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5" for="{{ form.ciudad.id_for_label }}">Ciudad / Localidad <span class="text-error">*</span></label>
+            {{ form.ciudad }}
+            {% if form.ciudad.errors %}<p class="text-xs text-error mt-1">{{ form.ciudad.errors|join:", " }}</p>{% endif %}
+          </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex justify-end gap-2 pt-1">
+          <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-ghost btn-sm">
+            Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save text-xs"></i> Crear Ubicación
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

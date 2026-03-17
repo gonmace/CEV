@@ -28,13 +28,6 @@
     </div>
   </div>
 
-  <!-- Spinner de carga -->
-  <div id="loadingSpinner" class="fixed inset-0 backdrop-blur-sm bg-base-300/10 flex items-center justify-center z-50" style="display: none;">
-    <div class="flex flex-col items-center gap-4">
-      <span class="loading loading-spinner loading-lg text-primary"></span>
-      <p class="text-lg font-medium text-white">Cargando especificación...</p>
-    </div>
-  </div>
 {% endblock %}
 
 {% block js %}
@@ -49,12 +42,10 @@
       btnGuardar.classList.toggle('btn-disabled', !enabled);
     }
 
-    // Función para mostrar/ocultar el spinner
-    function toggleSpinner(show) {
-      const spinner = document.getElementById('loadingSpinner');
-      if (spinner) {
-        spinner.style.display = show ? 'flex' : 'none';
-      }
+    // Función para mostrar/ocultar el spinner (usa el spinner global ai-spinner)
+    function toggleSpinner(show, text) {
+      show ? (typeof showSpinner === 'function' && showSpinner(text || 'Cargando especificación...'))
+           : (typeof hideSpinner === 'function' && hideSpinner());
     }
 
     // Función para obtener el token CSRF
@@ -228,7 +219,7 @@
         }
         
         // Obtener el resultado desde el servidor, incluyendo proyecto_id si existe
-        let url = '{% url "pliego_licitacion:paso5_resultado" %}?especificacion_id=' + especificacionId;
+        let url = '{% url "pliego_licitacion:resultado" %}?especificacion_id=' + especificacionId;
         if (proyectoIdFromUrl) {
           url += '&proyecto_id=' + proyectoIdFromUrl;
         }

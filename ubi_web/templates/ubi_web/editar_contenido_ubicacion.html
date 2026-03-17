@@ -1,0 +1,100 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+{% endblock %}
+
+{% block title %}Editar Contenido — {{ ubicacion.nombre }}{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto.nombre }}</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">Editar Contenido</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-200 py-6 px-4">
+  <div class="max-w-4xl mx-auto">
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+
+      <div class="bg-primary px-6 py-4 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-edit text-primary-content text-sm"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">{{ proyecto.nombre }}</p>
+          <h2 class="text-sm font-bold text-primary-content">Contenido — {{ ubicacion.nombre }}</h2>
+        </div>
+      </div>
+
+      <form method="post" class="px-6 py-5 flex flex-col gap-5">
+        {% csrf_token %}
+
+        <div>
+          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">
+            Contenido <span class="text-base-content/40 normal-case font-normal">(Markdown)</span>
+          </label>
+          <div id="editor-container" class="rounded-lg border border-base-300 overflow-hidden"></div>
+          <div class="hidden">{{ form.contenido }}</div>
+          {% if form.contenido.errors %}<p class="text-xs text-error mt-1">{{ form.contenido.errors|join:", " }}</p>{% endif %}
+        </div>
+
+        <div class="flex justify-end gap-2 pt-1">
+          <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-ghost btn-sm">Cancelar</a>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save text-xs"></i> Guardar Contenido
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+<script src="https://uicdn.toast.com/editor/latest/i18n/es-es.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const textarea = document.querySelector('#id_contenido');
+    const container = document.getElementById('editor-container');
+    if (!textarea || !container) return;
+
+    const editor = new toastui.Editor({
+      el: container,
+      height: '500px',
+      initialEditType: 'wysiwyg',
+      previewStyle: 'tab',
+      usageStatistics: false,
+      language: 'es-ES',
+      toolbarItems: [
+        ['heading', 'bold', 'italic', 'strike'],
+        ['hr', 'quote'],
+        ['ul', 'ol', 'task'],
+        ['table', 'link'],
+        ['scrollSync']
+      ],
+      initialValue: textarea.value || ''
+    });
+
+    const form = textarea.closest('form');
+    if (form) {
+      form.addEventListener('submit', function () {
+        textarea.value = editor.getMarkdown();
+      });
+    }
+  });
+</script>
+{% endblock %}

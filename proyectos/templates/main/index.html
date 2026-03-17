@@ -90,6 +90,21 @@
           <span class="text-2xl font-bold text-info leading-none">{{ total_especificaciones }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Especificaciones</span>
         </div>
+        <a href="{% url 'pliego_licitacion:pasos' %}"
+           class="rounded-xl bg-base-100 border border-warning/30 shadow-sm p-4 flex flex-col gap-1 hover:border-warning/60 transition-colors">
+          <div class="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center mb-1">
+            <i class="fas fa-clock text-warning text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-warning leading-none">{{ total_borradores }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Borradores</span>
+        </a>
+        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mb-1">
+            <i class="fas fa-users text-success text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-success leading-none">{{ total_usuarios }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Usuarios</span>
+        </div>
       </div>
 
     </aside>

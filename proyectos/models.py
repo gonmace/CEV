@@ -60,18 +60,12 @@ class Especificacion(models.Model):
     contenido = models.TextField(blank=True)
     archivo = models.FileField(upload_to=especificacion_upload_path, blank=True, null=True)
     unidad_medida = models.CharField(max_length=10, verbose_name='Unidad de Medida', default='glb')
-    token_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    cantidad = models.CharField(max_length=10, verbose_name='Cantidad', blank=True, null=True)
+    actividades_adicionales = models.JSONField(verbose_name='Actividades Adicionales', blank=True, null=True)
+    mostrar = models.BooleanField(default=True, verbose_name='Mostrar')
     orden = models.PositiveIntegerField(default=0, db_index=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
-    especificacion_tecnica = models.ForeignKey(
-        'pliego_licitacion.EspecificacionTecnica',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='especificaciones',
-        verbose_name='Especificación Técnica'
-    )
 
     class Meta:
         db_table = 'main_especificacion'

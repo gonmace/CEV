@@ -213,49 +213,83 @@
         src="{% static 'constructor-app/js/assets/components/library/bootstrap/js/bootstrap.min.js?v=v1.2.3' %}"></script> -->
     <!-- <script 
         src="{% static 'constructor-app/js/assets/components/plugins/nicescroll/jquery.nicescroll.min.js?v=v1.2.3' %}"></!-->
-    <script src="{% static 'vendor/flashy/flashy.js' %}"></script>
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
     <script>
         (function () {
-            if (!window.flashy) {
-                console.warn('Flashy.js no está disponible.');
-                return;
-            }
-            var dataElement = document.getElementById('django-messages-data');
-            if (!dataElement) {
-                return;
-            }
-            var typeMap = {
-                success: 'success',
-                warning: 'warning',
-                error: 'error',
-                danger: 'error',
-                info: 'info',
-                debug: 'info'
+            var container = document.getElementById('toast-container');
+
+            var iconMap = {
+                success: '<i class="fas fa-check-circle text-success"></i>',
+                error:   '<i class="fas fa-times-circle text-error"></i>',
+                warning: '<i class="fas fa-exclamation-triangle text-warning"></i>',
+                info:    '<i class="fas fa-info-circle text-info"></i>',
             };
-            try {
-                var messages = JSON.parse(dataElement.textContent || '[]');
-                messages.forEach(function (entry) {
-                    if (!entry || !entry.message) {
-                        return;
-                    }
-                    var tags = (entry.level || '').split(/\s+/).filter(Boolean);
-                    var type = 'default';
-                    for (var i = 0; i < tags.length; i++) {
-                        if (typeMap[tags[i]]) {
-                            type = typeMap[tags[i]];
-                            break;
+            var borderMap = {
+                success: 'border-success/30',
+                error:   'border-error/30',
+                warning: 'border-warning/30',
+                info:    'border-info/30',
+            };
+
+            function showToast(message, type, duration) {
+                type = type || 'info';
+                duration = (duration === undefined) ? (type === 'error' ? 0 : 5000) : duration;
+
+                var toast = document.createElement('div');
+                toast.className = [
+                    'pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl',
+                    'bg-base-100 border shadow-lg text-sm text-base-content',
+                    'transition-all duration-300 translate-x-0 opacity-100',
+                    borderMap[type] || 'border-base-300'
+                ].join(' ');
+
+                toast.innerHTML = [
+                    '<span class="flex-shrink-0 mt-0.5">' + (iconMap[type] || iconMap.info) + '</span>',
+                    '<span class="flex-1 leading-snug">' + message + '</span>',
+                    '<button class="flex-shrink-0 text-base-content/30 hover:text-base-content/70 transition-colors ml-1">',
+                    '  <i class="fas fa-times text-xs"></i>',
+                    '</button>'
+                ].join('');
+
+                toast.querySelector('button').addEventListener('click', function () { remove(toast); });
+                container.appendChild(toast);
+
+                if (duration > 0) {
+                    setTimeout(function () { remove(toast); }, duration);
+                }
+            }
+
+            function remove(toast) {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(1rem)';
+                setTimeout(function () { toast.remove(); }, 300);
+            }
+
+            // API compatible con el código existente
+            window.flashy = function (message, opts) {
+                opts = opts || {};
+                showToast(message, opts.type || 'info', opts.duration);
+            };
+            window.flashy.success = function (m, d) { showToast(m, 'success', d); };
+            window.flashy.error   = function (m, d) { showToast(m, 'error',   d); };
+            window.flashy.warning = function (m, d) { showToast(m, 'warning', d); };
+            window.flashy.info    = function (m, d) { showToast(m, 'info',    d); };
+
+            // Mensajes de Django
+            var dataEl = document.getElementById('django-messages-data');
+            if (dataEl) {
+                var typeMap = { success:'success', warning:'warning', error:'error', danger:'error', info:'info', debug:'info' };
+                try {
+                    JSON.parse(dataEl.textContent || '[]').forEach(function (entry) {
+                        if (!entry || !entry.message) return;
+                        var tags = (entry.level || '').split(/\s+/).filter(Boolean);
+                        var type = 'info';
+                        for (var i = 0; i < tags.length; i++) {
+                            if (typeMap[tags[i]]) { type = typeMap[tags[i]]; break; }
                         }
-                    }
-                    flashy(entry.message, {
-                        type: type,
-                        position: 'top-right',
-                        duration: type === 'error' ? 0 : 5000,
-                        closable: true,
-                        animation: 'slide'
+                        showToast(entry.message, type);
                     });
-                });
-            } catch (error) {
-                console.error('No se pudieron procesar los mensajes de Django para Flashy.js', error);
+                } catch (e) { console.error('Error procesando mensajes Django', e); }
             }
         })();
     </script>
