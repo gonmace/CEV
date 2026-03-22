@@ -180,6 +180,44 @@ def pasos_view(request):
         return HttpResponseServerError('Error interno del servidor. Por favor, contacte al administrador.')
 
 
+# ── Páginas individuales (sin modales) ────────────────────────────────────────
+
+@login_required
+def paso2_parametros_view(request, especificacion_id):
+    """Página de parámetros técnicos (sub-pasos 2-5, AJAX sin recargar)."""
+    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False, creado_por=request.user)
+    proyecto = spec.proyecto
+    return render(request, 'pliego_licitacion/paso2_parametros.html', {
+        'especificacion': spec,
+        'proyecto': proyecto,
+        'proyecto_nombre': proyecto.nombre if proyecto else '',
+    })
+
+
+@login_required
+def paso3_titulo_view(request, especificacion_id):
+    """Página para ajustar el título de la especificación."""
+    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False, creado_por=request.user)
+    proyecto = spec.proyecto
+    return render(request, 'pliego_licitacion/paso3_titulo.html', {
+        'especificacion': spec,
+        'proyecto': proyecto,
+        'proyecto_nombre': proyecto.nombre if proyecto else '',
+    })
+
+
+@login_required
+def paso4_actividades_view(request, especificacion_id):
+    """Página para seleccionar actividades adicionales."""
+    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False, creado_por=request.user)
+    proyecto = spec.proyecto
+    return render(request, 'pliego_licitacion/paso4_actividades.html', {
+        'especificacion': spec,
+        'proyecto': proyecto,
+        'proyecto_nombre': proyecto.nombre if proyecto else '',
+    })
+
+
 # ── Paso 1: Datos iniciales ────────────────────────────────────────────────────
 
 @login_required
@@ -208,7 +246,8 @@ def coherencia_view(request):
         # Guardar en BD
         try:
             _proyecto = None
-            _proyecto_id = request.session.get('pliego_proyecto_id')
+            # Priorizar proyecto_id del payload (evita conflictos de sesión multi-pestaña)
+            _proyecto_id = data.get('proyecto_id') or request.session.get('pliego_proyecto_id')
             if _proyecto_id:
                 try:
                     from proyectos.models import Proyecto
@@ -276,10 +315,8 @@ def coherencia_view(request):
             'error': 'La solicitud tardó demasiado tiempo. Por favor, intente nuevamente.'
         }, status=408)
     except requests.exceptions.RequestException as e:
-        print(f"!!! RequestException: {type(e).__name__}: {e}")
         if hasattr(e, 'response') and e.response is not None:
-            print(f"!!! HTTP status: {e.response.status_code}")
-            print(f"!!! Response body: {e.response.text[:500]}")
+            logger.error(f"!!! HTTP status: {e.response.status_code} | Response body: {e.response.text[:500]}")
         logger.error(f"RequestException en enviar_especificacion_view: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
@@ -322,7 +359,7 @@ def _sub_paso_view(request, webhook_url, tipo, nombre):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
@@ -390,7 +427,7 @@ def _guardar_campo_parametros(request, campo, nombre_view):
         if not especificacion_id:
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
-        especificacion = get_object_or_404(EspecificacionTecnica, id=especificacion_id)
+        especificacion = get_object_or_404(EspecificacionTecnica, id=especificacion_id, creado_por=request.user)
         setattr(especificacion, campo, parametros)
         nuevo_paso = _CAMPO_PASO.get(campo)
         if nuevo_paso and especificacion.paso < nuevo_paso:
@@ -455,7 +492,7 @@ def confirmar_parametros_view(request):
             }, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({
                 'success': False,
@@ -509,7 +546,7 @@ def propuesta_titulo_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
@@ -569,7 +606,7 @@ def guardar_titulo_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
@@ -639,7 +676,7 @@ def adicionales_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
@@ -685,7 +722,7 @@ def actividades_view(request):
             }, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({
                 'success': False,
@@ -738,7 +775,7 @@ def generar_resultado_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
@@ -862,6 +899,7 @@ def paso8_resultado_view(request):
         try:
             especificacion_tecnica = EspecificacionTecnica.objects.get(
                 id=especificacion_id,
+                creado_por=request.user,
                 resultado_markdown__isnull=False
             )
             if not especificacion_tecnica.resultado_markdown:
@@ -923,7 +961,7 @@ def guardar_resultado_view(request):
             }, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
             logger.info(f"guardar_resultado_view - EspecificacionTecnica encontrada: {especificacion_tecnica.titulo}")
         except EspecificacionTecnica.DoesNotExist:
             logger.error(f"guardar_resultado_view - EspecificacionTecnica no encontrada con id: {especificacion_id}")
@@ -992,21 +1030,19 @@ def guardar_resultado_view(request):
                 'especificacion_id': especificacion_tecnica.id,
             }, status=500)
 
-        # Vincular con proyecto si hay proyecto_id en sesión
-        proyecto_id = request.session.get('pliego_proyecto_id')
-        redirect_url = None
-
+        # Obtener proyecto_id desde la especificación técnica (evita conflictos de sesión multi-pestaña)
+        proyecto_id = especificacion_tecnica.proyecto_id
         if not proyecto_id:
+            # Fallback: payload o query string (compatibilidad hacia atrás)
             for source in [data.get('proyecto_id'), request.GET.get('proyecto_id')]:
                 if source:
                     try:
                         proyecto_id = int(source)
-                        request.session['pliego_proyecto_id'] = proyecto_id
-                        request.session.modified = True
-                        logger.info(f"guardar_resultado_view - proyecto_id obtenido: {proyecto_id}")
+                        logger.info(f"guardar_resultado_view - proyecto_id obtenido del payload: {proyecto_id}")
                         break
                     except (ValueError, TypeError):
                         pass
+        redirect_url = None
 
         if proyecto_id:
             try:
@@ -1038,11 +1074,10 @@ def guardar_resultado_view(request):
                 )
                 especificacion.archivo.save(filename, ContentFile(contenido), save=True)
 
-                request.session.pop('pliego_proyecto_id', None)
                 redirect_url = reverse('proyectos:proyecto_detalle', args=[proyecto.id]) + '?guardado=1'
 
             except Proyecto.DoesNotExist:
-                request.session.pop('pliego_proyecto_id', None)
+                pass
             except Exception as e:
                 logger.error(f"Error al convertir EspecificacionTecnica a Especificacion: {str(e)}", exc_info=True)
 

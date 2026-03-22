@@ -1,30 +1,99 @@
 {% extends 'pliego_licitacion/pasos.html' %}
 {% load static crispy_forms_tags tailwind_tags %}
 
+{% block css %}
+  {{ block.super }}
+  <style>
+    /* Heading counter overrides para coincidir con ver_especificacion */
+    .doc-body { counter-reset: seccion subseccion; }
+    .doc-body :is(h2)::before { counter-increment: none; content: none; }
+    .doc-body :is(h2) {
+      font-size: .72rem; font-weight: 700;
+      color: var(--color-base-content);
+      opacity: .35;
+      text-transform: uppercase; letter-spacing: .08em;
+      margin-top: 2rem; margin-bottom: .1rem;
+    }
+    .doc-body :is(h3) { counter-reset: seccion subseccion; }
+    .doc-body :is(h3)::before { counter-increment: none; content: none; }
+    .doc-body :is(h3) {
+      font-size: 1.05rem; font-weight: 800;
+      color: #1e293b;
+      margin-top: 2.5rem; margin-bottom: .5rem;
+      padding-bottom: .35rem;
+      border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+    }
+    .doc-body :is(h3):first-child { margin-top: 0; }
+    .doc-body :is(h4) { counter-reset: subseccion; }
+    .doc-body :is(h4)::before {
+      counter-increment: seccion;
+      content: counter(seccion) ".  ";
+    }
+    .doc-body :is(h4) {
+      font-size: .95rem; font-weight: 700;
+      color: #1d4ed8;
+      margin-top: 1.5rem; margin-bottom: .4rem;
+    }
+    .doc-body :is(h5)::before {
+      counter-increment: subseccion;
+      content: counter(seccion) "." counter(subseccion) "  ";
+    }
+    .doc-body :is(h5) {
+      font-size: .88rem; font-weight: 700;
+      color: #1d4ed8;
+      margin-top: 1.1rem; margin-bottom: .3rem;
+    }
+    .doc-body :is(h6)::before { counter-increment: none; content: none; }
+    .doc-body :is(h6) {
+      font-size: .82rem; font-weight: 600;
+      color: var(--color-base-content);
+      margin-top: .8rem; margin-bottom: .2rem;
+    }
+    [data-theme="constructor-dark"] .doc-body :is(h3) { color: var(--color-base-content); }
+    [data-theme="constructor-dark"] .doc-body :is(h4),
+    [data-theme="constructor-dark"] .doc-body :is(h5) { color: #93c5fd; }
+    .doc-body > :is(h1,h2,h3,h4,h5,h6):first-child { display: none; }
+  </style>
+{% endblock %}
+
 {% block content %}
   {{ block.super }}
   
   <!-- Contenido del Paso 5: Resultado -->
-  <div class="flex flex-col items-center justify-center mt-6">
-    <div class="card w-full max-w-5xl bg-base-100 shadow-xl">
-      <div id="resultContainer" class="mt-8 mx-auto rounded-lg shadow" style="display: none;">
-        <div class="p-4 rounded-md">
-          <article id="response-content" class="prose prose-slate prose-lg max-w-5xl px-20 pt-6">
-          </article>
+  <div class="min-h-screen bg-base-100 py-6 px-4">
+    <div class="max-w-3xl mx-auto space-y-4">
+
+      <!-- Indicador de paso -->
+      <div class="flex items-center gap-3">
+        <div class="badge badge-success badge-lg w-8 h-8 rounded-full flex items-center justify-center text-white font-bold shrink-0">
+          <i class="fas fa-check text-xs"></i>
+        </div>
+        <span class="text-sm font-semibold text-base-content/60">Especificación Técnica Generada</span>
+      </div>
+
+      <!-- Documento -->
+      <div id="resultContainer" class="doc-wrap" style="display: none;">
+        <div class="doc-header">
+          <div class="doc-code">Especificación Técnica</div>
+          <div id="result-title" class="doc-title"></div>
+        </div>
+        <div class="doc-body pt-0">
+          <article id="response-content"></article>
         </div>
       </div>
 
-      <!-- Botones de navegación -->
-      <div class="card-actions justify-end m-6">
-        <button onclick="window.location.href='{% url 'pliego_licitacion:pasos' %}'" class="btn btn-outline">
-          <i class="fas fa-redo mr-2"></i>
+      <!-- Barra de acciones fija -->
+      <div class="action-bar rounded-xl">
+        <button onclick="window.location.href='{% url 'pliego_licitacion:pasos' %}'" class="btn btn-ghost btn-sm gap-2">
+          <i class="fas fa-redo"></i>
           Generar Nueva
         </button>
-        <button id="btnGuardar" onclick="guardarEspecificacion()" class="btn btn-primary btn-disabled" disabled>
-          <i class="fas fa-save mr-2"></i>
+        <button id="btnGuardar" onclick="guardarEspecificacion()" class="btn btn-success btn-sm gap-2 btn-disabled" disabled>
+          <i class="fas fa-save"></i>
           Guardar
         </button>
       </div>
+
     </div>
   </div>
 
@@ -66,19 +135,11 @@
 
     // Función para guardar la especificación
     async function guardarEspecificacion() {
-      console.log('guardarEspecificacion llamada', {
-        tiene_markdown_raw: !!window.__ultimoMarkdownRaw,
-        tiene_markdown: !!window.__ultimoMarkdown,
-        markdown_raw_length: window.__ultimoMarkdownRaw ? window.__ultimoMarkdownRaw.length : 0,
-        markdown_length: window.__ultimoMarkdown ? window.__ultimoMarkdown.length : 0,
-        especificacion_id: window.especificacionTecnicaId
-      });
-      
       // Usar el markdown RAW original si está disponible, si no, el servidor lo obtendrá de la BD
       const contenidoAGuardar = window.__ultimoMarkdownRaw || window.__ultimoMarkdown;
       
       if (!contenidoAGuardar && !window.especificacionTecnicaId) {
-        alert('No hay especificación para guardar.');
+        flashy.error('No hay especificación para guardar.');
         return;
       }
 
@@ -98,28 +159,14 @@
         // Si no lo tenemos, el servidor lo obtendrá de resultado_markdown en la BD
         if (contenidoAGuardar) {
           payload.contenido = contenidoAGuardar;
-          console.log('✅ Enviando markdown RAW original del POST:', contenidoAGuardar.substring(0, 100) + '...');
-        } else {
-          console.log('⚠️ No hay markdown RAW disponible. El servidor obtendrá el contenido de la BD.');
         }
         
         // Agregar proyecto_id al payload si existe en la URL
         // Esto es importante porque puede que no esté en la sesión del servidor
         if (proyectoIdFromUrl) {
           payload.proyecto_id = proyectoIdFromUrl;
-          console.log('proyecto_id agregado al payload desde URL:', proyectoIdFromUrl);
-        } else {
-          console.warn('⚠️ No se encontró proyecto_id en la URL. El servidor intentará obtenerlo de la sesión.');
         }
         
-        console.log('Enviando payload para guardar:', {
-          contenido_length: payload.contenido ? payload.contenido.length : 0,
-          contenido_tipo: payload.contenido ? (payload.contenido.startsWith('<') ? 'HTML' : 'Markdown') : 'no disponible',
-          especificacion_id: payload.especificacion_id,
-          proyecto_id: payload.proyecto_id || 'no disponible',
-          nota: payload.contenido ? 'Enviando markdown RAW original del POST' : 'El servidor obtendrá el markdown de la BD'
-        });
-
         const response = await fetch('{% url "pliego_licitacion:guardar_resultado" %}', {
           method: 'POST',
           headers: {
@@ -129,12 +176,6 @@
           body: JSON.stringify(payload)
         });
         
-        console.log('Respuesta recibida:', {
-          status: response.status,
-          ok: response.ok,
-          contentType: response.headers.get('content-type')
-        });
-
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
@@ -142,34 +183,24 @@
         }
 
         const data = await response.json();
-        console.log('Datos de respuesta:', data);
-        
+
         if (!response.ok) {
-          console.error('Error en respuesta:', data);
           throw new Error(data.error || `Error del servidor (${response.status}): No se pudo guardar la especificación`);
         }
-        
+
         if (!data.success) {
-          console.error('Respuesta sin éxito:', data);
           throw new Error(data.error || 'No se pudo guardar la especificación');
         }
 
-        console.log('Guardado exitoso, redirect_url:', data.redirect_url);
-        console.log('Respuesta completa del servidor:', data);
-        
         // Redirigir a la página de éxito o mostrar mensaje
         if (data.redirect_url) {
-          console.log('✅ Redirigiendo a:', data.redirect_url);
           window.location.href = data.redirect_url;
         } else {
-          console.warn('⚠️ No hay redirect_url en la respuesta. Esto puede indicar que no hay proyecto_id en la sesión.');
-          console.log('Datos de respuesta:', data);
           // No mostrar alert, solo redirigir al inicio
           window.location.href = '{% url "pliego_licitacion:pasos" %}';
         }
       } catch (error) {
-        console.error('Error al guardar:', error);
-        alert('Error al guardar la especificación: ' + error.message);
+        flashy.error('Error al guardar la especificación: ' + error.message);
         setGuardarEnabled(true);
         toggleSpinner(false);
       }
@@ -214,10 +245,7 @@
         
         // Obtener el proyecto_id de la URL si existe (para mantenerlo en la sesión)
         const proyectoIdFromUrl = urlParams.get('proyecto_id');
-        if (proyectoIdFromUrl) {
-          console.log('proyecto_id encontrado en URL:', proyectoIdFromUrl);
-        }
-        
+
         // Obtener el resultado desde el servidor, incluyendo proyecto_id si existe
         let url = '{% url "pliego_licitacion:resultado" %}?especificacion_id=' + especificacionId;
         if (proyectoIdFromUrl) {
@@ -241,11 +269,13 @@
         }
 
         const resultado = await response.json();
-        console.log('Respuesta del servidor:', resultado);
 
         if (resultado.success && resultado.markdown_html) {
           // Mostrar el resultado
           document.getElementById('response-content').innerHTML = resultado.markdown_html;
+          if (resultado.titulo) {
+            document.getElementById('result-title').textContent = resultado.titulo;
+          }
           document.getElementById('resultContainer').style.display = 'block';
           
           // IMPORTANTE: Guardar el markdown RAW original del POST, no el HTML
@@ -253,22 +283,10 @@
           if (resultado.raw_markdown) {
             window.__ultimoMarkdown = resultado.raw_markdown;
             window.__ultimoMarkdownRaw = resultado.raw_markdown;
-            console.log('✅ Markdown original (raw_markdown) guardado:', resultado.raw_markdown.substring(0, 100) + '...');
           } else {
-            // Si no hay raw_markdown en la respuesta, usar el que ya está guardado en la BD
-            // (que viene del POST original)
-            console.warn('⚠️ No hay raw_markdown en la respuesta. Se usará el contenido guardado en la BD.');
-            window.__ultimoMarkdown = null;  // Se obtendrá del servidor al guardar
+            window.__ultimoMarkdown = null;
             window.__ultimoMarkdownRaw = null;
           }
-          
-          // NO guardar automáticamente - esperar a que el usuario haga clic en "Guardar"
-          console.log('Resultado cargado exitosamente. Esperando acción del usuario para guardar.', {
-            especificacion_id: window.especificacionTecnicaId,
-            tiene_markdown_raw: !!window.__ultimoMarkdownRaw,
-            tiene_markdown: !!window.__ultimoMarkdown,
-            proyecto_id: urlParams.get('proyecto_id')
-          });
           
           toggleSpinner(false);
           setGuardarEnabled(true);
@@ -276,9 +294,8 @@
           throw new Error(resultado.error || 'No se encontró el resultado de la especificación');
         }
       } catch (error) {
-        console.error('Error:', error);
         toggleSpinner(false);
-        alert('Error al cargar el resultado: ' + error.message);
+        flashy.error('Error al cargar el resultado: ' + error.message);
         // Redirigir al inicio si hay error
         window.location.href = '{% url "pliego_licitacion:pasos" %}';
       }

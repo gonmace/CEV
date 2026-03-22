@@ -42,6 +42,10 @@ def replace_header_placeholders(doc, proyecto, **overrides):
 
     proyecto_nombre = overrides.get('proyecto_nombre') or proyecto.nombre or ''
 
+    CHK   = '\u2611'  # ☑ checkbox marcado
+    UNCHK = '\u2610'  # ☐ checkbox vacío
+    tipo_contrato = overrides.get('tipo_contrato', 'CO')
+
     placeholders = {
         '<<PROYECTO>>':    proyecto_nombre,
         '<<SOLICITANTE>>': overrides.get('solicitante')     or proyecto.solicitante or '',
@@ -49,8 +53,13 @@ def replace_header_placeholders(doc, proyecto, **overrides):
         '<<REV>>':         overrides.get('revision', '1'),
         '<<REV.>>':        overrides.get('revision', '1'),
         '<<FECHA>>':       overrides.get('fecha') or fecha_proyecto,
-        # Para agregar un nuevo placeholder:
-        # '<<TITULO>>': overrides.get('titulo') or '',
+        '<<NRO_PLIEGO>>':  overrides.get('nro_pliego', ''),
+        '<<OPERACION>>':   overrides.get('operacion', ''),
+        '<<USUARIO>>':     overrides.get('usuario', ''),
+        '<<CHK_SPOT>>':    CHK if tipo_contrato == 'SPOT' else UNCHK,
+        '<<CHK_NCM>>':     CHK if tipo_contrato == 'NCM'  else UNCHK,
+        '<<CHK_CO>>':      CHK if tipo_contrato == 'CO'   else UNCHK,
+        '<<XHK_CO>>':      CHK if tipo_contrato == 'CO'   else UNCHK,  # variante typo
     }
 
     placeholders_body = {**placeholders, '<<PROYECTO>>': proyecto_nombre.upper()}
@@ -335,6 +344,21 @@ def proyecto_detalle_view(request, proyecto_id):
         reverse=(spec_order == 'desc')
     )
 
+    from pliego_licitacion.models import EspecificacionTecnica
+    _NEXT_LABELS = {
+        2: (3, 'Ejecución'), 3: (4, 'Normas'), 4: (5, 'Criterios'),
+        5: (6, 'Título'), 6: (7, 'Actividades'), 7: (8, 'Generar resultado'),
+    }
+    borradores_raw = EspecificacionTecnica.objects.filter(
+        proyecto=proyecto, creado_por=request.user,
+        eliminado=False, paso__gte=2, paso__lt=8,
+    ).order_by('-fecha_actualizacion')
+    borradores = [
+        {'obj': b, 'resume_paso': _NEXT_LABELS.get(b.paso, (b.paso + 1, 'Continuar'))[0],
+         'resume_label': _NEXT_LABELS.get(b.paso, (b.paso + 1, 'Continuar'))[1]}
+        for b in borradores_raw
+    ]
+
     return render(request, 'proyectos/ver_proyecto.html', {
         'proyecto': proyecto,
         'especificaciones': especificaciones,
@@ -346,6 +370,7 @@ def proyecto_detalle_view(request, proyecto_id):
         'spec_order': spec_order,
         'spec_modal_open': spec_modal_open,
         'especificaciones_con_cantidad': especificaciones_con_cantidad,
+        'borradores': borradores,
     })
 
 
@@ -368,12 +393,21 @@ def exportar_proyecto_word_view(request, proyecto_id):
     revision = "1"
     fecha = None
     
+    nro_pliego = ''
+    operacion = ''
+    usuario = ''
+    tipo_contrato = 'CO'
+
     if request.method == 'POST':
         proyecto_nombre = request.POST.get('proyecto', proyecto.nombre)
         solicitante = request.POST.get('solicitante', proyecto.solicitante)
         servicio = request.POST.get('servicio', proyecto.descripcion or proyecto.ubicacion)
         revision = request.POST.get('revision', '1')
         fecha = request.POST.get('fecha', proyecto.fecha_creacion.strftime("%d/%m/%Y") if proyecto.fecha_creacion else '')
+        nro_pliego = request.POST.get('nro_pliego', '')
+        operacion = request.POST.get('operacion', '')
+        usuario = request.POST.get('usuario', '')
+        tipo_contrato = request.POST.get('tipo_contrato', 'CO')
     
     # Obtener todas las especificaciones ordenadas con relaciones necesarias
     especificaciones = proyecto.especificaciones.prefetch_related(
@@ -404,7 +438,11 @@ def exportar_proyecto_word_view(request, proyecto_id):
             solicitante=solicitante,
             servicio=servicio,
             revision=revision,
-            fecha=fecha
+            fecha=fecha,
+            nro_pliego=nro_pliego,
+            operacion=operacion,
+            usuario=usuario,
+            tipo_contrato=tipo_contrato,
         )
         usa_template = True
     else:
@@ -2084,7 +2122,18 @@ def actualizar_actividad_view(request, especificacion_id, actividad_idx):
 
 
 @login_required
-@require_http_methods(["POST"])
+@require_http_methods(['POST'])
+def toggle_proyecto_publico_view(request, proyecto_id):
+    proyecto = get_object_or_404(Proyecto, id=proyecto_id)
+    if proyecto.creado_por != request.user:
+        return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
+    proyecto.publico = not proyecto.publico
+    proyecto.save(update_fields=['publico'])
+    return JsonResponse({'success': True, 'publico': proyecto.publico})
+
+
+@login_required
+@require_http_methods(['POST'])
 def actualizar_especificacion_mostrar_view(request, especificacion_id):
     especificacion = get_object_or_404(Especificacion, id=especificacion_id)
     if especificacion.proyecto.creado_por != request.user:

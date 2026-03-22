@@ -19,7 +19,8 @@
 
 {% block content %}
   <div class="min-h-screen bg-base-200">
-  <div class="px-4 py-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row lg:items-start gap-4">
+  <div class="px-4 py-6 max-w-7xl mx-auto w-full flex flex-col gap-4">
+  <div class="flex flex-col lg:flex-row lg:items-start gap-4">
 
     <!-- ── Columna izquierda: Ubicación y Especificaciones ── -->
     <div class="w-full lg:flex-1 flex flex-col gap-3">
@@ -179,7 +180,7 @@
                 <th class="py-2.5 w-24 text-center">Cantidad</th>
                 <th class="py-2.5 w-20 text-center">Unidad</th>
                 <th class="py-2.5 w-14 text-center">ACTs</th>
-                <th class="py-2.5 pr-3 text-center">Acciones</th>
+                <th class="py-2.5 px-3 text-center w-px whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody id="especificaciones-list">
@@ -195,7 +196,7 @@
                         <i class="fas fa-grip-vertical text-xs"></i>
                       </div>
                     {% endif %}
-                    <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 gestionar-imagenes-btn"
+                    <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 cursor-pointer gestionar-imagenes-btn"
                             title="{% if especificacion.cantidad_imagenes > 0 %}Ver imágenes ({{ especificacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}"
                             data-especificacion-id="{{ especificacion.id }}"
                             data-especificacion-titulo="{{ especificacion.titulo|escape }}"
@@ -240,7 +241,7 @@
 
                 <!-- ACTs -->
                 <td class="py-2 text-center">
-                  <button type="button" class="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-base-200 transition-colors ver-actividades-btn"
+                  <button type="button" class="w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-base-200 transition-colors cursor-pointer ver-actividades-btn"
                           title="Ver actividades adicionales"
                           data-especificacion-id="{{ especificacion.id }}"
                           data-especificacion-titulo="{{ especificacion.titulo|escape }}">
@@ -253,10 +254,10 @@
                 </td>
 
                 <!-- Acciones -->
-                <td class="py-2 pr-3">
-                  <div class="flex items-center justify-end gap-0.5">
+                <td class="py-2 px-3 w-px whitespace-nowrap">
+                  <div class="flex items-center justify-center gap-0.5">
                     {% if es_propietario %}
-                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-accent hover:bg-accent/10 transition-colors mover-especificacion-btn"
+                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-accent hover:bg-accent/10 transition-colors cursor-pointer mover-especificacion-btn"
                             title="Mover posición"
                             data-especificacion-id="{{ especificacion.id }}"
                             data-especificacion-titulo="{{ especificacion.titulo|escape }}"
@@ -271,10 +272,6 @@
                       <i class="fas fa-eye text-xs"></i>
                     </a>
                     {% if es_propietario %}
-                    <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}"
-                       class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
-                      <i class="fas fa-edit text-xs"></i>
-                    </a>
                     <button type="button"
                             class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors cursor-pointer eliminar-especificacion-btn"
                             title="Eliminar especificación"
@@ -340,14 +337,26 @@
             </div>
           </div>
           <div class="flex items-center gap-2">
-            {% if proyecto.publico %}
+            {% if es_propietario %}
+            <button type="button" id="toggle-publico-btn"
+                    data-proyecto-id="{{ proyecto.id }}"
+                    data-publico="{{ proyecto.publico|lower }}"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer
+                           {% if proyecto.publico %}bg-info/10 text-info border-info/30 hover:bg-info/20{% else %}bg-base-200 text-base-content/40 border-base-300 hover:bg-base-300{% endif %}"
+                    title="{% if proyecto.publico %}Cambiar a Privado{% else %}Cambiar a Público{% endif %}">
+              <i class="fas {% if proyecto.publico %}fa-globe{% else %}fa-lock{% endif %} text-[10px]"></i>
+              <span id="toggle-publico-label">{% if proyecto.publico %}Público{% else %}Privado{% endif %}</span>
+            </button>
+            {% else %}
+              {% if proyecto.publico %}
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">
                 <i class="fas fa-globe text-[10px]"></i> Público
               </span>
-            {% else %}
+              {% else %}
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-base-200 text-base-content/40">
                 <i class="fas fa-lock text-[10px]"></i> Privado
               </span>
+              {% endif %}
             {% endif %}
           </div>
           {% if proyecto.descripcion %}
@@ -366,9 +375,9 @@
         </div>
         <div class="flex flex-col px-3 pb-3 gap-1">
           <button onclick="document.getElementById('exportar-word-modal').showModal()"
-                  class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:bg-secondary/10 transition-colors w-full text-left">
-            <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 392 512.3" class="w-4 h-4"><path fill="#26a9f1" d="M59 0h204l129 140v313c0 33-27 59-59 59H59c-32 0-59-26-59-59V59C0 26 26 0 59 0"/><path fill="#bce2f9" d="m263 0 129 140h-56q-69-3-73-63z"/><path fill="#1c7bb0" fill-rule="nonzero" d="M108 403a13 13 0 0 1 0-26h141a13 13 0 0 1 0 26zm0-152a13 13 0 0 1 0-26h176a13 13 0 0 1 0 26zm0 73a13 13 0 0 1 0-26h167a13 13 0 0 1 0 26z"/><path fill="#1f89c3" d="m310 137 82 68v-65h-56q-14 0-26-3"/></svg>
+                  class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[#1c7bb0] hover:bg-[#1c7bb0]/10 transition-colors w-full text-left">
+            <span class="w-7 h-7 rounded-lg bg-[#1c7bb0]/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-file-word text-sm text-[#1c7bb0]"></i>
             </span>
             Exportar a Word
           </button>
@@ -393,7 +402,12 @@
 
     </div>
   </div>
+
+  {% include 'partials/borradores_panel.html' with modulo='pliego' show_delete=True %}
+
   </div>
+  </div>
+  {% include 'proyectos/modals/eliminar_borrador_modal.html' %}
   {% include 'proyectos/modals/lista_especificaciones_modal.html' %}
   {% include 'proyectos/modals/eliminar_especificacion_modal.html' %}
   {% include 'proyectos/modals/mover_especificacion_modal.html' %}
@@ -406,6 +420,16 @@
 
 {% block js %}
 <script>
+  // Eliminar borrador — abre modal de confirmación
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.eliminar-borrador-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const card = btn.closest('[data-borrador-id]');
+    const titulo = card ? card.querySelector('p.font-semibold')?.textContent?.trim() : '';
+    if (window.openEliminarBorradorModal) window.openEliminarBorradorModal(id, titulo, card);
+  });
+
   // Manejar el formulario de exportar a Word
   document.addEventListener('DOMContentLoaded', function() {
     const exportForm = document.getElementById('exportar-word-form');
@@ -738,6 +762,37 @@
       btnActualizar.disabled = false;
       btnActualizar.innerHTML = '<i class="fas fa-save text-xs"></i> Actualizar';
       actualizarVisibilidadBoton();
+    });
+  }
+
+  // Toggle público/privado
+  const toggleBtn = document.getElementById('toggle-publico-btn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      const proyectoId = this.dataset.proyectoId;
+      fetch(`/proyectos/${proyectoId}/toggle-publico/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+      }).then(r => r.json()).then(data => {
+        if (!data.success) return;
+        const publico = data.publico;
+        const icon = toggleBtn.querySelector('i');
+        const label = document.getElementById('toggle-publico-label');
+        const clsPublico = ['bg-info/10', 'text-info', 'border-info/30', 'hover:bg-info/20'];
+        const clsPrivado = ['bg-base-200', 'text-base-content/40', 'border-base-300', 'hover:bg-base-300'];
+        toggleBtn.classList.remove(...clsPublico, ...clsPrivado);
+        if (publico) {
+          toggleBtn.classList.add(...clsPublico);
+          toggleBtn.title = 'Cambiar a Privado';
+          icon.className = 'fas fa-globe text-[10px]';
+          label.textContent = 'Público';
+        } else {
+          toggleBtn.classList.add(...clsPrivado);
+          toggleBtn.title = 'Cambiar a Público';
+          icon.className = 'fas fa-lock text-[10px]';
+          label.textContent = 'Privado';
+        }
+      });
     });
   }
 </script>

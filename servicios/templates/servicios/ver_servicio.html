@@ -5,72 +5,6 @@
   {% tailwind_css %}
   <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
   <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
-  <style>
-    /* ── Documento ─────────────────────────────────────────────────────────── */
-    .doc-wrap {
-      border-radius: 1rem;
-      box-shadow: 0 4px 24px -4px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
-      overflow: hidden;
-    }
-
-    /* Cabecera */
-    .doc-header {
-      border-bottom: 2px solid oklch(var(--p));
-      padding: 1.75rem 2.5rem 1.25rem;
-    }
-    .doc-header .doc-code  { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: oklch(var(--p)); }
-    .doc-header .doc-title { font-size: 1.4rem; font-weight: 800; line-height: 1.3; margin: .3rem 0 .55rem; color: #1e293b; }
-    .doc-header .doc-meta  { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; font-size: .78rem; color: #64748b; }
-    .doc-header .doc-sep   { color: #cbd5e1; }
-
-    /* Cuerpo */
-    .doc-body {
-      background: oklch(var(--b1));
-      padding: 2rem 2.5rem 2.5rem;
-      counter-reset: seccion subseccion;
-    }
-
-    /* Numeración automática */
-    .doc-body :is(h2) { counter-reset: subseccion; }
-    .doc-body :is(h2)::before { counter-increment: seccion; content: counter(seccion) ".  "; }
-    .doc-body :is(h3)::before { counter-increment: subseccion; content: counter(seccion) "." counter(subseccion) "  "; }
-
-    /* Headings */
-    .doc-body :is(h2) { font-size: .95rem; font-weight: 700; color: #1d4ed8; margin-top: 2rem; margin-bottom: .5rem; }
-    .doc-body :is(h2):first-child { margin-top: 0; }
-    .doc-body :is(h3) { font-size: .88rem; font-weight: 700; color: #1d4ed8; margin-top: 1.25rem; margin-bottom: .35rem; }
-    .doc-body :is(h4) { font-size: .84rem; font-weight: 600; color: oklch(var(--bc)); margin-top: .9rem; margin-bottom: .25rem; }
-    .doc-body :is(h5, h6) { font-size: .84rem; font-weight: 600; color: oklch(var(--bc) / .7); margin-top: .7rem; margin-bottom: .15rem; }
-
-    /* Texto */
-    .doc-body :is(p) { font-size: .84rem; color: oklch(var(--bc) / .8); line-height: 1.7; margin-bottom: .45rem; text-align: justify; }
-    .doc-body :is(ul, ol) { padding-left: 1.4rem; margin-bottom: .6rem; }
-    .doc-body :is(li) { font-size: .84rem; color: oklch(var(--bc) / .8); margin-bottom: .2rem; line-height: 1.6; }
-    .doc-body :is(strong) { color: oklch(var(--bc)); font-weight: 600; }
-
-    /* Tablas */
-    .doc-body :is(table) {
-      width: 100%; border-collapse: separate; border-spacing: 0;
-      font-size: .79rem; margin: 1rem 0 1.25rem;
-      border: 1px solid #dbeafe; border-radius: .5rem; overflow: hidden;
-    }
-    .doc-body :is(thead) { background: #eff6ff; }
-    .doc-body :is(th) {
-      color: #1d4ed8; font-weight: 700; font-size: .75rem;
-      padding: .55rem .85rem; text-align: left;
-      letter-spacing: .04em; text-transform: uppercase;
-      border-bottom: 2px solid #bfdbfe;
-    }
-    .doc-body :is(th:not(:last-child)) { border-right: 2px solid #bfdbfe; }
-    .doc-body :is(td) {
-      padding: .45rem .85rem; vertical-align: top;
-      color: oklch(var(--bc) / .8); line-height: 1.5;
-      border-bottom: 2px solid #e2e8f0;
-    }
-    .doc-body :is(td:not(:last-child)) { border-right: 2px solid #e2e8f0; }
-    .doc-body :is(tbody tr:last-child td) { border-bottom: none; }
-    .doc-body :is(tbody tr:hover td) { background: #f8fafc; }
-  </style>
 {% endblock %}
 
 {% block title %}{{ servicio.titulo }}{% endblock %}
@@ -118,6 +52,14 @@
             <span class="doc-sep">·</span>
             <span>{{ servicio.solicitante }}</span>
             {% endif %}
+            {% if servicio.creado_por %}
+            <span class="doc-sep">·</span>
+            <i class="fas fa-user text-[10px]"></i>
+            <span>{{ servicio.creado_por.get_full_name|default:servicio.creado_por.username }}</span>
+            {% endif %}
+            <span class="doc-sep">·</span>
+            <i class="fas fa-calendar text-[10px]"></i>
+            <span>{{ servicio.fecha_creacion|date:"d/m/Y" }}</span>
           </div>
         </div>
         {% if es_propietario %}
@@ -301,30 +243,24 @@
         <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
       </div>
       <div class="flex flex-col px-3 pb-3 gap-1">
-        <a href="{% url 'servicios:exportar_word' servicio.id %}"
-           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-success hover:bg-success/10 transition-colors">
-          <span class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-file-word text-success text-xs"></i>
+        <button type="button"
+                onclick="document.getElementById('exportar-word-servicio-modal').showModal()"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[#1c7bb0] hover:bg-[#1c7bb0]/10 transition-colors w-full text-left cursor-pointer">
+          <span class="w-7 h-7 rounded-lg bg-[#1c7bb0]/10 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-file-word text-sm text-[#1c7bb0]"></i>
           </span>
           Exportar a Word
-        </a>
+        </button>
         {% if es_propietario %}
         <button type="button"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-info hover:bg-info/10 transition-colors w-full text-left gestionar-imagenes-btn"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-success hover:bg-success/10 transition-colors w-full text-left gestionar-imagenes-btn"
                 data-servicio-id="{{ servicio.id }}"
                 data-servicio-titulo="{{ servicio.titulo|escape }}">
-          <span class="w-7 h-7 rounded-lg bg-info/10 flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-images text-info text-xs"></i>
+          <span class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-images text-success text-xs"></i>
           </span>
           Gestionar imágenes
         </button>
-        <a href="{% url 'servicios:editar_servicio' servicio.id %}"
-           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-warning hover:bg-warning/10 transition-colors">
-          <span class="w-7 h-7 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-edit text-warning text-xs"></i>
-          </span>
-          Editar servicio
-        </a>
         <button type="button"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors w-full text-left eliminar-servicio-btn"
                 data-servicio-id="{{ servicio.id }}"
@@ -343,7 +279,7 @@
 </div>
 
 {% include 'servicios/modals/gestionar_imagenes_modal.html' %}
-{% include 'servicios/modals/eliminar_servicio_modal.html' %}
+{% include 'partials/eliminar_servicio_modal.html' %}
 {% endblock %}
 
 {% block js %}
@@ -481,5 +417,143 @@
     });
   })();
   {% endif %}
+</script>
+
+<!-- Modal Exportar a Word -->
+<dialog id="exportar-word-servicio-modal" class="modal">
+  <div class="modal-box w-11/12 max-w-2xl p-0 overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-primary px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+          <i class="fas fa-file-word text-lg text-[#1c7bb0]"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Documento</p>
+          <h3 class="text-sm font-bold text-primary-content">Exportar a Word</h3>
+        </div>
+      </div>
+      <button type="button" onclick="document.getElementById('exportar-word-servicio-modal').close()"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors cursor-pointer">
+        <i class="fas fa-times text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form id="exportar-word-servicio-form" method="POST" action="{% url 'servicios:exportar_word' servicio.id %}">
+      {% csrf_token %}
+      <div class="px-6 py-5 flex flex-col gap-4">
+
+        <div>
+          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Título</label>
+          <input type="text" name="titulo" value="{{ servicio.titulo }}"
+                 class="input input-bordered input-sm w-full" required>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Solicitante</label>
+            <input type="text" name="solicitante" value="{{ servicio.solicitante }}"
+                   class="input input-bordered input-sm w-full">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">NRO.PR</label>
+            <input type="text" name="codigo" value=""
+                   class="input input-bordered input-sm w-full">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Revisión</label>
+            <input type="text" name="revision" value="1"
+                   class="input input-bordered input-sm w-full">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Fecha</label>
+            <input type="text" name="fecha" value="{{ servicio.fecha_creacion|date:'d/m/Y' }}"
+                   class="input input-bordered input-sm w-full">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Nro. Pliego</label>
+            <input type="text" name="nro_pliego" value=""
+                   class="input input-bordered input-sm w-full">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Operación</label>
+            <input type="text" name="operacion" value=""
+                   class="input input-bordered input-sm w-full">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Usuario</label>
+            <input type="text" name="usuario"
+                   value="{{ request.user.get_full_name|default:request.user.username }}"
+                   class="input input-bordered input-sm w-full">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Tipo de Contrato</label>
+            <select name="tipo_contrato" class="select select-bordered select-sm w-full" required>
+              <option value="" disabled selected></option>
+              <option value="CO">Contrato de Obra</option>
+              <option value="SPOT">SPOT</option>
+              <option value="NCM">Nuevo Contrato Marco</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-base-200">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-download text-xs"></i>
+          Exportar
+        </button>
+      </div>
+    </form>
+
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+
+<script>
+(function () {
+  const form = document.getElementById('exportar-word-servicio-form');
+  const modal = document.getElementById('exportar-word-servicio-modal');
+  const submitBtn = form.querySelector('[type="submit"]');
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const orig = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Exportando...';
+    try {
+      const resp = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+      if (!resp.ok) throw new Error('Error al exportar');
+      const blob = await resp.blob();
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      const filename = match ? match[1] : 'servicio.docx';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      modal.close();
+    } catch {
+      if (window.flashy) flashy.error('Error al generar el documento.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = orig;
+    }
+  });
+})();
 </script>
 {% endblock %}

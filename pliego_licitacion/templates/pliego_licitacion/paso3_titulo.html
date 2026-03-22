@@ -1,0 +1,211 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block title %}Ajustar Título — {{ especificacion.titulo }}{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  {% if proyecto %}
+  <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto_nombre }}</a>
+  {% else %}
+  <a href="{% url 'pliego_licitacion:pasos' %}" class="hover:text-primary transition-colors">Pliego</a>
+  {% endif %}
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Ajustar Título</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+  <div class="w-full max-w-2xl">
+    <div class="card w-full bg-base-100 shadow-xl overflow-hidden">
+
+      <!-- Header del paso -->
+      <div class="card-body pb-0">
+        <div class="mb-4">
+          <h2 class="card-title text-2xl mb-2">
+            <div class="flex items-center gap-4">
+              <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg">6</div>
+              <span class="text-primary">Ajustar nombre de la Actividad</span>
+            </div>
+          </h2>
+          <p class="text-sm text-base-content/60 ml-14">{{ especificacion.titulo }}</p>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="bloque-error" class="hidden px-6 py-6">
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-error/10 border border-error/30">
+          <i class="fas fa-triangle-exclamation text-error mt-0.5 shrink-0"></i>
+          <div>
+            <p class="text-sm font-semibold text-base-content">No se pudo generar el título</p>
+            <p id="error-texto" class="text-xs text-base-content/60 mt-1"></p>
+          </div>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button type="button" class="btn btn-ghost btn-sm gap-2" onclick="cargarPropuesta()">
+            <i class="fas fa-rotate-right"></i> Reintentar
+          </button>
+        </div>
+      </div>
+
+      <!-- Formulario de título -->
+      <div id="bloque-resultado" class="hidden">
+        <div class="px-6 py-5 space-y-4">
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-semibold">Nombre de la actividad</span>
+            </label>
+            <input type="text" id="titulo-inicial"
+              class="input input-bordered w-full bg-base-200/50 cursor-not-allowed"
+              readonly disabled>
+          </div>
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text font-semibold">Nombre sugerido por IA</span>
+            </label>
+            <input type="text" id="titulo-propuesto"
+              class="input input-bordered input-primary w-full focus:input-primary"
+              placeholder="Ingrese el nombre propuesto">
+            <label class="label">
+              <span class="label-text-alt text-base-content/50">Puede editar el nombre sugerido antes de aceptarlo.</span>
+            </label>
+          </div>
+        </div>
+        <div class="flex items-center justify-end px-6 py-4 border-t border-base-200 gap-2">
+          <button id="btn-rechazar" class="btn btn-ghost btn-sm gap-2">
+            <i class="fas fa-times"></i> Rechazar
+          </button>
+          <button id="btn-aceptar" class="btn btn-primary btn-sm">
+            <i class="fas fa-check mr-1.5"></i> Guardar cambios
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+
+const SPEC_ID    = {{ especificacion.id }};
+const CSRF_TOKEN = "{{ csrf_token }}";
+
+const N8N_URLS = {
+  propuestaTitulo: "{% url 'pliego_licitacion:propuesta_titulo' %}",
+  guardarTitulo:   "{% url 'pliego_licitacion:guardar_titulo' %}",
+};
+
+let _resumeUrl      = '';
+let _tituloInicial  = '';
+let _tituloPropuesto= '';
+
+function mostrar(id) {
+  ['bloque-error', 'bloque-resultado'].forEach(b => {
+    const el = document.getElementById(b);
+    if (el) el.classList.toggle('hidden', b !== id);
+  });
+  hideSpinner();
+}
+
+async function cargarPropuesta() {
+  showSpinner('Generando propuesta de título...');
+  try {
+    const resp = await fetch(N8N_URLS.propuestaTitulo, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ especificacion_id: SPEC_ID }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Error al obtener propuesta de título');
+
+    _resumeUrl       = data.resume_url || '';
+    _tituloInicial   = data.titulo_inicial || '';
+    _tituloPropuesto = data.titulo_propuesto || '';
+
+    document.getElementById('titulo-inicial').value    = _tituloInicial;
+    document.getElementById('titulo-propuesto').value  = _tituloPropuesto;
+
+    document.getElementById('btn-aceptar').onclick = () => enviarTitulo(_tituloPropuesto, true);
+    document.getElementById('btn-rechazar').onclick= () => enviarTitulo(_tituloInicial, false);
+
+    mostrar('bloque-resultado');
+  } catch (e) {
+    document.getElementById('error-texto').textContent = e.message || 'Error desconocido';
+    mostrar('bloque-error');
+  }
+}
+
+async function enviarTitulo(tituloFinal, aceptar) {
+  // Usar el valor editado del input si se aceptó
+  if (aceptar) {
+    tituloFinal = document.getElementById('titulo-propuesto').value.trim() || _tituloPropuesto;
+  }
+
+  const btnAceptar  = document.getElementById('btn-aceptar');
+  const btnRechazar = document.getElementById('btn-rechazar');
+  btnAceptar.disabled  = true;
+  btnRechazar.disabled = true;
+  showSpinner('Guardando título...');
+
+  try {
+    const resp = await fetch(N8N_URLS.guardarTitulo, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({
+        titulo_final:     tituloFinal,
+        aceptar:          aceptar,
+        resume_url:       _resumeUrl,
+        titulo_inicial:   _tituloInicial,
+        titulo_propuesto: _tituloPropuesto,
+        especificacion_id: SPEC_ID,
+      }),
+    });
+    const result = await resp.json();
+    if (!resp.ok || !result.success) throw new Error(result.error || 'Error al guardar el título');
+
+    // Extraer actividades adicionales de la respuesta
+    let adicionales = null;
+    if (result.adicionales_response) {
+      const ar = result.adicionales_response;
+      if (ar.actividades_adicionales) {
+        adicionales = ar.actividades_adicionales;
+      } else if (Array.isArray(ar) && ar[0]?.output?.actividades_adicionales) {
+        adicionales = ar[0].output.actividades_adicionales;
+      } else if (Array.isArray(ar) && ar[0]?.actividades_adicionales) {
+        adicionales = ar[0].actividades_adicionales;
+      }
+    } else if (Array.isArray(result) && result[0]?.output?.actividades_adicionales) {
+      adicionales = result[0].output.actividades_adicionales;
+    } else if (result.actividades_adicionales) {
+      adicionales = result.actividades_adicionales;
+    }
+
+    // Guardar en sessionStorage para paso4
+    if (adicionales && Array.isArray(adicionales) && adicionales.length > 0) {
+      sessionStorage.setItem('adicionales_data', JSON.stringify(adicionales));
+    }
+
+    window.location.href = "{% url 'pliego_licitacion:paso4_actividades' especificacion.id %}";
+
+  } catch (e) {
+    document.getElementById('error-texto').textContent = e.message || 'Error desconocido';
+    mostrar('bloque-error');
+    btnAceptar.disabled  = false;
+    btnRechazar.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', cargarPropuesta);
+</script>
+{% endblock %}

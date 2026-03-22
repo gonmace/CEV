@@ -1,0 +1,124 @@
+{% comment %}
+Partial reutilizable: panel de borradores pendientes.
+
+Parámetros (via {% include ... with %}):
+  borradores      — lista de objetos borrador (requerido)
+  modulo          — 'servicios' o 'pliego' (requerido)
+  show_proyecto   — mostrar nombre del proyecto en metadata (default False)
+  show_delete     — mostrar botón eliminar (default True)
+  wrapper_card    — envolver en tarjeta bg-base-100 con padding (default False)
+
+Notas:
+  - Servicios: eliminar usa clase 'eliminar-servicio-btn' + data-servicio-id / data-servicio-titulo → modal
+  - Pliego: eliminar usa clase 'eliminar-borrador-btn' + data-id → AJAX directo
+{% endcomment %}
+
+{% if borradores %}
+{% if wrapper_card %}
+<div class="rounded-xl bg-transparent border border-warning/30 shadow-sm overflow-hidden mt-4">
+  <div class="px-4 pt-4 pb-4">
+{% endif %}
+
+<div class="flex items-center gap-2 {% if wrapper_card %}mb-3{% else %}mt-6 mb-1.5{% endif %}">
+  <div class="w-1 h-5 bg-warning rounded-full"></div>
+  <span class="text-sm font-semibold text-base-content/70 uppercase tracking-widest">Borradores pendientes</span>
+  <div class="flex-1 h-px bg-base-200"></div>
+  <span class="badge badge-warning badge-sm">{{ borradores|length }}</span>
+</div>
+
+<div class="flex flex-col gap-2">
+  {% for b in borradores %}
+  <div class="bg-transparent border border-warning/30 rounded-xl shadow-sm overflow-hidden"
+       {% if modulo == 'pliego' %}data-borrador-id="{{ b.obj.id }}"{% else %}id="borrador-servicio-{{ b.obj.id }}"{% endif %}>
+    <div class="flex items-stretch">
+      <div class="w-1 bg-warning shrink-0"></div>
+      <div class="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 min-w-0 bg-base-100">
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm text-base-content/65 truncate leading-tight">{{ b.obj.titulo }}</p>
+          <p class="text-xs text-base-content/40 mt-0.5">
+            {% if show_proyecto and b.obj.proyecto %}
+              <i class="fas fa-folder mr-1"></i>{{ b.obj.proyecto.nombre }}
+              <span class="mx-1">·</span>
+            {% endif %}
+            {% if modulo == 'servicios' and b.obj.subcategoria_codigo %}
+              <span class="font-mono text-primary/70">{{ b.obj.subcategoria_codigo }}</span>
+              <span class="mx-1">·</span>
+            {% endif %}
+            {% if modulo == 'pliego' %}
+              <i class="fas fa-tag mr-1"></i>{{ b.obj.tipo_servicio }}
+              <span class="mx-1">·</span>
+            {% endif %}
+            <i class="fas fa-clock mr-1"></i>{{ b.obj.fecha_actualizacion|date:"d/m/Y H:i" }}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          {% comment %} URL de reanudación según módulo {% endcomment %}
+          {% if modulo == 'pliego' %}
+            {% if b.resume_paso == 8 %}
+              <a href="{% url 'pliego_licitacion:pasos' %}?paso=5&especificacion_id={{ b.obj.id }}"
+            {% elif b.resume_paso == 7 %}
+              <a href="{% url 'pliego_licitacion:paso4_actividades' b.obj.id %}"
+            {% elif b.resume_paso == 6 %}
+              <a href="{% url 'pliego_licitacion:paso3_titulo' b.obj.id %}"
+            {% else %}
+              <a href="{% url 'pliego_licitacion:paso2_parametros' b.obj.id %}"
+            {% endif %}
+          {% else %}
+            {% if b.resume_paso == 2 %}
+              <a href="{% url 'servicios:paso2_objetivo' b.obj.id %}"
+            {% elif b.resume_paso == 3 %}
+              <a href="{% url 'servicios:paso3_alcance' b.obj.id %}"
+            {% elif b.resume_paso == 4 %}
+              <a href="{% url 'servicios:paso4_secciones' b.obj.id %}"
+            {% else %}
+              <a href="{% url 'servicios:paso5_consolidar' b.obj.id %}"
+            {% endif %}
+          {% endif %}
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold
+                      bg-warning/15 text-base-content border border-warning/50
+                      hover:bg-warning hover:border-warning hover:text-white
+                      transition-all duration-150 whitespace-nowrap shadow-sm">
+            <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-warning/40 text-[10px] font-bold leading-none shrink-0">{{ b.resume_paso }}</span>
+            {{ b.resume_label }}
+            <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
+          </a>
+
+          {% comment %} Botón eliminar para pliego (AJAX) {% endcomment %}
+          {% if show_delete != False and modulo == 'pliego' %}
+          <button type="button"
+                  class="eliminar-borrador-btn w-7 h-7 flex items-center justify-center rounded-lg
+                         text-base-content/30 hover:text-error hover:bg-error/10 transition-colors"
+                  data-id="{{ b.obj.id }}"
+                  title="Descartar borrador">
+            <i class="fas fa-trash-alt text-xs"></i>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      {% comment %} Botón eliminar para servicios (modal) {% endcomment %}
+      {% if show_delete != False and modulo == 'servicios' and b.obj.creado_por == request.user %}
+      <div class="flex items-center px-3 shrink-0 bg-base-100">
+        <button type="button"
+                class="w-7 h-7 flex items-center justify-center rounded-lg
+                       text-base-content/30 hover:text-error hover:bg-error/10
+                       transition-colors duration-150 eliminar-servicio-btn"
+                data-servicio-id="{{ b.obj.id }}"
+                data-servicio-titulo="{{ b.obj.titulo|escape }}"
+                title="Eliminar borrador">
+          <i class="fas fa-trash-alt text-xs"></i>
+        </button>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if wrapper_card %}
+  </div>
+</div>
+{% endif %}
+{% endif %}

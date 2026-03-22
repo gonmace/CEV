@@ -997,48 +997,102 @@ def toggle_publico_view(request, servicio_id):
 
 
 @login_required
+@require_http_methods(['GET', 'POST'])
 def exportar_servicio_word_view(request, servicio_id):
     from django.http import HttpResponse
+    from django.conf import settings
     from docx import Document
     from docx.shared import Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     from bs4 import BeautifulSoup
     import io
+    import os
 
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
     if not (servicio.publico or servicio.creado_por == request.user):
         messages.error(request, 'Sin permisos para exportar este servicio.')
         return redirect('servicios:ver_servicio', servicio_id=servicio_id)
 
-    doc = Document()
-    style = doc.styles['Normal']
-    style.font.name = 'Arial'
-    style.font.size = Pt(11)
+    # Cargar template si existe, sino crear documento en blanco
+    template_path = os.path.join(
+        settings.BASE_DIR, 'servicios', 'templates', 'word_templates', 'template_servicios.docx'
+    )
+    usa_template = os.path.exists(template_path)
 
-    # — Cabecera —
-    if servicio.subcategoria_codigo:
-        p = doc.add_paragraph()
-        run = p.add_run(servicio.subcategoria_codigo)
-        run.font.size = Pt(9)
-        run.font.color.rgb = RGBColor(0x1d, 0x4e, 0xd8)
-        run.bold = True
+    # Valores editables desde el modal (POST) con fallback al modelo
+    fecha_default   = servicio.fecha_creacion.strftime('%d/%m/%Y') if servicio.fecha_creacion else ''
+    titulo_export   = request.POST.get('titulo',      servicio.titulo or '')
+    codigo_export   = request.POST.get('codigo',      servicio.subcategoria_codigo or '')
+    solicitante_exp = request.POST.get('solicitante', servicio.solicitante or '')
+    fecha_export    = request.POST.get('fecha',       fecha_default)
+    revision_exp    = request.POST.get('revision',    '1')
+    nro_pliego_exp  = request.POST.get('nro_pliego',  '')
+    operacion_exp   = request.POST.get('operacion',   '')
+    usuario_exp     = request.POST.get('usuario',     '')
+    tipo_contrato   = request.POST.get('tipo_contrato', 'CO')
 
-    h = doc.add_heading(servicio.titulo, level=1)
-    h.runs[0].font.color.rgb = RGBColor(0x1e, 0x29, 0x3b)
+    if usa_template:
+        doc = Document(template_path)
 
-    meta_parts = []
-    if servicio.categoria_nombre:
-        meta_parts.append(servicio.categoria_nombre)
-    if servicio.subcategoria_nombre:
-        meta_parts.append(servicio.subcategoria_nombre)
-    if servicio.solicitante:
-        meta_parts.append(servicio.solicitante)
-    if meta_parts:
-        p = doc.add_paragraph(' › '.join(meta_parts))
-        p.runs[0].font.size = Pt(9)
-        p.runs[0].font.color.rgb = RGBColor(0x64, 0x74, 0x8b)
+        # Reemplazar placeholders en encabezados del template
+        CHK   = '\u2611'  # ☑
+        UNCHK = '\u2610'  # ☐
+        placeholders = {
+            '<<TITULO>>':       titulo_export,
+            '<<PROYECTO>>':     titulo_export,
+            '<<CODIGO>>':       codigo_export,
+            '<<SOLICITANTE>>':  solicitante_exp,
+            '<<CATEGORIA>>':    servicio.categoria_nombre or '',
+            '<<SUBCATEGORIA>>': servicio.subcategoria_nombre or '',
+            '<<FECHA>>':        fecha_export,
+            '<<REV>>':          revision_exp,
+            '<<REV.>>':         revision_exp,
+            '<<NRO_PLIEGO>>':   nro_pliego_exp,
+            '<<OPERACION>>':    operacion_exp,
+            '<<USUARIO>>':      usuario_exp,
+            '<<CHK_SPOT>>':     CHK if tipo_contrato == 'SPOT' else UNCHK,
+            '<<CHK_NCM>>':      CHK if tipo_contrato == 'NCM'  else UNCHK,
+            '<<CHK_CO>>':       CHK if tipo_contrato == 'CO'   else UNCHK,
+            '<<XHK_CO>>':       CHK if tipo_contrato == 'CO'   else UNCHK,
+        }
 
-    doc.add_paragraph()  # separador
+        def _replace_in_para(para, ph_map):
+            full = ''.join(r.text for r in para.runs)
+            if not any(k in full for k in ph_map):
+                return
+            for k, v in ph_map.items():
+                full = full.replace(k, v)
+            for run in para.runs:
+                run.text = ''
+            if para.runs:
+                para.runs[0].text = full
+            else:
+                para.add_run(full)
+
+        def _replace_in_container(container, ph_map):
+            for para in container.paragraphs:
+                _replace_in_para(para, ph_map)
+            for table in container.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        _replace_in_container(cell, ph_map)
+
+        for section in doc.sections:
+            _replace_in_container(section.header, placeholders)
+
+        # Limpiar body del template preservando sectPr
+        body = doc.element.body
+        for child in list(body):
+            if child.tag != qn('w:sectPr'):
+                body.remove(child)
+    else:
+        doc = Document()
+        style = doc.styles['Normal']
+        style.font.name = 'Arial'
+        style.font.size = Pt(11)
 
     # — Contenido —
     if servicio.contenido and servicio.contenido.strip():
@@ -1094,20 +1148,60 @@ def exportar_servicio_word_view(request, servicio_id):
                 if max_cols == 0:
                     return
                 tbl = doc.add_table(rows=len(rows), cols=max_cols)
-                tbl.style = 'Table Grid'
+                tbl.style = 'Light Grid Accent 1'
+                tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+                tbl.autofit = True
+                def _set_cell_shading(cell, fill_hex):
+                    tc = cell._element
+                    tcPr = tc.find(qn('w:tcPr'))
+                    if tcPr is None:
+                        tcPr = OxmlElement('w:tcPr')
+                        tc.insert(0, tcPr)
+                    shd = tcPr.find(qn('w:shd'))
+                    if shd is None:
+                        shd = OxmlElement('w:shd')
+                        tcPr.append(shd)
+                    shd.set(qn('w:val'), 'clear')
+                    shd.set(qn('w:color'), 'auto')
+                    shd.set(qn('w:fill'), fill_hex)
+
                 for r_idx, row in enumerate(rows):
                     cells = row.find_all(['td', 'th'])
+                    is_header_row = any(c.name == 'th' for c in cells)
                     for c_idx, cell in enumerate(cells):
                         if c_idx < max_cols:
                             wc = tbl.rows[r_idx].cells[c_idx]
                             wc.text = ''
                             para = wc.paragraphs[0]
-                            is_header = cell.name == 'th'
                             for child in cell.children:
                                 add_run_formatted(para, child)
-                            if is_header:
+                            if is_header_row:
+                                _set_cell_shading(wc, '1F4E79')
                                 for run in para.runs:
                                     run.bold = True
+                                    run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                def _set_col_width(cell, twips, col_type='dxa'):
+                    tc = cell._element
+                    tcPr = tc.find(qn('w:tcPr'))
+                    if tcPr is None:
+                        tcPr = OxmlElement('w:tcPr')
+                        tc.insert(0, tcPr)
+                    tcW = tcPr.find(qn('w:tcW'))
+                    if tcW is None:
+                        tcW = OxmlElement('w:tcW')
+                        tcPr.append(tcW)
+                    tcW.set(qn('w:type'), col_type)
+                    tcW.set(qn('w:w'), str(twips))
+
+                for row in tbl.rows:
+                    # Primera columna: ancho mínimo
+                    _set_col_width(row.cells[0], 0, 'auto')
+                    # Segunda columna: 30%
+                    if len(row.cells) >= 2:
+                        _set_col_width(row.cells[1], 1500, 'pct')
+                    # Tercera columna: máximo ancho posible
+                    if len(row.cells) >= 3:
+                        _set_col_width(row.cells[2], 9000)
 
         for elem in soup.children:
             process_elem(elem)

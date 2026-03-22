@@ -28,22 +28,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- AI Spinner -->
-<div id="ai-spinner" class="ai-spinner hidden" role="status" aria-live="polite" style="z-index:9999;">
-  <div class="ai-spinner__backdrop"></div>
-  <div class="ai-spinner__sheet">
-    <div class="ai-spinner__rings">
-      <div class="ai-spinner__ring ai-spinner__ring--outer"></div>
-      <div class="ai-spinner__ring ai-spinner__ring--inner"></div>
-      <div class="ai-spinner__dot-track">
-        <div class="ai-spinner__dot"></div>
-      </div>
-    </div>
-    <p id="ai-spinner-label" class="ai-spinner__label">Analizando...</p>
-    <p class="ai-spinner__sub">Sistema IA en proceso</p>
-  </div>
-</div>
-
 <div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
   <div class="w-full max-w-4xl">
   <div class="card w-full bg-base-100 shadow-xl">
@@ -61,20 +45,14 @@
         <p class="text-sm text-base-content/60 ml-14">{{ servicio.titulo }}</p>
       </div>
 
-      <!-- ── Bloque: Spinner inicial ──────────────────────────────────────── -->
-      <div id="bloque-spinner" class="flex flex-col items-center justify-center py-12 gap-4">
-        <span class="loading loading-spinner loading-lg text-primary"></span>
-        <p class="text-sm text-base-content/50" id="spinner-texto">Analizando el servicio...</p>
-      </div>
-
       <!-- ── Bloque: Paso 3.1 — Equipos (solo OPERATIVA) ─────────────────── -->
       <div id="bloque-equipos" class="hidden space-y-4">
 
         <div class="flex items-start gap-3 p-4 rounded-xl bg-info/10 border border-info/30">
-          <i class="fas fa-cogs text-info mt-0.5 shrink-0 text-lg"></i>
+          <i class="fas fa-screwdriver-wrench text-info mt-0.5 shrink-0 text-lg"></i>
           <div class="flex-1">
             <div class="flex items-center gap-2 flex-wrap">
-              <p class="text-sm font-semibold text-base-content">Paso 3.1 — Equipos del Servicio</p>
+              <p class="text-sm font-semibold text-base-content">Equipos del Servicio</p>
               <span id="badge-clasificacion" class="hidden badge badge-info badge-sm font-mono"></span>
               <select id="select-modalidad"
                 class="select select-bordered select-xs w-28 font-mono"
@@ -227,7 +205,7 @@
           </div>
 
           <div class="flex justify-end pt-4">
-            <button type="submit" id="btn-guardar-final" class="btn btn-primary gap-2">
+            <button type="submit" id="btn-guardar-final" class="btn btn-primary gap-2" onclick="showSpinner('Guardando alcance...')">
               <i class="fas fa-arrow-right"></i> Guardar alcance y continuar
             </button>
           </div>
@@ -247,7 +225,7 @@
             <div id="editor-alcance-manual" class="border border-base-300 rounded-lg"></div>
           </div>
           <div class="flex justify-end pt-4">
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" onclick="showSpinner('Guardando alcance...')">
               <i class="fas fa-save mr-2"></i> Guardar y continuar
             </button>
           </div>
@@ -335,24 +313,11 @@
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
   function mostrarBloque(id) {
-    ['bloque-spinner','bloque-equipos','bloque-pregunta','bloque-objetivo','bloque-error']
+    ['bloque-equipos','bloque-pregunta','bloque-objetivo','bloque-error']
       .forEach(b => { const el = document.getElementById(b); if (el) el.classList.add('hidden'); });
     const target = document.getElementById(id);
     if (target) target.classList.remove('hidden');
-  }
-
-  function aiSpinner(show, texto) {
-    const el = document.getElementById('ai-spinner');
-    const label = document.getElementById('ai-spinner-label');
-    if (!el) return;
-    if (show) {
-      if (label && texto) label.textContent = texto;
-      el.classList.remove('hidden');
-      el.style.cssText = 'display:flex !important; z-index:9999;';
-    } else {
-      el.classList.add('hidden');
-      el.style.display = '';
-    }
+    hideSpinner();
   }
 
   function setStatus(el, msg, tipo) {
@@ -772,7 +737,7 @@
 
   // ── Webhook alcance ────────────────────────────────────────────────────────
   async function llamarWebhook(texto, equipos) {
-    aiSpinner(true, texto || 'Generando Alcance...');
+    showSpinner(texto || 'Generando Alcance...');
     try {
       const resp = await fetch(GENERAR_URL, {
         method: 'POST',
@@ -788,7 +753,7 @@
       if (!resp.ok) throw new Error('Error de red');
       const data = await resp.json();
       if (data.error) throw new Error(data.error);
-      aiSpinner(false);
+      hideSpinner();
       if (data.tipo === 'pregunta') {
         document.getElementById('texto-pregunta').textContent = data.pregunta;
         document.getElementById('input-respuesta').value = '';
@@ -798,7 +763,6 @@
         initEditorAlcance(data.alcance || '');
       }
     } catch (e) {
-      aiSpinner(false);
       mostrarBloque('bloque-error');
       initEditorManual();
     }
@@ -821,15 +785,12 @@
 
   // ── Arranque ───────────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
-    mostrarBloque('bloque-spinner');
-    document.getElementById('spinner-texto').textContent = 'Analizando el servicio...';
+    showSpinner('Analizando el servicio...');
 
     const clasificacion = await clasificar();
 
     estructuraDetectada = (clasificacion?.estructura || '').toUpperCase().trim();
     modalidadDetectada  = (clasificacion?.modalidad  || '').toUpperCase().trim();
-    console.log('Clasificación:', estructuraDetectada, modalidadDetectada, clasificacion);
-
     // Todas las estructuras muestran el formulario de equipos (paso 3.1)
     if (!estructuraDetectada) estructuraDetectada = 'OPERATIVA';
 
@@ -884,6 +845,7 @@
 
     document.getElementById('form-guardar').addEventListener('submit', function () {
       document.getElementById('id_alcance').value = editorAlcance.getMarkdown();
+      showSpinner('Guardando alcance...');
     });
   }
 
@@ -908,6 +870,7 @@
 
     document.getElementById('form-manual').addEventListener('submit', function () {
       document.getElementById('id_alcance_manual').value = editorManual.getMarkdown();
+      showSpinner('Guardando alcance...');
     });
   }
 </script>

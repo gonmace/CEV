@@ -1,6 +1,6 @@
 {% load static tailwind_tags %}
 <!DOCTYPE html>
-<html lang="en" data-theme="constructor" class="bg-base-300">
+<html lang="es" data-theme="constructor" class="bg-base-300">
 <script>
   (function(){var t=localStorage.getItem('cev-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
 </script>
@@ -8,113 +8,39 @@
 <head>
     <title>Principal</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <!--<link rel="icon" href="img/favicon.ico" type="image/x-icon" />-->
-    <!--<link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon" />-->
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="icon" type="image/png" href="{% static 'img/logo-gdar.png' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta http-equiv="X-UA-Compatible" content="IE=9; IE=8; IE=7; IE=EDGE" />
-
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
-    
-    {% tailwind_css %}
-  
 
-    <!-- <link rel="stylesheet"  href="{% static 'constructor-app/js/assets/css/admin/module.admin.page.index.min.css' %}" /> -->
-    <!-- <link rel="stylesheet" 
-        href="{% static 'constructor-app/js/assets/css/admin/module.admin.page.notifications.min.css' %}" /> -->
-    <!-- <link rel="stylesheet"  href="{% static 'constructor-app/css/style.css' %}" /> -->
+    {% tailwind_css %}
 
     {% block css %}
     {% endblock %}
-
-    <!-- <script src="{% static 'constructor-app/js/assets/components/library/jquery/jquery.min.js?v=v1.2.3' %}"></script> -->
-    <!-- <script
-        src="{% static 'constructor-app/js/assets/components/library/jquery/jquery-migrate.min.js?v=v1.2.3' %}"></script>
-    <script src="{% static 'constructor-app/js/assets/components/library/modernizr/modernizr.js?v=v1.2.3' %}"></script> -->
-    <!-- <script src="{% static 'constructor-app/js/modules/main.js' %}"></script> -->
 </head>
 
 <body class="{% block body_class %}{% endblock %} min-h-screen ">
-    <!--Navbar-->
-    <!-- <div class="navbar navbar-fixed-top navbar-primary main" role="navigation">
-        <div class="navbar-header pull-left">
-            <div class="navbar-brand">
-                <div class="pull-left">
-                    <a href="" class="toggle-button toggle-sidebar btn-navbar"><i class="fa fa-bars"></i></a>
-                </div>
-                <a href="#" class="appbrand innerL">GDAR</a>
-            </div>
-        </div>
-        <ul class="nav navbar-nav navbar-left"> -->
-            <!--Left Navbar Content-->
-        <!-- </ul>
-        <ul class="nav navbar-nav navbar-right hidden-xs">
-            <li>
-                <div id="spinner"></div>
-            </li>
-            <li class="dropdown">
-                <a href="" class="dropdown-toggle user" data-toggle="dropdown"> <img
-                        src="{% static 'constructor-app/js/assets/images/people/35/20.jpg' %}" alt="" class="img-circle" /><span
-                        class="hidden-xs hidden-sm"> &nbsp; Gonzalo Aldunate </span><span class="caret"></span></a>
-                <ul class="dropdown-menu list pull-right ">
-                    <li><a href="#">Tu Perfil <i class="fa fa-user pull-right"></i></a></li>
-                    <li><a href="" id="logout">Salir <i class="fa fa-sign-out pull-right"></i></a></li>
-                </ul>
-            </li>
-        </ul>
-    </div> -->
-
-    <!--End of Navbar-->
-
-    <!--Sidebar-->
-
-    <!-- <div id="menu" class="hidden-print hidden-xs">
-        <div class="sidebar sidebar-inverse">
-            <div class="user-profile media innerAll">
-                <div class="media-body">
-                    <p class="text-success"><i class="fa fa-fw fa-circle"></i> Proyecto Activo:</p>
-                    <select class="col-md-7 form-control pull-right projects"></select>
-                </div>
-            </div>
-            <div class="sidebarMenuWrapper">
-                <ul class="list-unstyled">
-                    <li><a href="" id="dashboard" class="side-menu"><i
-                                class="icon-projector-screen-line"></i><span>Panel Principal</span></a></li>
-                    <li class="hasSubmenu">
-                        <a href="#" data-target="#projects-toggle" data-toggle="collapse"><i
-                                class="icon-new-window"></i><span>Proyectos</span></a>
-                        <ul class="collapse" id="projects-toggle">
-                            <li><a href="" id="new-project" class="side-menu"><i class="icon-new-window"></i><span>Nuevo
-                                        Proyecto</span></a></li>
-                            <li><a href="" id="list-projects" class="side-menu"><i
-                                        class="icon-paper-document"></i><span>Lista de Proyectos</span></a></li>
-                        </ul>
-                    </li>
-            </div>
-        </div>
-    </div> -->
-
-    <!--End of Sidebar-->
-
-    <!--Main Content-->
 
     <div class="bg-primary text-white shadow z-50 overflow-visible relative">
-        <div class="px-4 py-2 pr-20 flex items-center overflow-visible">
+        <div class="max-w-7xl mx-auto px-4 py-2 grid grid-cols-[auto_1fr_auto] items-center gap-4 relative">
             <div class="flex items-center space-x-4">
                 <a href="/" class="bg-white rounded p-0.5 flex items-center justify-center">
+                    {% if site_logo_url %}
+                    <img src="{{ site_logo_url }}" alt="Logo" class="h-8 object-contain">
+                    {% else %}
                     <img src="{% static 'img/logo-gdar.png' %}" alt="GDAR Logo" class="h-8 object-contain">
+                    {% endif %}
                 </a>
             </div>
-            <div class="flex-1 flex items-center justify-center">
+            <div class="flex items-center justify-center">
                 <span class="text-lg font-semibold tracking-wide uppercase">
                     {% block navbar_title %}{% block title %}Principal{% endblock %}{% endblock %}
                 </span>
             </div>
-            <div class="flex items-center gap-3 pr-1">
+            <div class="flex items-center gap-3">
                 {% block navbar_right %}{% endblock %}
 
                 <!-- Theme toggle -->
@@ -147,11 +73,9 @@
                     </button>
                 </form>
                 {% endif %}
-            </div>
-            <div class="absolute right-0 top-0">
-                <div class="bg-primary rounded-full p-2">
-                    <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center p-3 shadow-lg">
-                        <img src="{% static 'img/Embol Logo.png' %}" alt="Embol Logo" class="h-full w-full">
+                <div class="relative h-0 w-[70px] self-start overflow-visible shrink-0">
+                    <div class="absolute top-0 w-[70px] h-[70px] rounded-full bg-white flex items-center justify-center p-2 shadow-lg ring-4 ring-primary">
+                        <img src="{% static 'img/logo-embol.png' %}" alt="Embol Logo" class="h-full w-full object-contain">
                     </div>
                 </div>
             </div>
@@ -178,19 +102,25 @@
                 {% block breadcrumbs %}
                 {% endblock %}
             </ol>
-            {% if request.resolver_match.url_name != 'proyecto_main' %}
-            <button onclick="window.history.back()"
-                    class="flex items-center gap-2 text-xs font-semibold text-base-content/50 hover:text-primary border border-base-300 hover:border-primary/40 bg-base-100 hover:bg-primary/5 px-3 py-1.5 rounded-full transition-all duration-150 shadow-sm"
-                    title="Volver a la página anterior">
-                <span class="w-4 h-4 flex items-center justify-center">
-                    <i class="fas fa-arrow-left text-[10px]"></i>
-                </span>
-                Volver
-            </button>
-            {% endif %}
         </nav>
     </div>
     {% endblock %}
+
+    <!-- ── AI Spinner global ── -->
+    <div id="ai-spinner" class="ai-spinner hidden" role="status" aria-live="polite">
+        <div class="ai-spinner__backdrop"></div>
+        <div class="ai-spinner__sheet">
+            <div class="ai-spinner__rings">
+                <div class="ai-spinner__ring ai-spinner__ring--outer"></div>
+                <div class="ai-spinner__ring ai-spinner__ring--inner"></div>
+                <div class="ai-spinner__dot-track">
+                    <div class="ai-spinner__dot"></div>
+                </div>
+            </div>
+            <p id="ai-spinner-label" class="ai-spinner__label">Procesando...</p>
+            <p class="ai-spinner__sub">Sistema IA en proceso</p>
+        </div>
+    </div>
 
     <div id="content">
         {% block content %}
@@ -207,39 +137,6 @@
     </script>
     {% endif %}
 
-    <!--End of Main Content-->
-
-    <!-- <div class="clearfix"></div>
-
-    <div id="footer" class="hidden-print">
-        <div class="copy">&copy; 2019 <a href="">Const.</a> - Todos Los Derechos Reservados - Version: 1.0.0</div>
-    </div> -->
-
-    <!-- Global -->
-    <!-- <script> -->
-        
-            
-            
-            
-
-        <!-- var primaryColor = '#cb4040',
-            dangerColor = '#b55151',
-            infoColor = '#466baf',
-            successColor = '#8baf46',
-            warningColor = '#ab7a4b',
-            inverseColor = '#45484d';
-
-        var themerPrimaryColor = primaryColor;
-    </script> -->
-
-    <!--Scripts Needed-->
-    <!-- <script src="{% static 'constructor-app/js/assets/components/core/js/sidebar.main.init.js?v=v1.2.3' %}"></script> -->
-    <!-- <script 
-        src="{% static 'constructor-app/js/assets/components/core/js/sidebar.collapse.init.js?v=v1.2.3' %}"></script> -->
-    <!-- <script 
-        src="{% static 'constructor-app/js/assets/components/library/bootstrap/js/bootstrap.min.js?v=v1.2.3' %}"></script> -->
-    <!-- <script 
-        src="{% static 'constructor-app/js/assets/components/plugins/nicescroll/jquery.nicescroll.min.js?v=v1.2.3' %}"></!-->
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
     <script>
         (function () {
@@ -260,7 +157,7 @@
 
             function showToast(message, type, duration) {
                 type = type || 'info';
-                duration = (duration === undefined) ? (type === 'error' ? 0 : 5000) : duration;
+                duration = (duration === undefined) ? 5000 : duration;
 
                 var toast = document.createElement('div');
                 toast.className = [
@@ -317,6 +214,95 @@
                         showToast(entry.message, type);
                     });
                 } catch (e) { console.error('Error procesando mensajes Django', e); }
+            }
+        })();
+    </script>
+
+    <!-- ── AI Spinner JS ── -->
+    <style>
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.4); }
+            50%       { box-shadow: 0 0 30px rgba(102, 126, 234, 0.8); }
+        }
+    </style>
+    <script>
+        window.showSpinner = function(text) {
+            const el    = document.getElementById('ai-spinner');
+            const label = document.getElementById('ai-spinner-label');
+            if (label) label.textContent = text || 'Procesando...';
+            if (el) { el.classList.remove('hidden'); el.style.display = 'flex'; }
+            window.startSpinnerStep(text || '');
+        };
+        window.hideSpinner = function() {
+            const el = document.getElementById('ai-spinner');
+            if (el) { el.classList.add('hidden'); el.style.display = ''; }
+        };
+
+        // 8 pasos, total 148 s → ángulos acumulados en sentido horario desde 0°
+        const _SPINNER_STEPS = [
+            { match: 'parámetros técnicos',   startAngle:   0,     endAngle:  19.46, duration:  8 },
+            { match: 'materiales',             startAngle:  19.46,  endAngle:  58.38, duration: 16 },
+            { match: 'ejecuci',                startAngle:  58.38,  endAngle: 133.78, duration: 31 },
+            { match: 'normas',                 startAngle: 133.78,  endAngle: 153.24, duration:  8 },
+            { match: 'criterios',              startAngle: 153.24,  endAngle: 197.03, duration: 18 },
+            { match: 'título',                 startAngle: 197.03,  endAngle: 199.46, duration:  1 },
+            { match: 'guardando actividades',  startAngle: 199.46,  endAngle: 255.41, duration: 23 },
+            { match: 'generando especificaci', startAngle: 255.41,  endAngle: 360,    duration: 43 },
+        ];
+
+        let _dotRaf = null;
+
+        function _setDotAngle(deg) {
+            document.querySelectorAll('.ai-spinner__dot-track').forEach(function(el) {
+                el.style.transform = 'rotate(' + deg + 'deg)';
+            });
+        }
+
+        function _animateDot(fromDeg, toDeg, durationMs) {
+            if (_dotRaf) cancelAnimationFrame(_dotRaf);
+            var start = null;
+            function step(ts) {
+                if (!start) start = ts;
+                var p = Math.min((ts - start) / durationMs, 1);
+                _setDotAngle(fromDeg + (toDeg - fromDeg) * p);
+                if (p < 1) _dotRaf = requestAnimationFrame(step);
+            }
+            _dotRaf = requestAnimationFrame(step);
+        }
+
+        window.startSpinnerStep = function(text) {
+            var lower = (text || '').toLowerCase();
+            for (var i = 0; i < _SPINNER_STEPS.length; i++) {
+                if (lower.includes(_SPINNER_STEPS[i].match)) {
+                    var s = _SPINNER_STEPS[i];
+                    _setDotAngle(s.startAngle);
+                    _animateDot(s.startAngle, s.endAngle, s.duration * 1000);
+                    return;
+                }
+            }
+        };
+
+        // Auto-ocultar spinner cuando se abre cualquier dialog
+        (function() {
+            function watchDialogs() {
+                const observer = new MutationObserver(function(mutations) {
+                    for (const m of mutations) {
+                        if (m.type === 'attributes' && m.attributeName === 'open') {
+                            if (m.target.open || m.target.hasAttribute('open')) hideSpinner();
+                        }
+                    }
+                });
+                document.querySelectorAll('dialog').forEach(function(d) {
+                    observer.observe(d, { attributes: true });
+                });
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', watchDialogs);
+            } else {
+                watchDialogs();
             }
         })();
     </script>

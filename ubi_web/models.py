@@ -1,4 +1,5 @@
 import os
+import logging
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
@@ -6,6 +7,8 @@ from django.core.files.base import ContentFile
 from PIL import Image
 from io import BytesIO
 from proyectos.models import Proyecto
+
+logger = logging.getLogger(__name__)
 
 
 def ubicacion_imagen_upload_path(instance, filename):
@@ -102,7 +105,7 @@ class UbicacionImagen(models.Model):
                 )
             except Exception as e:
                 # Si hay un error al optimizar, continuar con el guardado normal
-                print(f"Error al optimizar imagen: {e}")
+                logger.warning(f"Error al optimizar imagen: {e}")
         
         super().save(*args, **kwargs)
     

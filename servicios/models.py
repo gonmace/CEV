@@ -1,5 +1,6 @@
 import os
-from django.db import models
+import logging
+from django.db import models, transaction
 from django.db.models import Max
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -7,6 +8,8 @@ from django.utils.text import slugify
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
+
+logger = logging.getLogger(__name__)
 
 
 # Stubs para compatibilidad con migración 0001_initial
@@ -98,10 +101,13 @@ class Servicio(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk is None and self.orden == 0:
-            max_orden = Servicio.objects.filter(activo=True).aggregate(
-                max_orden=Max('orden')
-            )['max_orden'] or 0
-            self.orden = max_orden + 1
+            with transaction.atomic():
+                max_orden = Servicio.objects.select_for_update().filter(activo=True).aggregate(
+                    max_orden=Max('orden')
+                )['max_orden'] or 0
+                self.orden = max_orden + 1
+                super().save(*args, **kwargs)
+                return
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -151,7 +157,7 @@ class ServicioImagen(models.Model):
                 original_name = os.path.splitext(self.imagen.name)[0]
                 self.imagen.save(f"{original_name}.jpg", ContentFile(output.read()), save=False)
             except Exception as e:
-                print(f"Error al optimizar imagen: {e}")
+                logger.warning(f"Error al optimizar imagen: {e}")
         super().save(*args, **kwargs)
 
     def __str__(self):

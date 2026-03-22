@@ -1,4 +1,5 @@
 import os
+import logging
 from django.db import models
 from django.db.models import Max
 from django.contrib.auth.models import User
@@ -7,6 +8,8 @@ from django.utils.text import slugify
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
+
+logger = logging.getLogger(__name__)
 
 
 class Proyecto(models.Model):
@@ -147,7 +150,7 @@ class EspecificacionImagen(models.Model):
                 )
             except Exception as e:
                 # Si hay un error al optimizar, continuar con el guardado normal
-                print(f"Error al optimizar imagen: {e}")
+                logger.warning(f"Error al optimizar imagen: {e}")
         
         super().save(*args, **kwargs)
     

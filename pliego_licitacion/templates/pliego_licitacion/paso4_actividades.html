@@ -1,0 +1,307 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block title %}Actividades Adicionales — {{ especificacion.titulo }}{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  {% if proyecto %}
+  <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto_nombre }}</a>
+  {% else %}
+  <a href="{% url 'pliego_licitacion:pasos' %}" class="hover:text-primary transition-colors">Pliego</a>
+  {% endif %}
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Actividades Adicionales</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+  <div class="w-full max-w-6xl">
+
+    <div class="card w-full bg-base-100 shadow-xl overflow-hidden">
+
+      <!-- Header del paso -->
+      <div class="card-body pb-0">
+        <div class="mb-4">
+          <h2 class="card-title text-2xl mb-2">
+            <div class="flex items-center gap-4">
+              <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg">7</div>
+              <span class="text-primary">Actividades Adicionales</span>
+            </div>
+          </h2>
+          <p class="text-sm text-base-content/60 ml-14">{{ especificacion.titulo }}</p>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="bloque-error" class="hidden px-6 py-6">
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-error/10 border border-error/30">
+          <i class="fas fa-triangle-exclamation text-error mt-0.5 shrink-0"></i>
+          <div>
+            <p class="text-sm font-semibold text-base-content">No se pudo cargar las actividades</p>
+            <p id="error-texto" class="text-xs text-base-content/60 mt-1"></p>
+          </div>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button type="button" class="btn btn-ghost btn-sm gap-2" onclick="cargarActividades()">
+            <i class="fas fa-rotate-right"></i> Reintentar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de actividades -->
+      <div id="bloque-tabla" class="hidden flex flex-col">
+        <div class="px-5 py-3 border-b border-base-200">
+          <p class="text-xs text-base-content/60">
+            Seleccione las actividades adicionales que desea incluir en la especificación técnica:
+          </p>
+        </div>
+        <div class="overflow-auto px-5 py-3">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr class="bg-primary text-primary-content">
+                <th class="w-1/12">
+                  <input type="checkbox" id="select-all-actividades" class="checkbox checkbox-primary border-white checkbox-sm">
+                </th>
+                <th class="w-3/12 text-xs">Actividad</th>
+                <th class="w-2/12 text-center text-xs">Unidad</th>
+                <th class="w-7/12 text-xs">Descripción</th>
+              </tr>
+            </thead>
+            <tbody id="actividades-table-body"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-end px-5 py-4 border-t border-base-200 gap-2">
+          <button class="btn btn-primary btn-sm" id="enviar-actividades-btn">
+            <i class="fas fa-arrow-right mr-1.5"></i>
+            Continuar
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+
+const SPEC_ID    = {{ especificacion.id }};
+const CSRF_TOKEN = "{{ csrf_token }}";
+
+const N8N_URLS = {
+  adicionales:     "{% url 'pliego_licitacion:adicionales' %}",
+  actividades:     "{% url 'pliego_licitacion:actividades' %}",
+  generarResultado:"{% url 'pliego_licitacion:generar_resultado' %}",
+};
+
+const URL_RESULTADO = "{% url 'pliego_licitacion:pasos' %}?paso=5&especificacion_id={{ especificacion.id }}";
+
+function mostrar(id) {
+  ['bloque-error', 'bloque-tabla'].forEach(b => {
+    const el = document.getElementById(b);
+    if (el) el.classList.toggle('hidden', b !== id);
+  });
+  hideSpinner();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text ?? '';
+  return div.innerHTML;
+}
+
+function poblarTabla(actividades) {
+  const tableBody = document.getElementById('actividades-table-body');
+  tableBody.innerHTML = '';
+
+  actividades.forEach((a, index) => {
+    const nombre     = a.actividad || a.nombre || '';
+    const unidad     = a.unidad_medida || '';
+    const descripcion= a.descripcion || '';
+    const row = document.createElement('tr');
+    row.className = 'actividad-row';
+    row.setAttribute('data-index', index);
+    row.innerHTML = `
+      <td><input type="checkbox" class="checkbox checkbox-primary actividad-checkbox"
+        data-nombre="${escapeHtml(nombre)}"
+        data-descripcion="${escapeHtml(descripcion)}"
+        data-unidad="${escapeHtml(unidad)}"
+        id="actividad-${index}" ${a.check ? 'checked' : ''}></td>
+      <td class="font-semibold">${escapeHtml(nombre)}</td>
+      <td class="text-center"><input type="text" class="input input-bordered input-sm w-full text-center unidad-input" value="${escapeHtml(unidad)}"></td>
+      <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap:break-word;white-space:pre-wrap;min-width:200px">${escapeHtml(descripcion)}</td>
+    `;
+    tableBody.appendChild(row);
+  });
+
+  // Fila para agregar nueva actividad
+  const nuevaFila = document.createElement('tr');
+  nuevaFila.id = 'nuevo-actividad-row';
+  nuevaFila.className = 'bg-base-200';
+  nuevaFila.innerHTML = `
+    <td><button class="btn btn-sm btn-success" id="agregar-actividad-btn" title="Agregar actividad"><i class="fas fa-plus"></i></button></td>
+    <td><input type="text" class="input input-bordered input-sm w-full" id="nuevo-actividad-nombre" placeholder="Nombre de la actividad"></td>
+    <td class="text-center"><input type="text" class="input input-bordered input-sm w-full text-center" id="nuevo-actividad-unidad" placeholder="Unidad de medida"></td>
+    <td><input type="text" class="input input-bordered input-sm w-full" id="nuevo-actividad-descripcion" placeholder="Descripción (opcional)"></td>
+  `;
+  tableBody.appendChild(nuevaFila);
+}
+
+function initListeners() {
+  const selectAll = document.getElementById('select-all-actividades');
+  if (selectAll) {
+    const newSA = selectAll.cloneNode(true);
+    selectAll.parentNode.replaceChild(newSA, selectAll);
+    newSA.addEventListener('change', () => {
+      document.querySelectorAll('.actividad-checkbox').forEach(cb => cb.checked = newSA.checked);
+    });
+  }
+
+  const agregarBtn = document.getElementById('agregar-actividad-btn');
+  if (agregarBtn) agregarBtn.addEventListener('click', agregarActividad);
+
+  const enviarBtn = document.getElementById('enviar-actividades-btn');
+  if (enviarBtn) {
+    const newBtn = enviarBtn.cloneNode(true);
+    enviarBtn.parentNode.replaceChild(newBtn, enviarBtn);
+    newBtn.addEventListener('click', continuar);
+  }
+}
+
+function agregarActividad() {
+  const nombre     = document.getElementById('nuevo-actividad-nombre')?.value.trim() || '';
+  const unidad     = document.getElementById('nuevo-actividad-unidad')?.value.trim() || '';
+  const descripcion= document.getElementById('nuevo-actividad-descripcion')?.value.trim() || '';
+  if (!nombre || !unidad) {
+    flashy.warning('Complete al menos el nombre y unidad de la actividad');
+    return;
+  }
+  const tableBody = document.getElementById('actividades-table-body');
+  const nuevoRow  = document.getElementById('nuevo-actividad-row');
+  const index     = document.querySelectorAll('.actividad-checkbox').length;
+  const newRow    = document.createElement('tr');
+  newRow.className = 'actividad-row nuevo-actividad-row';
+  newRow.innerHTML = `
+    <td><input type="checkbox" class="checkbox checkbox-primary actividad-checkbox"
+      data-nombre="${escapeHtml(nombre)}" data-unidad="${escapeHtml(unidad)}"
+      data-descripcion="${escapeHtml(descripcion)}"
+      id="actividad-${index}" checked></td>
+    <td class="font-semibold">${escapeHtml(nombre)}</td>
+    <td class="text-center"><input type="text" class="input input-bordered input-sm w-full text-center unidad-input" value="${escapeHtml(unidad)}"></td>
+    <td class="text-sm text-base-content/70 leading-tight p-2 align-top">${escapeHtml(descripcion)}</td>
+  `;
+  tableBody.insertBefore(newRow, nuevoRow);
+  ['nuevo-actividad-nombre','nuevo-actividad-unidad','nuevo-actividad-descripcion']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+}
+
+async function cargarActividades() {
+  showSpinner('Cargando actividades adicionales...');
+
+  // Intentar leer de sessionStorage primero
+  const cached = sessionStorage.getItem('adicionales_data');
+  if (cached) {
+    try {
+      const actividades = JSON.parse(cached);
+      sessionStorage.removeItem('adicionales_data');
+      if (Array.isArray(actividades) && actividades.length > 0) {
+        poblarTabla(actividades);
+        mostrar('bloque-tabla');
+        initListeners();
+        return;
+      }
+    } catch (e) { /* fallo de caché, llamar al endpoint */ }
+  }
+
+  // Llamar al endpoint
+  try {
+    const resp = await fetch(N8N_URLS.adicionales, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ especificacion_id: SPEC_ID }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Error al cargar actividades');
+
+    let actividades = null;
+    const ar = data.adicionales_response;
+    if (ar?.actividades_adicionales) {
+      actividades = ar.actividades_adicionales;
+    } else if (Array.isArray(ar) && ar[0]?.output?.actividades_adicionales) {
+      actividades = ar[0].output.actividades_adicionales;
+    } else if (Array.isArray(ar) && ar[0]?.actividades_adicionales) {
+      actividades = ar[0].actividades_adicionales;
+    } else if (data.actividades_adicionales) {
+      actividades = data.actividades_adicionales;
+    }
+
+    poblarTabla(actividades || []);
+    mostrar('bloque-tabla');
+    initListeners();
+  } catch (e) {
+    document.getElementById('error-texto').textContent = e.message || 'Error desconocido';
+    mostrar('bloque-error');
+  }
+}
+
+async function continuar() {
+  const btn = document.getElementById('enviar-actividades-btn');
+  btn.disabled = true;
+
+  const seleccionadas = [];
+  document.querySelectorAll('.actividad-checkbox').forEach(cb => {
+    if (!cb.checked) return;
+    const row = cb.closest('tr');
+    const unidadInput = row?.querySelector('.unidad-input');
+    seleccionadas.push({
+      nombre:       cb.getAttribute('data-nombre'),
+      unidad_medida:unidadInput ? unidadInput.value.trim() : (cb.getAttribute('data-unidad') || ''),
+      descripcion:  cb.getAttribute('data-descripcion'),
+    });
+  });
+
+  try {
+    // Guardar actividades
+    showSpinner('Guardando actividades adicionales...');
+
+    const saveResp = await fetch(N8N_URLS.actividades, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ actividades: seleccionadas, especificacion_id: SPEC_ID }),
+    });
+    const saveData = await saveResp.json();
+    if (!saveResp.ok || !saveData.success) throw new Error(saveData.error || 'Error al guardar actividades');
+
+    // Generar resultado
+    showSpinner('Generando especificación técnica...');
+
+    const genResp = await fetch(N8N_URLS.generarResultado, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ especificacion_id: SPEC_ID }),
+    });
+    const genData = await genResp.json();
+    if (!genResp.ok || !genData.success) throw new Error(genData.error || 'Error al generar la especificación');
+
+    window.location.href = URL_RESULTADO;
+  } catch (e) {
+    document.getElementById('error-texto').textContent = e.message || 'Error desconocido';
+    mostrar('bloque-error');
+    if (btn) btn.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', cargarActividades);
+</script>
+{% endblock %}

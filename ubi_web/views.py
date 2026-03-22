@@ -69,7 +69,7 @@ def obtener_indicaciones_ruta(origen_lat, origen_lon, destino_lat, destino_lon, 
                     'pasos_totales': len(steps)
                 }
     except Exception as e:
-        print(f"Error al obtener indicaciones: {e}")
+        logger.error(f"Error al obtener indicaciones: {e}")
     
     return None
 

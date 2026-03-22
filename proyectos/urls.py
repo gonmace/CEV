@@ -28,5 +28,6 @@ urlpatterns = [
     path('especificacion/<int:especificacion_id>/cantidad/', views.actualizar_cantidad_especificacion_view, name='actualizar_cantidad_especificacion'),
     path('especificacion/<int:especificacion_id>/actividad/<int:actividad_idx>/', views.actualizar_actividad_view, name='actualizar_actividad'),
     path('especificacion/<int:especificacion_id>/mostrar/', views.actualizar_especificacion_mostrar_view, name='actualizar_especificacion_mostrar'),
+    path('<int:proyecto_id>/toggle-publico/', views.toggle_proyecto_publico_view, name='toggle_proyecto_publico'),
 ]
 

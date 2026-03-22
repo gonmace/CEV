@@ -60,17 +60,13 @@
 <script>
 // Función para renderizar la tabla de actividades adicionales dinámicamente (Paso 4)
 function renderizarTablaActividades(actividades) {
-  console.log('Renderizando tabla de actividades adicionales:', actividades);
-  
   // Escapar HTML para prevenir XSS
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
-  
-  console.log('Llenando tabla con', actividades.length, 'actividades');
-  
+
   // Obtener el modal (debe existir en el HTML)
   const modalActividades = document.getElementById('modal-actividades-adicionales');
   if (!modalActividades) {
@@ -167,7 +163,6 @@ function renderizarTablaActividades(actividades) {
   tableBody.appendChild(nuevaFilaRow);
   
   // Mostrar el modal
-  console.log('Mostrando modal de actividades adicionales');
   if (typeof modalActividades.showModal === 'function') {
     modalActividades.showModal();
   } else {
@@ -183,8 +178,6 @@ function renderizarTablaActividades(actividades) {
 
 // Función para cargar el script de manejo de actividades adicionales
 function cargarScriptActividades() {
-  console.log('Cargando script de actividades adicionales...');
-  
   const selectAllCheckbox = document.getElementById('select-all-actividades');
   let actividadesCheckboxes = document.querySelectorAll('.actividad-checkbox');
   const enviarBtn = document.getElementById('enviar-actividades-btn');
@@ -481,8 +474,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Función para mostrar el resultado del markdown en pantalla
 function mostrarResultadoMarkdown(markdownHtml, rawMarkdown) {
-  console.log('Mostrando resultado markdown');
-  
   if (typeof hideSpinner === 'function') hideSpinner();
   
   // Ocultar el formulario si está visible

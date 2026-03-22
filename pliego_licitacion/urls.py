@@ -38,7 +38,12 @@ urlpatterns = [
     path('paso5/resultado/', views.paso8_resultado_view, name='resultado'),
     path('paso5/guardar/', views.guardar_resultado_view, name='guardar_resultado'),
 
+    # Páginas individuales (conversión de modales a páginas)
+    path('especificacion/<int:especificacion_id>/parametros/', views.paso2_parametros_view, name='paso2_parametros'),
+    path('especificacion/<int:especificacion_id>/titulo/', views.paso3_titulo_view, name='paso3_titulo'),
+    path('especificacion/<int:especificacion_id>/actividades/', views.paso4_actividades_view, name='paso4_actividades'),
+
     # Utilidades
-path('especificacion/<int:especificacion_tecnica_id>/eliminar/', views.eliminar_especificacion_tecnica_view, name='eliminar_especificacion_tecnica'),
+    path('especificacion/<int:especificacion_tecnica_id>/eliminar/', views.eliminar_especificacion_tecnica_view, name='eliminar_especificacion_tecnica'),
     path('especificacion/<int:especificacion_tecnica_id>/datos/', views.get_especificacion_datos_view, name='get_especificacion_datos'),
 ]

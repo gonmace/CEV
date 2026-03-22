@@ -1,6 +1,7 @@
 import requests
 import math
 import re
+import logging
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
@@ -15,6 +16,8 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from markdown import markdown
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 
 def calcular_distancia_haversine(lat1, lon1, lat2, lon2):
@@ -133,7 +136,7 @@ def obtener_indicaciones_ruta(origen_lat, origen_lon, destino_lat, destino_lon, 
                     'duracion': leg.get('duration', {}).get('text', '')
                 }
     except Exception as e:
-        print(f"Error al obtener indicaciones: {e}")
+        logger.error(f"Error al obtener indicaciones: {e}")
         pass
     return {}
 
@@ -288,7 +291,7 @@ No incluyas explicaciones adicionales, solo el JSON.
         return resultado
         
     except Exception as e:
-        print(f"Error en generar_descripciones_con_gpt: {e}")
+        logger.error(f"Error en generar_descripciones_con_gpt: {e}")
         raise
 
 
@@ -591,7 +594,7 @@ def generar_ubicacion_pdf(ubicacion_instance, google_maps_api_key=None):
             ubicacion_instance.contenido = contenido_markdown
             ubicacion_instance.save(update_fields=['contenido'])
         except Exception as e:
-            print(f"Error al generar descripciones con GPT: {e}")
+            logger.error(f"Error al generar descripciones con GPT: {e}")
             # Usar descripciones básicas si falla GPT
             descripcion_acceso_temporal = f"{texto_ubicacion} {texto_acceso}."
             descripcion_tecnica = (

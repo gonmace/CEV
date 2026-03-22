@@ -6,12 +6,7 @@
     <div class="bg-primary px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <span class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 392 512.3" class="w-5 h-5">
-            <path fill="#26a9f1" d="M59 0h204l129 140v313c0 33-27 59-59 59H59c-32 0-59-26-59-59V59C0 26 26 0 59 0"/>
-            <path fill="#bce2f9" d="m263 0 129 140h-56q-69-3-73-63z"/>
-            <path fill="#1c7bb0" fill-rule="nonzero" d="M108 403a13 13 0 0 1 0-26h141a13 13 0 0 1 0 26zm0-152a13 13 0 0 1 0-26h176a13 13 0 0 1 0 26zm0 73a13 13 0 0 1 0-26h167a13 13 0 0 1 0 26z"/>
-            <path fill="#1f89c3" d="m310 137 82 68v-65h-56q-14 0-26-3"/>
-          </svg>
+          <i class="fas fa-file-word text-lg text-[#1c7bb0]"></i>
         </span>
         <div>
           <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Documento</p>
@@ -62,6 +57,36 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Nro. Pliego</label>
+            <input type="text" name="nro_pliego" value=""
+                   class="input input-bordered input-sm w-full">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Operación</label>
+            <input type="text" name="operacion" value=""
+                   class="input input-bordered input-sm w-full">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Usuario</label>
+            <input type="text" name="usuario"
+                   value="{{ request.user.get_full_name|default:request.user.username }}"
+                   class="input input-bordered input-sm w-full">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Tipo de Contrato</label>
+            <select name="tipo_contrato" class="select select-bordered select-sm w-full">
+              <option value="CO" selected>Contrato de Obra</option>
+              <option value="SPOT">SPOT</option>
+              <option value="NCM">Nuevo Contrato Marco</option>
+            </select>
+          </div>
+        </div>
+
       </div>
 
       <!-- Footer -->
@@ -76,3 +101,37 @@
   </div>
   <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
 </dialog>
+
+<script>
+(function () {
+  const form = document.getElementById('exportar-word-form');
+  const modal = document.getElementById('exportar-word-modal');
+  const submitBtn = form.querySelector('[type="submit"]');
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const orig = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Exportando...';
+    try {
+      const resp = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+      if (!resp.ok) throw new Error('Error al exportar');
+      const blob = await resp.blob();
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      const filename = match ? match[1] : 'proyecto.docx';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      modal.close();
+    } catch {
+      if (window.flashy) flashy.error('Error al generar el documento.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = orig;
+    }
+  });
+})();
+</script>

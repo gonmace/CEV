@@ -4,6 +4,75 @@
 {% block css %}
   {% tailwind_css %}
   <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+  <style>
+    /*
+     * El markdown usa ## como separador de bloque, ### como sección principal,
+     * #### como subsección numerada y ##### como sub-subsección.
+     * Aquí desplazamos dos niveles para que ### se vea como título grande,
+     * #### como sección numerada y ##### como subsección numerada.
+     */
+
+    /* h2 (##) — separador de bloque: muy pequeño, apenas visible */
+    .doc-body { counter-reset: seccion subseccion; }
+    .doc-body :is(h2)::before { counter-increment: none; content: none; }
+    .doc-body :is(h2) {
+      font-size: .72rem; font-weight: 700;
+      color: var(--color-base-content);
+      opacity: .35;
+      text-transform: uppercase; letter-spacing: .08em;
+      margin-top: 2rem; margin-bottom: .1rem;
+    }
+
+    /* h3 (###) → título grande de sección (sin número) */
+    .doc-body :is(h3) { counter-reset: seccion subseccion; }
+    .doc-body :is(h3)::before { counter-increment: none; content: none; }
+    .doc-body :is(h3) {
+      font-size: 1.05rem; font-weight: 800;
+      color: #1e293b;
+      margin-top: 2.5rem; margin-bottom: .5rem;
+      padding-bottom: .35rem;
+      border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+    }
+    .doc-body :is(h3):first-child { margin-top: 0; }
+
+    /* h4 (####) → sección numerada (como el antiguo h2 global) */
+    .doc-body :is(h4) { counter-reset: subseccion; }
+    .doc-body :is(h4)::before {
+      counter-increment: seccion;
+      content: counter(seccion) ".  ";
+    }
+    .doc-body :is(h4) {
+      font-size: .95rem; font-weight: 700;
+      color: #1d4ed8;
+      margin-top: 1.5rem; margin-bottom: .4rem;
+    }
+
+    /* h5 (#####) → subsección numerada (como el antiguo h3 global) */
+    .doc-body :is(h5)::before {
+      counter-increment: subseccion;
+      content: counter(seccion) "." counter(subseccion) "  ";
+    }
+    .doc-body :is(h5) {
+      font-size: .88rem; font-weight: 700;
+      color: #1d4ed8;
+      margin-top: 1.1rem; margin-bottom: .3rem;
+    }
+
+    /* h6 — pequeño */
+    .doc-body :is(h6)::before { counter-increment: none; content: none; }
+    .doc-body :is(h6) {
+      font-size: .82rem; font-weight: 600;
+      color: var(--color-base-content);
+      margin-top: .8rem; margin-bottom: .2rem;
+    }
+
+    [data-theme="constructor-dark"] .doc-body :is(h3) { color: var(--color-base-content); }
+    [data-theme="constructor-dark"] .doc-body :is(h4),
+    [data-theme="constructor-dark"] .doc-body :is(h5) { color: #93c5fd; }
+
+    /* Ocultar el primer encabezado del contenido (ya aparece en doc-title) */
+    .doc-body > :is(h1,h2,h3,h4,h5,h6):first-child { display: none; }
+  </style>
 {% endblock %}
 
 {% block title %}{{ especificacion.titulo }}{% endblock %}
@@ -31,66 +100,333 @@
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-base-200 py-6 px-4">
-  <div class="max-w-5xl mx-auto flex flex-col gap-4">
+<div class="min-h-screen bg-base-200">
+<div class="px-4 py-6 max-w-5xl mx-auto w-full">
 
-    <!-- Header card -->
-    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
-      <div class="bg-primary px-6 py-4 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3 min-w-0">
-          <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-file-alt text-primary-content text-sm"></i>
-          </span>
-          <div class="min-w-0">
-            <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Especificación Técnica</p>
-            <h1 class="text-sm font-bold text-primary-content truncate">{{ especificacion.titulo }}</h1>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          {% if especificacion.proyecto.creado_por == request.user %}
-            <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}"
-               class="flex items-center gap-1.5 text-xs font-semibold bg-primary-content/10 hover:bg-primary-content/20 text-primary-content px-3 py-1.5 rounded-lg transition-colors">
-              <i class="fas fa-edit text-xs"></i>
-              Editar
-            </a>
+  <div class="doc-wrap bg-base-100">
+
+    <!-- Cabecera -->
+    <div class="doc-header flex items-start justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <div class="doc-code">Especificación Técnica</div>
+        <div class="doc-title">{{ especificacion.titulo }}</div>
+        <div class="doc-meta">
+          <i class="fas fa-folder text-[10px]"></i>
+          <span>{{ especificacion.proyecto.nombre }}</span>
+          {% if especificacion.proyecto.creado_por %}
+            <span class="doc-sep">·</span>
+            <span>{{ especificacion.proyecto.creado_por.get_full_name|default:especificacion.proyecto.creado_por.username }}</span>
+          {% endif %}
+          <span class="doc-sep">·</span>
+          <span>{{ especificacion.fecha_creacion|date:"d/m/Y" }}</span>
+          {% if especificacion.fecha_actualizacion != especificacion.fecha_creacion %}
+            <span class="doc-sep">·</span>
+            <span>Actualizada {{ especificacion.fecha_actualizacion|date:"d/m/Y" }}</span>
           {% endif %}
         </div>
       </div>
+      {% if especificacion.proyecto.creado_por == request.user %}
+        <div class="flex items-center gap-2 shrink-0 pt-1">
+          <a href="{% url 'proyectos:editar_especificacion' especificacion.id %}"
+             class="flex items-center gap-1.5 text-xs font-semibold text-warning hover:bg-warning/10 px-3 py-1.5 rounded-lg transition-colors">
+            <i class="fas fa-edit text-xs"></i> Editar
+          </a>
+        </div>
+      {% endif %}
+    </div>
 
-      <!-- Meta -->
-      <div class="px-6 py-3 border-b border-secondary/10 flex flex-wrap gap-x-6 gap-y-1.5">
-        <div class="flex items-center gap-1.5 text-xs text-base-content/60">
-          <i class="fas fa-folder text-secondary/50 text-[10px]"></i>
-          <span>{{ especificacion.proyecto.nombre }}</span>
-        </div>
-        {% if especificacion.proyecto.creado_por %}
-          <div class="flex items-center gap-1.5 text-xs text-base-content/60">
-            <i class="fas fa-user text-secondary/50 text-[10px]"></i>
-            <span>{{ especificacion.proyecto.creado_por.get_full_name|default:especificacion.proyecto.creado_por.username }}</span>
-          </div>
-        {% endif %}
-        <div class="flex items-center gap-1.5 text-xs text-base-content/60">
-          <i class="fas fa-calendar text-secondary/50 text-[10px]"></i>
-          <span>{{ especificacion.fecha_creacion|date:"d/m/Y" }}</span>
-        </div>
-        {% if especificacion.fecha_actualizacion != especificacion.fecha_creacion %}
-          <div class="flex items-center gap-1.5 text-xs text-base-content/60">
-            <i class="fas fa-clock text-secondary/50 text-[10px]"></i>
-            <span>Actualizada {{ especificacion.fecha_actualizacion|date:"d/m/Y" }}</span>
-          </div>
-        {% endif %}
-      </div>
-
-      <!-- Contenido -->
-      <div class="px-6 py-5">
-        <div class="prose max-w-none">
-          {{ preview_html|safe }}
-        </div>
-      </div>
+    <!-- Contenido -->
+    <div class="doc-body pt-0">
+      {{ preview_html|safe }}
     </div>
 
   </div>
+
+  <!-- Imágenes -->
+  {% with n=especificacion.imagenes.count %}
+  <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+    <details class="group" {% if not n %}open{% endif %}>
+      <summary class="list-none select-none cursor-pointer">
+        <div class="flex items-center justify-between px-5 py-3.5 hover:bg-base-200/40 transition-colors">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
+              <i class="fas fa-images text-secondary text-xs"></i>
+            </span>
+            <span class="text-sm font-semibold text-base-content">Imágenes</span>
+            <span class="text-[10px] font-bold {% if n %}text-success bg-success/10{% else %}text-base-content/30 bg-base-200{% endif %} px-2 py-0.5 rounded-full">{{ n }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            {% if especificacion.proyecto.creado_por == request.user %}
+            <button type="button"
+                    class="flex items-center gap-1 text-xs font-semibold text-secondary hover:bg-secondary/10 px-2.5 py-1 rounded-lg transition-colors gestionar-imagenes-btn"
+                    data-especificacion-id="{{ especificacion.id }}"
+                    data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                    onclick="event.stopPropagation()">
+              <i class="fas fa-plus text-[10px]"></i> Gestionar
+            </button>
+            {% endif %}
+            <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
+              <i class="fas fa-chevron-down text-[10px] text-secondary/50 transition-transform duration-200 group-open:rotate-180"></i>
+            </span>
+          </div>
+        </div>
+      </summary>
+      <div class="border-t border-secondary/10 p-4">
+        {% if n %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {% for img in especificacion.imagenes.all %}
+          <div class="rounded-xl border border-base-200 overflow-hidden shadow-sm">
+            <img src="{{ img.imagen.url }}" alt="{{ img.descripcion|default:especificacion.titulo }}"
+                 class="w-full h-32 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                 onclick="window.open('{{ img.imagen.url }}', '_blank')">
+            {% if img.descripcion %}
+            <div class="px-2 py-1.5">
+              <p class="text-[11px] text-base-content/60 truncate">{{ img.descripcion }}</p>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-10 gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+            <i class="fas fa-images text-xl text-base-content/20"></i>
+          </div>
+          <p class="text-sm font-medium text-base-content/40">Sin imágenes agregadas</p>
+          {% if especificacion.proyecto.creado_por == request.user %}
+          <button type="button"
+                  class="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:bg-secondary/10 px-3 py-1.5 rounded-lg transition-colors gestionar-imagenes-btn"
+                  data-especificacion-id="{{ especificacion.id }}"
+                  data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+            <i class="fas fa-plus text-xs"></i> Agregar imágenes
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </details>
+  </div>
+  {% endwith %}
+
+  <!-- Cantidades y actividades adicionales -->
+  <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+    <details class="group" open>
+      <summary class="list-none select-none cursor-pointer">
+        <div class="flex items-center justify-between px-5 py-3.5 hover:bg-base-200/40 transition-colors">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <i class="fas fa-table text-primary text-xs"></i>
+            </span>
+            <span class="text-sm font-semibold text-base-content">Cantidades</span>
+          </div>
+          <span class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+            <i class="fas fa-chevron-down text-[10px] text-primary/50 transition-transform duration-200 group-open:rotate-180"></i>
+          </span>
+        </div>
+      </summary>
+      <div class="border-t border-secondary/10 overflow-x-auto">
+        <table class="table table-sm w-full">
+          <thead>
+            <tr class="bg-base-200 text-[11px] uppercase tracking-wider font-bold text-base-content/60">
+              <th class="py-2.5 pl-4 w-10 text-center">Mostrar</th>
+              <th class="py-2.5 pl-2">Nombre</th>
+              <th class="py-2.5 w-20 text-center">Unidad</th>
+              <th class="py-2.5 w-24 text-center pr-4">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody id="cantidades-tbody">
+            <!-- Fila principal -->
+            <tr class="bg-primary/5 font-semibold border-b-2 border-primary/20">
+              <td class="py-2 pl-4 text-center">
+                <input type="checkbox" class="checkbox checkbox-primary checkbox-xs mostrar-inline"
+                       {% if especificacion.mostrar %}checked{% endif %}
+                       data-tipo="espec" data-espec-id="{{ especificacion.id }}"
+                       {% if especificacion.proyecto.creado_por != request.user %}disabled{% endif %}>
+              </td>
+              <td class="py-2 pl-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+                  <span class="text-sm font-semibold">{{ especificacion.titulo }}</span>
+                </div>
+              </td>
+              <td class="py-2 text-center">
+                <span class="text-[10px] font-bold text-secondary/70 bg-secondary/10 px-1.5 py-0.5 rounded font-mono">
+                  {{ especificacion.unidad_medida|default:"glb" }}
+                </span>
+              </td>
+              <td class="py-2 text-center pr-4">
+                {% if especificacion.proyecto.creado_por == request.user %}
+                <input type="text" class="input input-bordered input-xs w-20 text-center font-mono cantidad-inline"
+                       value="{{ especificacion.cantidad|default:'' }}"
+                       data-original="{{ especificacion.cantidad|default:'' }}"
+                       data-tipo="espec" data-espec-id="{{ especificacion.id }}"
+                       maxlength="10" placeholder="—">
+                {% else %}
+                <span class="text-sm font-mono">{{ especificacion.cantidad|default:"—" }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            <!-- Actividades adicionales -->
+            {% if especificacion.actividades_adicionales %}
+              {% for act in especificacion.actividades_adicionales %}
+              <tr class="border-b border-base-200/60 last:border-0 hover:bg-base-200/30 transition-colors">
+                <td class="py-2 pl-4 text-center">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-xs mostrar-inline"
+                         {% if act.mostrar %}checked{% endif %}
+                         data-tipo="act" data-espec-id="{{ especificacion.id }}" data-idx="{{ forloop.counter0 }}"
+                         {% if especificacion.proyecto.creado_por != request.user %}disabled{% endif %}>
+                </td>
+                <td class="py-2 pl-2 pr-2">
+                  {% if especificacion.proyecto.creado_por == request.user %}
+                  <input type="text" class="input input-bordered input-xs w-full font-medium nombre-inline"
+                         value="{{ act.nombre|default:'' }}"
+                         data-original="{{ act.nombre|default:'' }}"
+                         data-espec-id="{{ especificacion.id }}" data-idx="{{ forloop.counter0 }}"
+                         placeholder="Nombre">
+                  {% else %}
+                  <span class="text-sm text-base-content/80">{{ act.nombre|default:"" }}</span>
+                  {% endif %}
+                </td>
+                <td class="py-2 text-center">
+                  {% if act.unidad_medida %}
+                  <span class="text-[10px] font-bold text-secondary/70 bg-secondary/10 px-1.5 py-0.5 rounded font-mono">{{ act.unidad_medida }}</span>
+                  {% else %}
+                  <span class="text-base-content/30 text-xs">—</span>
+                  {% endif %}
+                </td>
+                <td class="py-2 text-center pr-4">
+                  {% if especificacion.proyecto.creado_por == request.user %}
+                  <input type="text" class="input input-bordered input-xs w-20 text-center font-mono cantidad-inline"
+                         value="{{ act.cantidad|default:'' }}"
+                         data-original="{{ act.cantidad|default:'' }}"
+                         data-tipo="act" data-espec-id="{{ especificacion.id }}" data-idx="{{ forloop.counter0 }}"
+                         maxlength="10" placeholder="—">
+                  {% else %}
+                  <span class="text-sm font-mono">{{ act.cantidad|default:"—" }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+            <tr>
+              <td colspan="4" class="py-6 text-center text-sm text-base-content/40">Sin actividades adicionales</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
 </div>
+</div>
+
+{% include 'proyectos/modals/gestionar_imagenes_modal.html' %}
 {% endblock %}
 
-{% block js %}{% endblock %}
+{% block js %}
+<script>
+(function() {
+  // Dispatch gestionar imágenes
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.gestionar-imagenes-btn');
+    if (btn && window.openGestionarImagenesModal) {
+      e.preventDefault();
+      window.openGestionarImagenesModal(btn.dataset.especificacionId, btn.dataset.especificacionTitulo);
+    }
+  });
+
+  function getCsrf() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  async function post(url, body) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+      body: JSON.stringify(body),
+    });
+    return r.json();
+  }
+
+  function flash(el, ok) {
+    const cls = ok ? 'input-success' : 'input-error';
+    el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), 1200);
+  }
+
+  const tbody = document.getElementById('cantidades-tbody');
+  if (!tbody) return;
+
+  // Toggle mostrar
+  tbody.addEventListener('change', async function(e) {
+    const toggle = e.target.closest('.mostrar-inline');
+    if (toggle) {
+      const checked = toggle.checked;
+      const especId = toggle.dataset.especId;
+      let url, data;
+      if (toggle.dataset.tipo === 'espec') {
+        url = `/proyectos/especificacion/${especId}/mostrar/`;
+        data = { mostrar: checked };
+      } else {
+        url = `/proyectos/especificacion/${especId}/actividad/${toggle.dataset.idx}/`;
+        data = { mostrar: checked };
+      }
+      try {
+        const res = await post(url, data);
+        if (!res.success) toggle.checked = !checked;
+      } catch { toggle.checked = !checked; }
+      return;
+    }
+
+    // Cantidad
+    const cantInput = e.target.closest('.cantidad-inline');
+    if (cantInput) {
+      const newVal = cantInput.value.trim();
+      if (newVal === cantInput.dataset.original) return;
+      cantInput.disabled = true;
+      const especId = cantInput.dataset.especId;
+      let url, data;
+      if (cantInput.dataset.tipo === 'espec') {
+        url = `/proyectos/especificacion/${especId}/cantidad/`;
+        data = { cantidad: newVal };
+      } else {
+        url = `/proyectos/especificacion/${especId}/actividad/${cantInput.dataset.idx}/`;
+        data = { cantidad: newVal };
+      }
+      try {
+        const res = await post(url, data);
+        if (res.success) { cantInput.dataset.original = newVal; flash(cantInput, true); }
+        else { cantInput.value = cantInput.dataset.original; flash(cantInput, false); }
+      } catch { cantInput.value = cantInput.dataset.original; }
+      finally { cantInput.disabled = false; }
+      return;
+    }
+
+    // Nombre actividad
+    const nombreInput = e.target.closest('.nombre-inline');
+    if (nombreInput) {
+      const newVal = nombreInput.value.trim();
+      if (newVal === nombreInput.dataset.original || !newVal) { nombreInput.value = nombreInput.dataset.original; return; }
+      nombreInput.disabled = true;
+      const especId = nombreInput.dataset.especId;
+      try {
+        const res = await post(`/proyectos/especificacion/${especId}/actividad/${nombreInput.dataset.idx}/`, { nombre: newVal });
+        if (res.success) { nombreInput.dataset.original = newVal; flash(nombreInput, true); }
+        else { nombreInput.value = nombreInput.dataset.original; flash(nombreInput, false); }
+      } catch { nombreInput.value = nombreInput.dataset.original; }
+      finally { nombreInput.disabled = false; }
+    }
+  });
+
+  // Enter → blur
+  tbody.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      const input = e.target.closest('.cantidad-inline, .nombre-inline');
+      if (input) { e.preventDefault(); input.blur(); }
+    }
+  });
+})();
+</script>
+{% endblock %}

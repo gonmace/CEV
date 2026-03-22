@@ -1,0 +1,406 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block title %}Parámetros Técnicos — {{ especificacion.titulo }}{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  {% if proyecto %}
+  <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto_nombre }}</a>
+  {% else %}
+  <a href="{% url 'pliego_licitacion:pasos' %}" class="hover:text-primary transition-colors">Pliego</a>
+  {% endif %}
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Parámetros Técnicos</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+  <div class="w-full max-w-6xl">
+
+    <div class="card w-full bg-base-100 shadow-xl overflow-hidden">
+
+      <!-- Header del paso -->
+      <div class="card-body pb-0">
+        <div class="mb-4">
+          <h2 class="card-title text-2xl mb-2">
+            <div class="flex items-center gap-4">
+              <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" id="page-parametros-badge">2</div>
+              <span class="text-primary" id="page-parametros-titulo">Parámetros materiales</span>
+            </div>
+          </h2>
+          <p class="text-sm text-base-content/60 ml-14">{{ especificacion.titulo }}</p>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div id="bloque-error" class="hidden px-6 py-6">
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-error/10 border border-error/30">
+          <i class="fas fa-triangle-exclamation text-error mt-0.5 shrink-0"></i>
+          <div>
+            <p class="text-sm font-semibold text-base-content">No se pudo obtener los parámetros</p>
+            <p id="error-texto" class="text-xs text-base-content/60 mt-1"></p>
+          </div>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button type="button" class="btn btn-ghost btn-sm gap-2" onclick="iniciarSubPasoActual()">
+            <i class="fas fa-rotate-right"></i> Reintentar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de parámetros -->
+      <div id="bloque-tabla" class="hidden flex flex-col">
+        <div class="px-5 py-3 border-b border-base-200">
+          <p class="text-xs text-base-content/60">
+            Seleccione los parámetros que desea incluir en la especificación técnica:
+          </p>
+        </div>
+        <div class="overflow-auto px-5 py-3">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr class="bg-primary text-primary-content">
+                <th class="w-1/12">
+                  <input type="checkbox" id="select-all" class="checkbox checkbox-primary border-white checkbox-sm">
+                </th>
+                <th class="w-3/12 text-xs">Parámetro</th>
+                <th class="w-1/12 text-center text-xs col-valor-recomendado">Valor Recomendado</th>
+                <th class="w-2/12 text-center text-xs col-unidad">Unidad</th>
+                <th class="w-5/12 text-xs">Descripción</th>
+              </tr>
+            </thead>
+            <tbody id="parametros-table-body"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-end px-5 py-4 border-t border-base-200 gap-2">
+          <button class="btn btn-primary btn-sm" id="enviar-parametros-btn">
+            <i class="fas fa-arrow-right mr-1.5"></i>
+            Continuar
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+
+const SPEC_ID    = {{ especificacion.id }};
+const SPEC_PASO  = {{ especificacion.paso }};
+const CSRF_TOKEN = "{{ csrf_token }}";
+const URL_SIGUIENTE = "{% url 'pliego_licitacion:paso3_titulo' especificacion.id %}";
+
+const N8N_URLS = {
+  parametrosMaterial:          "{% url 'pliego_licitacion:parametros_material' %}",
+  guardarParametrosMateriales: "{% url 'pliego_licitacion:guardar_parametros_materiales' %}",
+  parametrosEjecucion:         "{% url 'pliego_licitacion:parametros_ejecucion' %}",
+  guardarParametrosEjecucion:  "{% url 'pliego_licitacion:guardar_parametros_ejecucion' %}",
+  normasAplicables:            "{% url 'pliego_licitacion:normas_aplicables' %}",
+  guardarNormasAplicables:     "{% url 'pliego_licitacion:guardar_normas_aplicables' %}",
+  criteriosCalidad:            "{% url 'pliego_licitacion:criterios_calidad' %}",
+  guardarCriteriosCalidad:     "{% url 'pliego_licitacion:guardar_criterios_calidad' %}",
+  confirmarParametros:         "{% url 'pliego_licitacion:confirmar_parametros' %}",
+};
+
+const SUB_PASOS = [
+  { urlKey: 'parametrosMaterial',  saveKey: 'guardarParametrosMateriales', badge: '2', titulo: 'Parámetros materiales', spinnerLabel: 'Analizando parámetros de materiales...' },
+  { urlKey: 'parametrosEjecucion', saveKey: 'guardarParametrosEjecucion',  badge: '3', titulo: 'Parámetros ejecución',  spinnerLabel: 'Analizando parámetros de ejecución...' },
+  { urlKey: 'normasAplicables',    saveKey: 'guardarNormasAplicables',     badge: '4', titulo: 'Normas aplicables',     spinnerLabel: 'Identificando normas aplicables...' },
+  { urlKey: 'criteriosCalidad',    saveKey: 'guardarCriteriosCalidad',     badge: '5', titulo: 'Criterios de calidad',  spinnerLabel: 'Definiendo criterios de calidad...' },
+];
+
+// Determine starting sub-step: spec.paso 2→1, 3→2, 4→3, 5→4
+let subPasoActual   = Math.max(1, Math.min(SPEC_PASO - 1, 4));
+let parametrosAcumulados = [];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mostrar(id) {
+  ['bloque-error', 'bloque-tabla'].forEach(b => {
+    const el = document.getElementById(b);
+    if (el) el.classList.toggle('hidden', b !== id);
+  });
+  if (id === 'bloque-error' || id === 'bloque-tabla') hideSpinner();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text ?? '';
+  return div.innerHTML;
+}
+
+function actualizarHeader() {
+  const cfg = SUB_PASOS[subPasoActual - 1];
+  document.getElementById('page-parametros-badge').textContent = cfg.badge;
+  document.getElementById('page-parametros-titulo').textContent = cfg.titulo;
+}
+
+function extraerParametros(apiResult) {
+  if (Array.isArray(apiResult)) {
+    const first = apiResult[0] || {};
+    return first?.output?.parametros || first?.body?.parametros || first?.parametros || [];
+  }
+  return apiResult?.output?.parametros || apiResult?.body?.parametros || apiResult?.parametros || [];
+}
+
+function actualizarColumnasVisibles() {
+  const badge = SUB_PASOS[subPasoActual - 1]?.badge;
+  const ocultarAmbas  = badge === '4';
+  const ocultarUnidad = badge === '5';
+  document.querySelectorAll('.col-valor-recomendado').forEach(el => el.classList.toggle('hidden', ocultarAmbas));
+  document.querySelectorAll('.col-unidad').forEach(el => el.classList.toggle('hidden', ocultarAmbas || ocultarUnidad));
+}
+
+// ── Tabla ─────────────────────────────────────────────────────────────────────
+
+function poblarFilasTabla(parametros) {
+  const tableBody = document.getElementById('parametros-table-body');
+  tableBody.innerHTML = '';
+  parametros.forEach((p, index) => {
+    const unidad = p.unidad_medida || '';
+    const desc   = p.descripcion || p.detalle || '';
+    const row = document.createElement('tr');
+    row.className = 'parametro-row';
+    row.setAttribute('data-index', index);
+    row.innerHTML = `
+      <td><input type="checkbox" class="checkbox checkbox-primary parametro-checkbox"
+        data-parametro="${escapeHtml(p.parametro || '')}"
+        data-valor="${escapeHtml(p.valor_recomendado || '')}"
+        data-descripcion="${escapeHtml(desc)}"
+        data-unidad="${escapeHtml(unidad)}"
+        id="param-${index}" ${p.check ? 'checked' : ''}></td>
+      <td class="font-semibold">${escapeHtml(p.parametro || '')}</td>
+      <td class="col-valor-recomendado"><input type="text" class="input input-bordered input-primary input-sm w-full valor-recomendado-input text-center"
+        value="${escapeHtml(p.valor_recomendado || '')}" data-original-value="${escapeHtml(p.valor_recomendado || '')}"></td>
+      <td class="col-unidad"><input type="text" class="input input-bordered input-sm w-full unidad-input text-center"
+        value="${escapeHtml(unidad)}" data-original-value="${escapeHtml(unidad)}"></td>
+      <td class="text-sm text-base-content/70 leading-tight p-2 align-top" style="word-wrap:break-word;white-space:pre-wrap;min-width:200px">${escapeHtml(desc)}</td>
+    `;
+    tableBody.appendChild(row);
+  });
+
+  // Fila para agregar nuevo parámetro
+  const nuevaFila = document.createElement('tr');
+  nuevaFila.id = 'nuevo-parametro-row';
+  nuevaFila.className = 'bg-base-200';
+  nuevaFila.innerHTML = `
+    <td><button class="btn btn-sm btn-success" id="agregar-parametro-btn" title="Agregar parámetro"><i class="fas fa-plus"></i></button></td>
+    <td><input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-nombre" placeholder="Nombre del parámetro"></td>
+    <td class="col-valor-recomendado text-right"><input type="text" class="input input-bordered input-sm w-full text-right" id="nuevo-parametro-valor" placeholder="Valor recomendado"></td>
+    <td class="col-unidad text-center"><input type="text" class="input input-bordered input-sm w-full text-center" id="nuevo-parametro-unidad" placeholder="Unidad de medida"></td>
+    <td><input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-descripcion" placeholder="Descripción (opcional)"></td>
+  `;
+  tableBody.appendChild(nuevaFila);
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+
+function updateBtn() {
+  const btn = document.getElementById('enviar-parametros-btn');
+  if (!btn) return;
+  btn.disabled = document.querySelectorAll('.parametro-checkbox:checked').length === 0;
+}
+
+function agregarParametro() {
+  const nombre     = document.getElementById('nuevo-parametro-nombre')?.value.trim() || '';
+  const valor      = document.getElementById('nuevo-parametro-valor')?.value.trim() || '';
+  const unidad     = document.getElementById('nuevo-parametro-unidad')?.value.trim() || '';
+  const descripcion= document.getElementById('nuevo-parametro-descripcion')?.value.trim() || '';
+  const badge      = SUB_PASOS[subPasoActual - 1]?.badge;
+  const valorReq   = badge !== '4';
+  if (!nombre || (valorReq && !valor)) {
+    flashy.warning(valorReq ? 'Complete al menos el nombre y valor del parámetro' : 'Complete el nombre del parámetro');
+    return;
+  }
+  const tableBody = document.getElementById('parametros-table-body');
+  const nuevoRow  = document.getElementById('nuevo-parametro-row');
+  const index     = document.querySelectorAll('.parametro-checkbox').length;
+  const newRow    = document.createElement('tr');
+  newRow.className = 'parametro-row nuevo-parametro-row';
+  newRow.innerHTML = `
+    <td><input type="checkbox" class="checkbox checkbox-primary parametro-checkbox"
+      data-parametro="${escapeHtml(nombre)}" data-valor="${escapeHtml(valor)}"
+      data-descripcion="${escapeHtml(descripcion)}" data-unidad="${escapeHtml(unidad)}"
+      id="param-${index}" checked></td>
+    <td class="font-semibold">${escapeHtml(nombre)}</td>
+    <td class="col-valor-recomendado text-right"><input type="text" class="input input-bordered input-sm w-full valor-recomendado-input text-right" value="${escapeHtml(valor)}"></td>
+    <td class="col-unidad"><input type="text" class="input input-bordered input-sm w-full unidad-input text-center" value="${escapeHtml(unidad)}"></td>
+    <td class="text-sm text-base-content/70 leading-tight p-2 align-top">${escapeHtml(descripcion)}</td>
+  `;
+  tableBody.insertBefore(newRow, nuevoRow);
+  newRow.querySelector('.parametro-checkbox').addEventListener('change', updateBtn);
+  ['nuevo-parametro-nombre','nuevo-parametro-valor','nuevo-parametro-unidad','nuevo-parametro-descripcion']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  updateBtn();
+}
+
+function initListeners() {
+  const selectAll = document.getElementById('select-all');
+  if (selectAll) {
+    const newSA = selectAll.cloneNode(true);
+    selectAll.parentNode.replaceChild(newSA, selectAll);
+    newSA.addEventListener('change', () => {
+      document.querySelectorAll('.parametro-checkbox').forEach(cb => cb.checked = newSA.checked);
+      updateBtn();
+    });
+  }
+  document.querySelectorAll('.parametro-checkbox').forEach(cb => cb.addEventListener('change', updateBtn));
+
+  const agregarBtn = document.getElementById('agregar-parametro-btn');
+  if (agregarBtn) agregarBtn.addEventListener('click', agregarParametro);
+
+  const enviarBtn = document.getElementById('enviar-parametros-btn');
+  if (enviarBtn) {
+    const newBtn = enviarBtn.cloneNode(true);
+    enviarBtn.parentNode.replaceChild(newBtn, enviarBtn);
+    newBtn.addEventListener('click', continuar);
+  }
+  updateBtn();
+}
+
+function recogerSeleccionados() {
+  const sel = [];
+  document.querySelectorAll('.parametro-checkbox').forEach(cb => {
+    if (!cb.checked) return;
+    const row       = cb.closest('tr');
+    const valorInput = row?.querySelector('.valor-recomendado-input');
+    const unidadInput= row?.querySelector('.unidad-input');
+    sel.push({
+      parametro:        cb.getAttribute('data-parametro'),
+      valor_recomendado: valorInput ? valorInput.value : cb.getAttribute('data-valor'),
+      unidad_medida:    unidadInput ? unidadInput.value : (cb.getAttribute('data-unidad') || ''),
+      descripcion:      cb.getAttribute('data-descripcion'),
+    });
+  });
+  return sel;
+}
+
+// ── Lógica principal ──────────────────────────────────────────────────────────
+
+async function iniciarSubPasoActual() {
+  const cfg = SUB_PASOS[subPasoActual - 1];
+  showSpinner(cfg.spinnerLabel);
+  actualizarHeader();
+
+  // Datos en sessionStorage (venimos de paso1)
+  if (subPasoActual === 1) {
+    const cached = sessionStorage.getItem('parametros_step1_data');
+    if (cached) {
+      try {
+        const data   = JSON.parse(cached);
+        sessionStorage.removeItem('parametros_step1_data');
+        const params = extraerParametros(data);
+        if (params.length > 0) {
+          poblarFilasTabla(params);
+          actualizarColumnasVisibles();
+          mostrar('bloque-tabla');
+          initListeners();
+          return;
+        }
+      } catch (e) { /* si falla el caché, llamar al endpoint */ }
+    }
+  }
+
+  // Llamar al endpoint de n8n
+  try {
+    const resp = await fetch(N8N_URLS[cfg.urlKey], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ especificacion_id: SPEC_ID }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Error al obtener parámetros');
+    const params = extraerParametros(data.response_data);
+    poblarFilasTabla(params);
+    actualizarColumnasVisibles();
+    mostrar('bloque-tabla');
+    initListeners();
+  } catch (e) {
+    document.getElementById('error-texto').textContent = e.message || 'Error desconocido';
+    mostrar('bloque-error');
+  }
+}
+
+async function continuar() {
+  const btn = document.getElementById('enviar-parametros-btn');
+  btn.disabled = true;
+
+  const seleccionados = recogerSeleccionados();
+  parametrosAcumulados = parametrosAcumulados.concat(seleccionados);
+  const cfg   = SUB_PASOS[subPasoActual - 1];
+  const badge = cfg.badge;
+
+  try {
+    // Guardar sub-paso actual
+    const parametrosParaGuardar = badge === '4'
+      ? seleccionados.map(({ parametro, descripcion }) => ({ parametro, descripcion }))
+      : badge === '5'
+      ? seleccionados.map(({ parametro, valor_recomendado, descripcion }) => ({ parametro, valor_recomendado, descripcion }))
+      : seleccionados;
+
+    const saveResp = await fetch(N8N_URLS[cfg.saveKey], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ especificacion_id: SPEC_ID, parametros: parametrosParaGuardar }),
+    });
+    if (!saveResp.ok) {
+      const err = await saveResp.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al guardar');
+    }
+
+    if (subPasoActual < SUB_PASOS.length) {
+      // Siguiente sub-paso: actualizar tabla sin recargar página
+      subPasoActual++;
+      const nextCfg = SUB_PASOS[subPasoActual - 1];
+      showSpinner(nextCfg.spinnerLabel);
+      actualizarHeader();
+
+      const nextResp = await fetch(N8N_URLS[nextCfg.urlKey], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+        body: JSON.stringify({ especificacion_id: SPEC_ID }),
+      });
+      const nextData = await nextResp.json();
+      if (!nextResp.ok || !nextData.success) throw new Error(nextData.error || 'Error en sub-paso');
+
+      const params = extraerParametros(nextData.response_data);
+      poblarFilasTabla(params);
+      actualizarColumnasVisibles();
+      mostrar('bloque-tabla');
+      initListeners();
+    } else {
+      // Todos los sub-pasos completados → confirmar y redirigir a título
+      showSpinner('Guardando parámetros técnicos...');
+
+      const confirmarResp = await fetch(N8N_URLS.confirmarParametros, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+        body: JSON.stringify({ parametros: parametrosAcumulados, especificacion_id: SPEC_ID }),
+      });
+      const confirmarData = await confirmarResp.json();
+      if (!confirmarResp.ok || !confirmarData.success) throw new Error(confirmarData.error || 'Error al confirmar parámetros');
+
+      window.location.href = URL_SIGUIENTE;
+    }
+  } catch (e) {
+    document.getElementById('error-texto').textContent = e.message || 'Error desconocido';
+    mostrar('bloque-error');
+    if (btn) btn.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => iniciarSubPasoActual());
+</script>
+{% endblock %}

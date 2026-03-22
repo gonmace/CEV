@@ -9,7 +9,7 @@
         <span class="text-sm font-semibold text-primary-content">Eliminar servicio</span>
       </div>
       <form method="dialog">
-        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 hover:text-primary-content transition-colors">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 hover:text-primary-content transition-colors cursor-pointer">
           <i class="fas fa-times text-xs"></i>
         </button>
       </form>
@@ -29,11 +29,16 @@
 
     <!-- Footer -->
     <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-secondary/10">
+      <form method="dialog">
+        <button class="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 hover:text-base-content bg-base-200 hover:bg-base-300 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+          Cancelar
+        </button>
+      </form>
       <form id="eliminar-servicio-form" method="post">
         {% csrf_token %}
         <input type="hidden" id="eliminar-servicio-id" name="servicio_id" value="">
         <button type="submit"
-                class="flex items-center gap-1.5 text-xs font-semibold text-error bg-error/10 hover:bg-error/20 border border-error/20 px-3 py-2 rounded-lg transition-colors">
+                class="flex items-center gap-1.5 text-xs font-semibold text-error bg-error/10 hover:bg-error/20 border border-error/20 px-3 py-2 rounded-lg transition-colors cursor-pointer">
           <i class="fas fa-trash text-xs"></i> Eliminar
         </button>
       </form>
@@ -92,7 +97,6 @@
             if (data.success) {
               modal.close();
               if (window.flashy) flashy.success(data.message || 'Servicio eliminado.');
-              // Si hay fila en tabla, animarla; si no, redirigir
               const row = document.querySelector(`[data-servicio-id="${servicioId}"]`);
               if (row && row.tagName === 'TR') {
                 row.style.transition = 'opacity 0.3s';

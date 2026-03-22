@@ -92,8 +92,6 @@ function escapeHtml(text) {
 
 // Función global para renderizar la tabla de parámetros (llamada desde paso1)
 function renderizarTablaParametros(output, titulo, descripcion, tipoServicio) {
-  console.log('Renderizando tabla de parámetros:', output);
-  
   // Guardar valores en variables globales
   window.n8nTitulo = titulo;
   window.n8nDescripcion = descripcion;
@@ -135,9 +133,6 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio) {
 
   // Agregar filas de parámetros
   const parametros = output.parametros || [];
-  if (parametros.length > 0) {
-    console.log('[parametros] primer objeto recibido:', JSON.stringify(parametros[0]));
-  }
   parametros.forEach((parametro, index) => {
     const checked = parametro.check ? 'checked' : '';
     const unidadMedida = parametro.unidad_medida || '';
@@ -234,7 +229,6 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio) {
   }, 100);
   
   // Mostrar el modal
-  console.log('Mostrando modal de parámetros técnicos');
   if (typeof modalParametros.showModal === 'function') {
     modalParametros.showModal();
   } else {
@@ -245,8 +239,6 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio) {
 
 // Función para cargar el script de manejo de parámetros
 function cargarScriptParametros() {
-  console.log('Cargando script de parámetros para modal...');
-  
   const selectAllCheckbox = document.getElementById('select-all');
   let parametrosCheckboxes = document.querySelectorAll('.parametro-checkbox');
   const enviarBtn = document.getElementById('enviar-parametros-btn');

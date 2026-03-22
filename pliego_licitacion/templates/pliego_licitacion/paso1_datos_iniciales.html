@@ -48,18 +48,17 @@
       <!-- Si hay parámetros, se mostrarán en el modal del paso 2 -->
     {% else %}
       <!-- Si no hay parámetros, mostrar formulario de título y descripción -->
-      <div class="flex flex-col items-center justify-center mt-8 w-full max-w-5xl">
-        <div class="card bg-base-100 shadow-2xl w-full hover:shadow-3xl transition-shadow">
-          <div class="card-body p-8">
+      <div class="flex flex-col items-center justify-center mt-6 px-4 pb-10 w-full">
+        <div class="w-full max-w-4xl">
+        <div class="card w-full bg-base-100 shadow-xl">
+          <div class="card-body">
             <div class="mb-6">
               <h2 class="card-title text-2xl mb-2">
                 <div class="flex items-center gap-4">
-                  <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg animate-pulse-glow">
+                  <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg">
                     1
                   </div>
-                  <span class="text-primary">
-                    Datos Iniciales
-                  </span>
+                  <span class="text-primary">Datos Iniciales</span>
                 </div>
               </h2>
               <p class="text-sm text-base-content/60 ml-14">Complete los datos para generar la especificación técnica</p>
@@ -195,138 +194,12 @@
             </div>
           </div>
         </div>
-      </div>
-    {% endif %}
-
-    {% if borradores %}
-    <!-- ── Panel de borradores pendientes ─────────────────────────────────── -->
-    <div class="w-full max-w-5xl mt-8 mb-2">
-
-      <!-- Encabezado del panel -->
-      <div class="flex items-center gap-2 mb-3">
-        <div class="w-1 h-5 bg-warning rounded-full"></div>
-        <span class="text-sm font-semibold text-base-content/70 uppercase tracking-widest">Borradores pendientes</span>
-        <div class="flex-1 h-px bg-base-300"></div>
-        <span class="badge badge-warning badge-sm">{{ borradores|length }}</span>
-      </div>
-
-      <div class="flex flex-col gap-2">
-        {% for b in borradores %}
-        <div id="borrador-{{ b.obj.id }}"
-             class="bg-base-100 border border-warning/30 rounded-xl shadow-sm overflow-hidden">
-
-          <div class="flex items-stretch">
-
-            <!-- Franja de color lateral -->
-            <div class="w-1 bg-warning shrink-0"></div>
-
-            <!-- Cuerpo de la card -->
-            <div class="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 min-w-0">
-
-              <!-- Título + meta -->
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-sm text-base-content truncate leading-tight">
-                  {{ b.obj.titulo }}
-                </p>
-                <p class="text-xs text-base-content/50 mt-0.5">
-                  <i class="fas fa-tag mr-1"></i>{{ b.obj.tipo_servicio }}
-                  <span class="mx-1">·</span>
-                  <i class="fas fa-clock mr-1"></i>{{ b.obj.fecha_actualizacion|date:"d/m/Y H:i" }}
-                </p>
-              </div>
-
-              <!-- Siguiente paso a completar -->
-              <div class="shrink-0">
-                {% if b.resume_paso == 8 %}
-                <a href="{% url 'pliego_licitacion:pasos' %}?paso=5&especificacion_id={{ b.obj.id }}"
-                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold
-                          bg-warning/15 text-warning-content border border-warning/50
-                          hover:bg-warning hover:border-warning hover:text-white
-                          transition-all duration-150 cursor-pointer whitespace-nowrap shadow-sm"
-                   title="Generar resultado final">
-                  <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-warning/40 text-[10px] font-bold leading-none shrink-0">8</span>
-                  {{ b.resume_label }}
-                  <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
-                </a>
-                {% else %}
-                <button type="button"
-                        onclick="resumirDesdePaso({{ b.obj.id }}, {{ b.resume_paso }})"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold
-                               bg-warning/15 text-warning-content border border-warning/50
-                               hover:bg-warning hover:border-warning hover:text-white
-                               transition-all duration-150 cursor-pointer whitespace-nowrap shadow-sm"
-                        title="Continuar en paso {{ b.resume_paso }}: {{ b.resume_label }}">
-                  <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-warning/40 text-[10px] font-bold leading-none shrink-0">{{ b.resume_paso }}</span>
-                  {{ b.resume_label }}
-                  <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
-                </button>
-                {% endif %}
-              </div>
-
-            </div>
-
-            <!-- Botón eliminar -->
-            <div class="flex items-center px-3 border-l border-base-200 shrink-0">
-              <button type="button"
-                      onclick="eliminarBorrador({{ b.obj.id }}, this)"
-                      class="w-7 h-7 flex items-center justify-center rounded-lg
-                             text-base-content/30 hover:text-error hover:bg-error/10
-                             transition-colors duration-150"
-                      title="Descartar borrador">
-                <i class="fas fa-trash-alt text-xs"></i>
-              </button>
-            </div>
-
-          </div>
         </div>
-        {% endfor %}
       </div>
-    </div>
     {% endif %}
-    <!-- ── Fin panel borradores ───────────────────────────────────────────── -->
+
   </div>
 
-  <!-- Paso 6: Ajustar Título -->
-  {% include 'pliego_licitacion/pasos/paso6_titulo.html' %}
-
-  <dialog id="modal-respuesta-json" class="modal fixed inset-0 z-50 flex items-start justify-center pt-16">
-    <div class="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-2xl font-bold">
-          <i class="fas fa-code mr-2 text-primary"></i>
-          Respuesta del Servidor
-        </h3>
-        <form method="dialog">
-          <button class="btn btn-sm btn-circle btn-ghost">✕</button>
-        </form>
-      </div>
-      <div class="divider my-4"></div>
-      
-      <div class="mb-4">
-        <div class="bg-base-200 rounded-lg p-4 overflow-x-auto max-h-96">
-          <pre id="modal-respuesta-json-content" class="text-sm font-mono whitespace-pre text-left"></pre>
-        </div>
-      </div>
-      
-      <div class="modal-action">
-        <form method="dialog">
-          <button class="btn btn-primary" id="modal-respuesta-json-cerrar">
-            <i class="fas fa-times mr-2"></i>
-            Cerrar
-          </button>
-        </form>
-      </div>
-    </div>
-    <form method="dialog" class="modal-backdrop">
-      <button>Cerrar</button>
-    </form>
-  </dialog>
-
-  <!-- Pasos 2-5: Parámetros Técnicos -->
-  {% include 'pliego_licitacion/pasos/paso2-5_parametros.html' %}
-
-  <!-- Paso 7: Actividades Adicionales -->
-  {% include 'pliego_licitacion/pasos/paso7_actividades.html' %}
 {% endblock %}
 
 {% block js %}
@@ -425,12 +298,8 @@
       window.n8nUnidadMedida = valores.unidadMedida;
       
       // Ocultar formulario
-      const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
-      if (formWrapper) {
-        const formCard = formWrapper.querySelector('.card');
-        if (formCard) formCard.style.display = 'none';
-        formWrapper.style.display = 'none';
-      }
+      const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-6');
+      if (formWrapper) formWrapper.style.display = 'none';
       
       // Mostrar spinner
       toggleSpinner(true);
@@ -455,6 +324,7 @@
             descripcion: valores.descripcion,
             tipo_servicio: valores.tipoServicio,
             unidad_medida: valores.unidadMedida,
+            proyecto_id: {{ proyecto_id|default:"null" }},
             sessionID: sessionID
           }),
           signal: controller.signal
@@ -536,42 +406,15 @@
       const subData = await subResp.json();
       if (!subData.success) throw new Error(subData.error || 'Error al obtener parámetros de material');
 
-      // Garantizar que el ID esté disponible globalmente y en el modal
-      if (subData.especificacion_id) {
-        window.especificacionTecnicaId = subData.especificacion_id;
-        const modalParam = document.getElementById('modal-parametros-tecnicos');
-        if (modalParam) modalParam.dataset.especificacionId = subData.especificacion_id;
+      const especId = subData.especificacion_id || djangoResponse.especificacion_id;
+
+      // Guardar datos de materiales en sessionStorage para que la página de parámetros los lea
+      if (subData.response_data) {
+        sessionStorage.setItem('parametros_step1_data', JSON.stringify(subData.response_data));
       }
 
-      // Inicializar estado de sub-pasos
-      window.subPasoActual = 1;
-      window.parametrosAcumulados = [];
-
-      // Actualizar badge y título del modal para paso 2
-      const badgeEl = document.getElementById('modal-parametros-badge');
-      if (badgeEl) badgeEl.textContent = '2';
-      const tituloEl = document.getElementById('modal-parametros-titulo');
-      if (tituloEl) tituloEl.textContent = 'Parámetros materiales';
-
-      const apiResult = subData.response_data;
-
-      // Buscar parámetros en diferentes formatos
-      let parametrosData = null;
-      if (Array.isArray(apiResult) && apiResult[0]?.body?.parametros) {
-        parametrosData = { parametros: apiResult[0].body.parametros };
-      } else if (apiResult?.body?.parametros) {
-        parametrosData = { parametros: apiResult.body.parametros };
-      } else if (apiResult?.output?.parametros) {
-        parametrosData = apiResult.output;
-      } else if (Array.isArray(apiResult) && apiResult[0]?.output?.parametros) {
-        parametrosData = apiResult[0].output;
-      }
-
-      if (parametrosData?.parametros?.length > 0) {
-        renderizarTablaParametros(parametrosData, valores.titulo, valores.descripcion, valores.tipoServicio, valores.unidadMedida);
-      } else {
-        mostrarModalJSON(apiResult);
-      }
+      // Redirigir a la página de parámetros
+      window.location.href = '/pliego/especificacion/' + especId + '/parametros/';
       
     } catch (error) {
       toggleSpinner(false);
@@ -582,7 +425,7 @@
       if (errorMessage.length > 300) {
         errorMessage = errorMessage.substring(0, 300) + '...';
       }
-      alert('Hubo un error: ' + errorMessage);
+      flashy.error('Hubo un error: ' + errorMessage);
     } finally {
       if (normalText) normalText.classList.remove('hidden');
       if (loadingSpinner) loadingSpinner.classList.add('hidden');
@@ -596,27 +439,12 @@ function toggleSpinner(mostrar, texto) {
   mostrar ? showSpinner(texto || 'Generando parámetros técnicos...') : hideSpinner();
 }
 
-// Función para mostrar modal con JSON
+// Función stub — ya no hay modal JSON
 function mostrarModalJSON(data) {
-  const modal = document.getElementById('modal-respuesta-json');
-  const content = document.getElementById('modal-respuesta-json-content');
-  
-  if (!modal || !content) {
-    console.error('Modal de respuesta JSON no encontrado');
-    return;
-  }
-  
-  content.textContent = JSON.stringify(data, null, 2);
-  
-  if (modal.showModal) {
-    modal.showModal();
-  } else {
-    modal.setAttribute('open', '');
-    modal.classList.add('modal-open');
-  }
+  console.warn('mostrarModalJSON (obsoleto):', data);
 }
 
-// Función para renderizar tabla de parámetros
+// Función para renderizar tabla de parámetros (obsoleta, se mantiene como stub)
 function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, unidadMedida) {
   window.n8nTitulo = titulo;
   window.n8nDescripcion = descripcion;
@@ -625,7 +453,7 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, un
   
   toggleSpinner(false);
   
-  const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
+  const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-6');
   if (formWrapper) formWrapper.style.display = 'none';
   
   const modal = document.getElementById('modal-parametros-tecnicos');
@@ -732,173 +560,21 @@ function renderizarTablaParametros(output, titulo, descripcion, tipoServicio, un
 
 // Función para mostrar formulario con observación
 function mostrarFormularioConObservacion(razon, tituloOriginal, descripcionOriginal, tipoServicioOriginal, unidadMedidaOriginal) {
-  const titulo = tituloOriginal || '';
-  const descripcion = descripcionOriginal || '';
-  const tipoServicio = tipoServicioOriginal || '';
-  const unidadMedida = unidadMedidaOriginal || '';
-  const observacion = razon || '';
-  
-  window.especificacionTecnicaId = null;
-  sessionStorage.removeItem('especificacionTecnicaId');
-  
-  const idDisplay = document.getElementById('especificacion-id-display');
-  if (idDisplay) idDisplay.classList.add('hidden');
-  
   toggleSpinner(false);
-  
-  // Buscar y eliminar contenedores duplicados del formulario
-  const allContainers = document.querySelectorAll('.flex.flex-col.items-center.justify-center.mt-8');
-  let formContainer = null;
-  
-  // Buscar el contenedor que contiene el formulario original
-  const formOriginal = document.getElementById('datos-generales-form');
-  if (formOriginal) {
-    formContainer = formOriginal.closest('.flex.flex-col.items-center.justify-center.mt-8');
+
+  // Mostrar warning en el card existente
+  const razonAlert = document.getElementById('razon-alert');
+  const razonText  = document.getElementById('razon-text');
+  if (razonAlert && razonText) {
+    razonText.innerHTML = (razon || '').replace(/\n/g, '<br>');
+    razonAlert.classList.remove('hidden');
   }
-  
-  // Si no se encontró, usar el primero que exista
-  if (!formContainer && allContainers.length > 0) {
-    formContainer = allContainers[0];
-  }
-  
-  // Eliminar otros contenedores duplicados (mantener solo uno)
-  allContainers.forEach((container, index) => {
-    if (container !== formContainer) {
-      container.remove();
-    }
-  });
-  
-  // Si no existe ningún contenedor, crear uno nuevo
-  if (!formContainer) {
-    const mainContainer = document.querySelector('div.flex.flex-col.items-center') || document.body;
-    formContainer = document.createElement('div');
-    formContainer.className = 'flex flex-col items-center justify-center mt-8 w-full max-w-5xl';
-    if (mainContainer === document.body) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'flex flex-col items-center';
-      wrapper.appendChild(formContainer);
-      mainContainer.appendChild(wrapper);
-    } else {
-      mainContainer.appendChild(formContainer);
-    }
-  }
-  
-  // Asegurarse de que esté visible
-  formContainer.style.display = 'flex';
-  
-  const observacionHTML = observacion ? `
-    <div class="alert alert-warning mb-4">
-      <i class="fas fa-exclamation-triangle mr-2"></i>
-      <div>
-        <div class="font-semibold mb-1">Nota:</div>
-        <div>${observacion.replace(/\n/g, '<br>')}</div>
-      </div>
-    </div>
-  ` : '';
-  
-  formContainer.innerHTML = `
-    <div class="card bg-base-100 shadow-2xl w-full hover:shadow-3xl transition-shadow">
-      <div class="card-body p-8">
-        <div class="mb-6">
-          <h2 class="card-title text-2xl mb-2">
-            <div class="flex items-center gap-4">
-              <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg animate-pulse-glow">
-                1
-              </div>
-              <span class="text-primary">
-                <i class="fas fa-database mr-2"></i>
-                Datos Iniciales
-              </span>
-            </div>
-          </h2>
-          <p class="text-sm text-base-content/60 ml-14">Complete los datos para generar la especificación técnica</p>
-        </div>
-        ${observacionHTML}
-        <form id="datos-generales-form" class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="form-control w-full">
-              <label class="label" for="titulo">
-                <span class="label-text font-semibold flex items-center gap-2">
-                  <i class="fas fa-heading text-primary"></i>
-                  Actividad
-                </span>
-                <span class="label-text-alt text-error font-bold">*</span>
-              </label>
-              <input type="text" name="titulo" id="titulo" class="input input-bordered input-primary w-full focus:input-primary" placeholder="Ingrese el nombre de la actividad" value="${titulo.replace(/"/g, '&quot;')}" required>
-              <label class="label hidden" id="titulo-error-label">
-                <span class="label-text-alt text-error" id="titulo-error"></span>
-              </label>
-            </div>
-            <div class="form-control w-full">
-              <label class="label" for="unidad_medida">
-                <span class="label-text font-semibold flex items-center gap-2">
-                  <i class="fas fa-ruler text-primary"></i>
-                  Unidad de medida
-                </span>
-                <span class="label-text-alt text-error font-bold">*</span>
-              </label>
-              <input type="text" name="unidad_medida" id="unidad_medida" class="input input-bordered input-primary w-full focus:input-primary" placeholder="Ej: glb, pz, m²" value="${unidadMedida.replace(/"/g, '&quot;')}" maxlength="10" required>
-              <label class="label">
-                <span class="label-text-alt text-base-content/60">Máximo 10 caracteres</span>
-              </label>
-              <label class="label hidden" id="unidad-medida-error-label">
-                <span class="label-text-alt text-error" id="unidad-medida-error"></span>
-              </label>
-            </div>
-          </div>
-          <div class="form-control w-full">
-            <label class="label" for="tipo_servicio">
-              <span class="label-text font-semibold flex items-center gap-2">
-                <i class="fas fa-cogs text-primary"></i>
-                Tipo de Servicio
-              </span>
-              <span class="label-text-alt text-error font-bold">*</span>
-            </label>
-            <select name="tipo_servicio" id="tipo_servicio" class="select select-bordered select-primary w-full focus:select-primary" required>
-              <option value="">Seleccione un tipo de servicio</option>
-              <option value="Mecánico" ${tipoServicio === 'Mecánico' ? 'selected' : ''}>Mecánico</option>
-              <option value="Eléctrico" ${tipoServicio === 'Eléctrico' ? 'selected' : ''}>Eléctrico</option>
-              <option value="Instrumentación" ${tipoServicio === 'Instrumentación' ? 'selected' : ''}>Instrumentación</option>
-              <option value="SSMA (Seguridad, Salud y Medio Ambiente)" ${tipoServicio === 'SSMA (Seguridad, Salud y Medio Ambiente)' ? 'selected' : ''}>SSMA (Seguridad, Salud y Medio Ambiente)</option>
-              <option value="Infraestructura / Obras Civiles" ${tipoServicio === 'Infraestructura / Obras Civiles' ? 'selected' : ''}>Infraestructura / Obras Civiles (OOCC)</option>
-              <option value="Mantenimiento de Vehículos" ${tipoServicio === 'Mantenimiento de Vehículos' ? 'selected' : ''}>Mantenimiento de Vehículos</option>
-              <option value="Laboratorio y Aseguramiento de la Calidad" ${tipoServicio === 'Laboratorio y Aseguramiento de la Calidad' ? 'selected' : ''}>Laboratorio y Aseguramiento de la Calidad</option>
-              <option value="Logística y Distribución" ${tipoServicio === 'Logística y Distribución' ? 'selected' : ''}>Logística y Distribución</option>
-            </select>
-            <label class="label hidden" id="tipo-servicio-error-label">
-              <span class="label-text-alt text-error" id="tipo-servicio-error"></span>
-            </label>
-          </div>
-          <div class="form-control w-full">
-            <label class="label" for="descripcion">
-              <span class="label-text font-semibold flex items-center gap-2">
-                <i class="fas fa-align-left text-primary"></i>
-                Descripción
-              </span>
-              <span class="label-text-alt text-error font-bold">*</span>
-            </label>
-            <textarea name="descripcion" id="descripcion" class="textarea textarea-bordered textarea-primary w-full focus:textarea-primary" rows="3" placeholder="Ingrese la descripción detallada..." required>${descripcion.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-            <label class="label hidden" id="descripcion-error-label">
-              <span class="label-text-alt text-error" id="descripcion-error"></span>
-            </label>
-          </div>
-          <div class="flex justify-end mt-8 pt-6 border-t border-base-300">
-            <button type="button" id="btn-continuar-datos" class="btn btn-primary">
-              <span class="normal-text flex items-center gap-2">
-                <i class="fas fa-arrow-right"></i>
-                Continuar
-              </span>
-              <span class="loading loading-spinner loading-sm hidden"></span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-  
-  setTimeout(() => {
-    formContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 100);
+
+  // Asegurar que el formulario esté visible
+  const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-6');
+  if (formWrapper) formWrapper.style.display = 'flex';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 
@@ -908,153 +584,7 @@ function mostrarFormularioConObservacion(razon, tituloOriginal, descripcionOrigi
 // - renderizarTablaActividades() -> paso7_actividades.html
 // - cargarScriptActividades() -> paso7_actividades.html
 
-// ── Reanudar borrador: llama a n8n y abre el modal correspondiente ────────────
-
-const _RESUME_CFG = {
-  2: { urlKey: 'parametrosMaterial',  subPaso: 1, badge: '2', titulo: 'Parámetros materiales', spinnerLabel: 'Analizando parámetros de materiales...' },
-  3: { urlKey: 'parametrosEjecucion', subPaso: 2, badge: '3', titulo: 'Parámetros ejecución',  spinnerLabel: 'Analizando parámetros de ejecución...'  },
-  4: { urlKey: 'normasAplicables',    subPaso: 3, badge: '4', titulo: 'Normas aplicables',     spinnerLabel: 'Identificando normas aplicables...'      },
-  5: { urlKey: 'criteriosCalidad',    subPaso: 4, badge: '5', titulo: 'Criterios de calidad',  spinnerLabel: 'Definiendo criterios de calidad...'      },
-};
-
-function _extraerParametros(rd) {
-  const s = Array.isArray(rd) ? rd[0] : rd;
-  return s?.output?.parametros || s?.body?.parametros || s?.parametros || [];
-}
-
-function _extraerActividades(ar) {
-  if (!ar) return [];
-  if (ar.actividades_adicionales) return ar.actividades_adicionales;
-  const s = Array.isArray(ar) ? ar[0] : ar;
-  return s?.output?.actividades_adicionales || s?.actividades_adicionales || [];
-}
-
-async function resumirDesdePaso(especId, pasoNum) {
-  // 1. Cargar spec desde BD para setear globals
-  showSpinner('Cargando borrador...');
-  let spec;
-  try {
-    const r = await fetch(`/pliego/especificacion/${especId}/datos/`);
-    spec = await r.json();
-    if (spec.error) throw new Error(spec.error);
-  } catch (e) {
-    hideSpinner();
-    alert('Error al cargar el borrador: ' + e.message);
-    return;
-  }
-
-  window.especificacionTecnicaId = especId;
-  window.n8nTitulo       = spec.titulo;
-  window.n8nDescripcion  = spec.descripcion;
-  window.n8nTipoServicio = spec.tipo_servicio;
-  window.n8nUnidadMedida = spec.unidad_medida || '';
-
-  const disp = document.getElementById('especificacion-id-display');
-  const val  = document.getElementById('especificacion-id-value');
-  if (disp) { disp.classList.remove('hidden'); disp.style.display = 'flex'; }
-  if (val)  val.textContent = especId;
-
-  const formWrapper = document.querySelector('.flex.flex-col.items-center.justify-center.mt-8');
-  if (formWrapper) formWrapper.style.display = 'none';
-
-  // 2. Llamar a n8n para el paso y abrir el modal
-  try {
-    if (pasoNum <= 5) {
-      const cfg = _RESUME_CFG[pasoNum];
-      window.subPasoActual = cfg.subPaso;
-
-      showSpinner(cfg.spinnerLabel);
-      const resp = await fetch(window.n8nUrls[cfg.urlKey], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ especificacion_id: especId }),
-      });
-      const data = await resp.json();
-      if (!resp.ok || !data.success) throw new Error(data.error || 'Error en n8n');
-      if (data.especificacion_id) window.especificacionTecnicaId = data.especificacion_id;
-
-      hideSpinner();
-
-      if (typeof renderizarTablaParametros === 'function') {
-        renderizarTablaParametros(
-          { parametros: _extraerParametros(data.response_data), actividad: spec.tipo_servicio },
-          spec.titulo, spec.descripcion, spec.tipo_servicio, spec.unidad_medida
-        );
-        setTimeout(() => {
-          const badgeEl  = document.getElementById('modal-parametros-badge');
-          const tituloEl = document.getElementById('modal-parametros-titulo');
-          if (badgeEl)  badgeEl.textContent  = cfg.badge;
-          if (tituloEl) tituloEl.textContent = cfg.titulo;
-        }, 120);
-      }
-
-    } else if (pasoNum === 6) {
-      // paso 6 → propuesta de título
-      showSpinner('Generando propuesta de título...');
-      const resp = await fetch(window.n8nUrls.propuestaTitulo, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ especificacion_id: especId }),
-      });
-      const data = await resp.json();
-      hideSpinner();
-      if (!resp.ok || !data.success) throw new Error(data.error || 'Error en n8n');
-
-      const modalRespuestaApi   = document.getElementById('modal-respuesta-api');
-      const modalTituloInicial  = document.getElementById('modal-titulo-inicial');
-      const modalTituloPropuesto = document.getElementById('modal-titulo-propuesto');
-      const modalAceptarBtn     = document.getElementById('modal-aceptar-btn');
-      const modalRechazarBtn    = document.getElementById('modal-rechazar-btn');
-
-      if (data.titulo_inicial && data.titulo_propuesto && modalRespuestaApi) {
-        if (modalTituloInicial)   modalTituloInicial.value   = data.titulo_inicial;
-        if (modalTituloPropuesto) modalTituloPropuesto.value = data.titulo_propuesto;
-        modalRespuestaApi.dataset.resumeUrl    = data.resume_url    || '';
-        modalRespuestaApi.dataset.tituloInicial = data.titulo_inicial || '';
-
-        if (modalAceptarBtn) {
-          modalAceptarBtn.onclick = async function() {
-            const tituloFinal = modalTituloPropuesto?.value.trim() || data.titulo_propuesto || '';
-            await enviarTituloAjustado(tituloFinal, true, data.resume_url, data.titulo_inicial, data.titulo_propuesto);
-          };
-        }
-        if (modalRechazarBtn) {
-          modalRechazarBtn.onclick = async function() {
-            await enviarTituloAjustado(data.titulo_inicial || '', false, data.resume_url, data.titulo_inicial, data.titulo_propuesto);
-          };
-        }
-        if (typeof modalRespuestaApi.showModal === 'function') {
-          modalRespuestaApi.showModal();
-        } else {
-          modalRespuestaApi.setAttribute('open', '');
-          modalRespuestaApi.classList.add('modal-open');
-        }
-      } else {
-        if (typeof mostrarModalJSON === 'function') mostrarModalJSON(data);
-      }
-
-    } else {
-      // paso 7 → actividades adicionales
-      showSpinner('Cargando actividades adicionales...');
-      const resp = await fetch(window.n8nUrls.adicionales, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify({ especificacion_id: especId }),
-      });
-      const data = await resp.json();
-      hideSpinner();
-      if (!resp.ok || !data.success) throw new Error(data.error || 'Error en n8n');
-
-      if (typeof renderizarTablaActividades === 'function') {
-        renderizarTablaActividades(_extraerActividades(data.adicionales_response));
-      }
-    }
-  } catch (e) {
-    hideSpinner();
-    console.error('resumirDesdePaso error:', e);
-    alert('Error al retomar el borrador: ' + e.message);
-  }
-}
+// resumirDesdePaso eliminado — los borradores ahora usan enlaces directos a páginas
 
 // ── Soft-delete borrador ──────────────────────────────────────────────────────
 async function eliminarBorrador(id, btn) {
@@ -1073,11 +603,11 @@ async function eliminarBorrador(id, btn) {
       const card = document.getElementById(`borrador-${id}`);
       if (card) card.remove();
     } else {
-      alert(data.error || 'No se pudo eliminar.');
+      flashy.error(data.error || 'No se pudo eliminar.');
       btn.disabled = false;
     }
   } catch (e) {
-    alert('Error al eliminar.');
+    flashy.error('Error al eliminar.');
     btn.disabled = false;
   }
 }

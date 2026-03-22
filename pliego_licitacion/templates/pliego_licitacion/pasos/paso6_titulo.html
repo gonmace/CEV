@@ -118,15 +118,13 @@ async function enviarTituloAjustado(tituloFinal, aceptar, resumeUrl, tituloInici
     });
     
     const result = await response.json();
-    
+
     if (typeof hideSpinner === 'function') hideSpinner();
-    
+
     if (!response.ok || !result.success) {
       throw new Error(result.error || 'Error al enviar el título');
     }
-    
-    console.log('Respuesta recibida después de ajustar título:', result);
-    
+
     // Verificar si hay actividades adicionales en la respuesta (Paso 4)
     let actividadesAdicionales = null;
     
@@ -159,7 +157,6 @@ async function enviarTituloAjustado(tituloFinal, aceptar, resumeUrl, tituloInici
     }
     
     if (actividadesAdicionales && Array.isArray(actividadesAdicionales) && actividadesAdicionales.length > 0) {
-      console.log('Actividades adicionales encontradas:', actividadesAdicionales);
       // Renderizar tabla de actividades adicionales (Paso 4)
       if (typeof renderizarTablaActividades === 'function') {
         renderizarTablaActividades(actividadesAdicionales);

@@ -1,0 +1,89 @@
+<dialog id="eliminar-borrador-modal" class="modal">
+  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden max-w-md">
+
+    <!-- Header -->
+    <div class="bg-primary px-5 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-primary-content/10 flex items-center justify-center">
+          <i class="fas fa-trash text-primary-content text-xs"></i>
+        </span>
+        <span class="text-sm font-semibold text-primary-content">Descartar borrador</span>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 hover:text-primary-content transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-5 flex flex-col gap-3">
+      <div class="flex items-start gap-3 p-3 rounded-lg bg-error/5 border border-error/20">
+        <i class="fas fa-exclamation-triangle text-error text-sm mt-0.5 flex-shrink-0"></i>
+        <p class="text-sm text-base-content/70 leading-relaxed">
+          ¿Está seguro de que desea descartar el borrador
+          <span id="eliminar-borrador-titulo" class="font-semibold text-base-content"></span>?
+          <span class="block mt-1 text-xs text-error/80">Esta acción no se podrá deshacer.</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-secondary/10">
+      <form method="dialog">
+        <button class="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 hover:text-base-content bg-base-200 hover:bg-base-300 px-3 py-2 rounded-lg transition-colors">
+          Cancelar
+        </button>
+      </form>
+      <button id="eliminar-borrador-confirm"
+              class="flex items-center gap-1.5 text-xs font-semibold text-error bg-error/10 hover:bg-error/20 border border-error/20 px-3 py-2 rounded-lg transition-colors">
+        <i class="fas fa-trash text-xs"></i> Descartar
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>Cerrar</button>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('eliminar-borrador-modal');
+    const confirmBtn = document.getElementById('eliminar-borrador-confirm');
+    const tituloEl = document.getElementById('eliminar-borrador-titulo');
+    let pendingId = null;
+    let pendingCard = null;
+
+    window.openEliminarBorradorModal = function(id, titulo, card) {
+      pendingId = id;
+      pendingCard = card;
+      tituloEl.textContent = `"${titulo}"`;
+      modal.showModal();
+    };
+
+    confirmBtn.addEventListener('click', function() {
+      if (!pendingId) return;
+      const id = pendingId;
+      const card = pendingCard;
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Descartando...';
+      fetch(`/pliego/especificacion/${id}/eliminar/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+      }).then(r => r.json()).then(data => {
+        modal.close();
+        if (data.success && card) card.remove();
+      }).finally(() => {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-trash text-xs"></i> Descartar';
+        pendingId = null;
+        pendingCard = null;
+      });
+    });
+
+    modal.addEventListener('close', function() {
+      pendingId = null;
+      pendingCard = null;
+    });
+  })();
+</script>

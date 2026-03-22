@@ -27,22 +27,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- AI Spinner -->
-<div id="ai-spinner" class="ai-spinner hidden" role="status" aria-live="polite" style="z-index:9999;">
-  <div class="ai-spinner__backdrop"></div>
-  <div class="ai-spinner__sheet">
-    <div class="ai-spinner__rings">
-      <div class="ai-spinner__ring ai-spinner__ring--outer"></div>
-      <div class="ai-spinner__ring ai-spinner__ring--inner"></div>
-      <div class="ai-spinner__dot-track">
-        <div class="ai-spinner__dot"></div>
-      </div>
-    </div>
-    <p id="ai-spinner-label" class="ai-spinner__label">Generando Objetivo...</p>
-    <p class="ai-spinner__sub">Sistema IA en proceso</p>
-  </div>
-</div>
-
 <div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
   <div class="w-full max-w-4xl">
   <div class="card w-full bg-base-100 shadow-xl">
@@ -59,12 +43,6 @@
         </h2>
         <p class="text-sm text-base-content/60 ml-14">{{ servicio.titulo }}</p>
       </div>
-
-        <!-- Spinner de carga -->
-        <div id="bloque-spinner" class="flex flex-col items-center justify-center py-12 gap-4">
-          <span class="loading loading-spinner loading-lg text-primary"></span>
-          <p class="text-sm text-base-content/50" id="spinner-texto">Analizando el servicio...</p>
-        </div>
 
         <!-- Pregunta del AI (oculto inicialmente) -->
         <div id="bloque-pregunta" class="hidden space-y-4">
@@ -118,7 +96,7 @@
             <i class="fas fa-triangle-exclamation text-error mt-0.5 shrink-0"></i>
             <p class="text-sm text-base-content">No se pudo conectar con el generador de objetivos. Puedes escribir el objetivo manualmente.</p>
           </div>
-          <form method="post">
+          <form method="post" id="form-manual">
             {% csrf_token %}
             <div class="form-control">
               <textarea name="objetivo" rows="6"
@@ -146,32 +124,15 @@
   let historial = [];
 
   function mostrarBloque(id) {
-    ['bloque-spinner','bloque-pregunta','bloque-objetivo','bloque-error'].forEach(b => {
+    ['bloque-pregunta','bloque-objetivo','bloque-error'].forEach(b => {
       document.getElementById(b).classList.add('hidden');
     });
     document.getElementById(id).classList.remove('hidden');
-  }
-
-  function setSpinnerTexto(texto) {
-    document.getElementById('spinner-texto').textContent = texto;
-  }
-
-  function aiSpinner(show, texto) {
-    const el    = document.getElementById('ai-spinner');
-    const label = document.getElementById('ai-spinner-label');
-    if (!el) return;
-    if (show) {
-      if (label && texto) label.textContent = texto;
-      el.classList.remove('hidden');
-      el.style.cssText = 'display:flex !important; z-index:9999;';
-    } else {
-      el.classList.add('hidden');
-      el.style.display = '';
-    }
+    hideSpinner();
   }
 
   async function llamarWebhook(texto) {
-    aiSpinner(true, texto || 'Generando Objetivo...');
+    showSpinner(texto || 'Generando Objetivo...');
     try {
       const resp = await fetch(GENERAR_URL, {
         method: 'POST',
@@ -180,10 +141,8 @@
       });
       if (!resp.ok) throw new Error('Error de red');
       const data = await resp.json();
-
       if (data.error) throw new Error(data.error);
 
-      aiSpinner(false);
       if (data.tipo === 'pregunta') {
         document.getElementById('texto-pregunta').textContent = data.pregunta;
         document.getElementById('input-respuesta').value = '';
@@ -193,7 +152,6 @@
         mostrarBloque('bloque-objetivo');
       }
     } catch (e) {
-      aiSpinner(false);
       mostrarBloque('bloque-error');
     }
   }
@@ -204,19 +162,14 @@
     if (!respuesta) return;
     const pregunta = document.getElementById('texto-pregunta').textContent;
     historial.push({ pregunta, respuesta });
-
-    const btn = this;
-    btn.querySelector('.normal-text').classList.add('hidden');
-    btn.querySelector('.loading').classList.remove('hidden');
-    btn.disabled = true;
-
+    this.disabled = true;
     await llamarWebhook('Procesando tu respuesta...');
-
-    btn.querySelector('.normal-text').classList.remove('hidden');
-    btn.querySelector('.loading').classList.add('hidden');
-    btn.disabled = false;
+    this.disabled = false;
   });
 
+  // Spinner al guardar
+  document.getElementById('form-guardar').addEventListener('submit', () => showSpinner('Guardando objetivo...'));
+  document.getElementById('form-manual').addEventListener('submit', () => showSpinner('Guardando objetivo...'));
 
   // Arrancar al cargar la página
   document.addEventListener('DOMContentLoaded', () => llamarWebhook());
