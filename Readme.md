@@ -1,68 +1,36 @@
-# Django Skeleton
+# Constructor EV (CEV)
 
-Esqueleto base para proyectos Django con Tailwind v4 + DaisyUI v5, listo para desarrollo local y despliegue en producción con Docker + PostgreSQL + n8n.
+Aplicación Django para gestión de proyectos de construcción con generación de especificaciones técnicas asistida por IA.
 
 ## Stack
 
 - **Backend:** Django 5.1+, Gunicorn
-- **Base de datos:** SQLite (dev local) / PostgreSQL 17 (dev Docker y prod)
+- **Base de datos:** SQLite (dev local) / PostgreSQL 17 (Docker y prod)
 - **Estilos:** Tailwind CSS v4 + DaisyUI v5
+- **IA / Automatización:** n8n (workflows de generación de contenido)
+- **Exportación:** python-docx (Word), reportlab (PDF)
 - **Archivos estáticos:** Whitenoise
-- **Automatización:** n8n (disponible en `/n8n/` en producción)
-- **Seguridad:** django-axes, django-csp, headers HTTP
 - **Producción:** Docker Compose + Nginx (gzip)
 
-## Estructura
+## Apps
 
-```
-├── core/               # Configuración del proyecto
-│   ├── settings.py     # Settings único (dev y prod por variables de entorno)
-│   ├── urls.py
-│   ├── wsgi.py
-│   └── asgi.py
-├── home/               # App principal
-│   ├── sitemaps.py     # Sitemap de vistas estáticas
-│   └── migrations/
-├── theme/              # App Tailwind
-│   └── static_src/
-│       ├── package.json
-│       └── src/styles.css
-├── templates/
-│   ├── base.html       # Base con OG tags, favicon, meta description
-│   ├── 404.html
-│   ├── 500.html
-│   └── robots.txt
-├── static/
-│   └── img/
-│       ├── favicon.svg         # Reemplazar con tu favicon
-│       └── og-default.jpg      # Reemplazar con tu imagen OG (1200x630)
-├── n8n/
-│   └── workflows/              # Workflows exportados (versionados en git)
-├── docker/
-│   ├── init-db.sql             # Crea la base de datos de n8n en postgres
-│   └── n8n-export.sh           # Script de exportación de workflows
-├── staticfiles/        # Salida de collectstatic (generado)
-├── media/              # Uploads de usuarios (generado)
-├── requirements.txt        # Dependencias de producción
-├── requirements-dev.txt    # Dependencias de desarrollo
-├── Dockerfile          # Multi-stage: Node (CSS) + Python
-├── docker-compose.yml      # Producción: Django + PostgreSQL + n8n
-├── docker-compose.dev.yml  # Desarrollo: PostgreSQL + n8n
-├── entrypoint.sh       # Migraciones + Gunicorn
-├── nginx.conf          # Plantilla nginx con gzip
-├── deploy.sh           # Script de despliegue en VPS
-└── Makefile
-```
+| App | URL | Descripción |
+|-----|-----|-------------|
+| `home` | `/` | Landing page |
+| `proyectos` | `/proyectos/` | Gestión de proyectos y especificaciones |
+| `servicios` | `/servicios/` | Catálogo de servicios con flujo IA de 5 pasos |
+| `pliego_licitacion` | `/pliego/` | Generación de pliegos de licitación |
+| `ubi_web` | `/ubicaciones/` | Ubicaciones geográficas dentro de proyectos |
 
 ## Desarrollo local
 
 ### 1. Clonar y configurar entorno
 
 ```bash
-git clone <repo>
-cd <proyecto>
+git clone https://github.com/gonmace/CEV.git
+cd CEV
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 make install
 ```
 
@@ -72,7 +40,7 @@ make install
 cp .env.example .env
 ```
 
-Para desarrollo con Django local + SQLite, basta con:
+Para desarrollo con Django local + SQLite basta con:
 
 ```env
 DEBUG=True
@@ -82,9 +50,9 @@ Para desarrollo con PostgreSQL y n8n en Docker:
 
 ```env
 DEBUG=True
-PROJECT_NAME=miproyecto
-POSTGRES_DB=miproyecto_db
-POSTGRES_USER=miproyecto_user
+PROJECT_NAME=cev
+POSTGRES_DB=cev_db
+POSTGRES_USER=cev_user
 POSTGRES_PASSWORD=contraseña
 N8N_ENCRYPTION_KEY=dev-key-cualquiera
 ```
@@ -98,8 +66,8 @@ make dev
 
 **Con PostgreSQL + n8n en Docker:**
 ```bash
-make dev-up   # levanta PostgreSQL y n8n en Docker
-make dev      # corre Django localmente apuntando al postgres del contenedor
+make dev-up   # levanta PostgreSQL y n8n
+make dev      # corre Django apuntando al postgres del contenedor
 ```
 
 O manualmente en dos terminales:
@@ -115,92 +83,47 @@ python manage.py runserver
 - Django: http://127.0.0.1:8000
 - n8n: http://localhost:5678
 
-## n8n — flujo dev → producción
+## Flujo de generación de servicios (5 pasos)
 
-Los workflows se versionan en git dentro de `n8n/workflows/`.
+1. **Paso 1** — Crear servicio (categoría, subcategoría, solicitante)
+2. **Paso 2** — Generar objetivo con IA
+3. **Paso 3** — Generar alcance con IA (clasificación + equipos + tablas)
+4. **Paso 4** — Generar secciones complementarias con IA
+5. **Paso 5** — Revisar y guardar documento consolidado
+
+## n8n — workflows
+
+Los workflows se versionan en `n8n/workflows/`.
 
 ```bash
-# 1. Exportar workflows desde el contenedor de desarrollo
-make n8n-export
-
-# 2. Commitear y subir
+make n8n-export   # exporta workflows desde el contenedor
 git add n8n/workflows/
-git commit -m "feat: actualizar workflows n8n"
+git commit -m "feat: actualizar workflows"
 git push
-
-# 3. Desplegar (importa automáticamente en producción)
-make deploy
 ```
-
-En producción, n8n está disponible en `https://tudominio.com/n8n/`.
 
 ## Producción (VPS)
 
-### 1. Configurar el `.env`
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-Variables obligatorias en producción:
+### Variables obligatorias
 
 ```env
-PROJECT_NAME=miproyecto
+PROJECT_NAME=cev
 DOMAIN=tudominio.com
 APP_PORT=8000
 ADMIN_URL=mi-panel-secreto/
-
 DEBUG=False
-SECRET_KEY=una-clave-secreta-segura
-
-POSTGRES_DB=miproyecto_db
-POSTGRES_USER=miproyecto_user
+SECRET_KEY=clave-secreta-segura
+POSTGRES_DB=cev_db
+POSTGRES_USER=cev_user
 POSTGRES_PASSWORD=contraseña-segura
-
 N8N_ENCRYPTION_KEY=clave-larga-y-secreta
-
 ```
 
-> `N8N_ENCRYPTION_KEY` debe mantenerse constante — cambiarla invalida todas las credenciales guardadas en n8n.
-
-### 2. Desplegar
+### Desplegar
 
 ```bash
 make deploy
 ```
-
-El script hace automáticamente:
-1. `git pull` para actualizar el código
-2. Genera `{PROJECT_NAME}.conf` a partir de `nginx.conf`
-3. Copia la config a `/etc/nginx/sites-available/` y crea el symlink
-4. Valida y recarga nginx
-5. Reconstruye los contenedores Docker (el Dockerfile compila el CSS con Node)
-
-### 3. SSL con Certbot (manual, primera vez)
-
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d tudominio.com -d www.tudominio.com
-```
-
-## Settings
-
-El archivo `core/settings.py` se adapta automáticamente según las variables de entorno:
-
-| Variable presente | Comportamiento |
-|---|---|
-| `DEBUG=True` | SQLite, email en consola, Tailwind y browser-reload activos |
-| `POSTGRES_DB` definido | Usa PostgreSQL |
-| `EMAIL_HOST` definido | Usa backend SMTP |
-| `DEBUG=False` | HSTS, CSRF seguro, sin herramientas de dev |
-
-## Personalizar antes de usar
-
-- `static/img/favicon.svg` — reemplazar con el favicon del proyecto
-- `static/img/og-default.jpg` — imagen por defecto para redes sociales (1200×630px)
-- `ADMINS` en `settings.py` — cambiar el email del administrador
-- `LANGUAGE_CODE` y `TIME_ZONE` en `settings.py` — ajustar a tu región
 
 ## Comandos
 
@@ -208,8 +131,8 @@ El archivo `core/settings.py` se adapta automáticamente según las variables de
 make install      # pip install + tailwind install
 make dev-up       # levanta PostgreSQL + n8n en Docker
 make dev          # migrate + tailwind start + runserver
-make dev-down     # detiene los contenedores de desarrollo
-make n8n-export   # exporta workflows de n8n a n8n/workflows/
+make dev-down     # detiene contenedores de desarrollo
+make n8n-export   # exporta workflows de n8n
 make migrate      # python manage.py migrate
 make migrations   # python manage.py makemigrations
 make superuser    # python manage.py createsuperuser
@@ -217,15 +140,4 @@ make collect      # collectstatic
 make deploy       # bash deploy.sh
 make logs         # docker compose logs -f django
 make down         # docker compose down
-```
-
-```bash
-# Nueva app
-python manage.py startapp nombre_app
-
-# Acceder al contenedor Django
-docker compose exec django bash
-
-# Backup de la base de datos
-docker compose exec postgres pg_dump -U $POSTGRES_USER $POSTGRES_DB > backup.sql
 ```
