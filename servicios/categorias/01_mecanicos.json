@@ -1,0 +1,135 @@
+{
+  "nombre": "Servicios Mecánicos",
+  "definicion": "Corresponde a la provisión de mano de obra contratada especializada para la ejecución de trabajos de mantenimiento mecánico en equipos industriales, así como mano de obra técnica contratada para la intervención en sistemas mecánicos. Incluye el servicio de fabricación y reparación de repuestos, la fabricación de estructuras metal mecánicas, utilizando máquinas de precisión y procesos de soldadura industrial. Este servicio abarca actividades asociadas al mantenimiento predictivo, preventivo y correctivo, así como a la fabricación, recuperación, ajuste, montaje y puesta en marcha de componentes y sistemas mecánicos industriales.",
+  "alcance": "Comprende todas las actividades de mantenimiento mecánico industrial, incluyendo: mantenimiento preventivo periódico; mantenimiento predictivo de equipos críticos; mantenimiento correctivo de todos los equipos industriales y sistemas mecánicos; ajuste y puesta a punto de los equipos industriales. Incluye la fabricación y adecuación de repuestos y piezas de máquinas industrial, la fabricación de estructuras metálicas menores, y la provisión de mano de obra especializada en maquinaria de embotellado y servicios auxiliares, así como mano de obra en mecánica general.",
+  "subcategorias": [
+    {
+      "codigo": "SM-01",
+      "nombre": "Mantenimiento Predictivo – Análisis Vibracional",
+      "unidad": "por punto de inspección",
+      "descripcion": "Detección de fallas incipientes mediante el análisis de espectros de vibración, permitiendo identificar anomalías en el comportamiento dinámico de los equipos. Ej: Compresores de aire, Compresor de frío, equipos rotativos con capacidad > 5 KW (bombas, agitadores, reductores).",
+      "frecuencia": "semestral",
+      "intencion": "predictivo"
+    },
+    {
+      "codigo": "SM-02",
+      "nombre": "Mantenimiento Predictivo – Análisis de Aceite",
+      "unidad": "por muestra",
+      "descripcion": "Evaluación técnica de lubricantes para detectar desgaste, contaminación o degradación del aceite, permitiendo anticipar fallas en componentes internos. Ej: Compresores de frío, aire, reductores de lavadora botellas y equipos que contengan un volumen mayor a 3 litros de aceite.",
+      "frecuencia": "anual",
+      "intencion": "predictivo"
+    },
+    {
+      "codigo": "SM-03",
+      "nombre": "Mantenimiento Predictivo – Ultrasonido",
+      "unidad": "por punto de inspección",
+      "descripcion": "Inspección por ultrasonido como procedimiento no destructivo de tipo mecánico, basado en la resistencia a la propagación del sonido, utilizado para identificar fugas, fricción o fallas incipientes. Ej: Sistemas de vapor, sistemas neumáticos, cavitación de bombas y estado de rodamientos en funcionamiento.",
+      "frecuencia": "trimestral",
+      "intencion": "predictivo"
+    },
+    {
+      "codigo": "SM-04",
+      "nombre": "Mantenimiento Preventivo – Equipos Industriales",
+      "unidad": "por equipo",
+      "descripcion": "Ejecución de ajustes y reemplazo de partes en función de su frecuencia de uso, con el objetivo de prevenir fallas en maquinaria, requiriendo la programación de tiempos de inactividad. Los repuestos son entregados por Embol. Ej: Equipos de servicios auxiliares (Caldero, Compresores) y equipos de líneas de envasado (llenadoras, sopladoras, etiquetadora).",
+      "frecuencia": "anual",
+      "intencion": "preventivo"
+    },
+    {
+      "codigo": "SM-05",
+      "nombre": "Mantenimiento Preventivo – Sistemas Mecánicos",
+      "unidad": "por equipo",
+      "descripcion": "Realización de ajustes y reemplazo de partes en sistemas mecánicos, basándose en frecuencias establecidas, con el fin de prevenir fallas en componentes como bombas, reductores, válvulas, ventiladores, agitadores y cilindros.",
+      "frecuencia": "trimestral",
+      "intencion": "preventivo"
+    },
+    {
+      "codigo": "SM-06",
+      "nombre": "Mantenimiento Correctivo – Equipos Industriales",
+      "unidad": "por hora hombre",
+      "descripcion": "Actividad puntual derivada de una inspección de rutina, intervención reactiva u otra necesidad específica, orientada a la reparación de maquinaria con fallas funcionales. Los repuestos son entregados por Embol. Ej: Desarmado de equipo para el cambio de piezas desgastadas (Llenadora, Compresor, Agitador de jarabe).",
+      "frecuencia": "por demanda",
+      "intencion": "correctivo"
+    },
+    {
+      "codigo": "SM-07",
+      "nombre": "Mantenimiento Correctivo – Sistemas Mecánicos",
+      "unidad": "por hora hombre",
+      "descripcion": "Intervención técnica en componentes de sistemas mecánicos con fallas, tales como bombas, reductores, válvulas, ventiladores y cilindros, que no forman parte directa de un equipo industrial.",
+      "frecuencia": "por demanda",
+      "intencion": "correctivo"
+    },
+    {
+      "codigo": "SM-08",
+      "nombre": "Fabricación y Recuperación de Piezas",
+      "unidad": "recuperación: por hora hombre + hora máquina / fabricación: por pieza",
+      "descripcion": "Fabricación de repuestos metálicos o plásticos para maquinaria industrial conforme a planos técnicos o muestras físicas, garantizando precisión dimensional, propiedades físicas y compatibilidad funcional. Incluye el material. Ej: (ejes, tambores de freno montacargas, piñón bipartido, tulipas, asientos, atrapagotas). Incluye también la recuperación y adaptación de piezas mecánicas mediante procesos de reparación, modificación o ajuste, trabajando con material de Embol. Ej: (válvulas, impulsor de bomba, punta de ejes).",
+      "frecuencia": "por demanda",
+      "intencion": "fabricación, recuperación"
+    },
+    {
+      "codigo": "SM-09",
+      "nombre": "Soldadura Industrial (MIG, TIG, Arco Eléctrico)",
+      "unidad": "por metro lineal / por hora hombre + hora máquina",
+      "descripcion": "Provisión de mano de obra especializada para la aplicación de procesos de soldadura industrial en trabajos de reparación o fabricación. Ej: (tubería de inox por diámetros, estructuras metálicas por punto, planchas por metro).",
+      "frecuencia": "por demanda",
+      "intencion": "fabricación"
+    },
+    {
+      "codigo": "SM-10",
+      "nombre": "Mecanizado Convencional – Torno, Fresa, Taladro",
+      "unidad": "por hora máquina / por pieza",
+      "descripcion": "Provisión de mano de obra especializada para operar maquinaria de mecanizado convencional, incluyendo torno, fresa y taladro, en la fabricación, reparación o modificación de piezas mecánicas.",
+      "frecuencia": "por demanda",
+      "intencion": "fabricación"
+    },
+    {
+      "codigo": "SM-11",
+      "nombre": "Mano de Obra Técnica Mecánica",
+      "unidad": "por hora hombre",
+      "descripcion": "Provisión de personal técnico calificado para ejecutar tareas de mantenimiento, reparación, montaje y ajuste de sistemas mecánicos en planta industrial. Incluye apoyo en paradas semanales o anuales, mantenimiento de transporte de envases, traslado de equipos, mantenimiento de bombas, reductores y válvulas.",
+      "frecuencia": "mensual",
+      "intencion": "soporte técnico"
+    },
+    {
+      "codigo": "SM-12",
+      "nombre": "Alineación de Equipos (Láser, Reloj Comparador)",
+      "unidad": "por equipo",
+      "descripcion": "Ejecución de alineación precisa de ejes, acoplamientos y componentes rotativos mediante instrumentos de medición láser o reloj comparador, con el objetivo de reducir vibraciones y desgaste prematuro. Ej: acoplamiento bomba-motor, Compresor-motor.",
+      "frecuencia": "semestral",
+      "intencion": "ajuste"
+    },
+    {
+      "codigo": "SM-13",
+      "nombre": "Montaje y Desmontaje de Sistemas Mecánicos",
+      "unidad": "por hora hombre",
+      "descripcion": "Ejecución de montaje y desmontaje seguro y preciso de sistemas mecánicos industriales, con el fin de realizar mantenimiento, reemplazo o reubicación de equipos. Ej: desmontaje de casetas, tanques, tuberías, traslados y montaje; desmontaje de capachos de lavadora para mantenimiento de tanques.",
+      "frecuencia": "por demanda",
+      "intencion": "montaje, desmontaje"
+    },
+    {
+      "codigo": "SM-14",
+      "nombre": "Mantenimiento de Racks de Almacenamiento",
+      "unidad": "por unidad / por intervención",
+      "descripcion": "Revisión, ajuste y reparación de estructuras metálicas de almacenamiento, asegurando su integridad estructural y funcionalidad operativa.",
+      "frecuencia": "mensual",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "SM-15",
+      "nombre": "Ajuste y Puesta en Marcha de Equipos Industriales",
+      "unidad": "por hora hombre",
+      "descripcion": "Ejecución de regulación, ajuste fino y puesta en marcha de máquinas industriales o sistemas mecánicos, asegurando su correcto funcionamiento, condiciones de seguridad y cumplimiento de parámetros operativos. Ej: llenadoras, osmosis inversa, etiquetadora, capsuladores.",
+      "frecuencia": "anual",
+      "intencion": "puesta en marcha"
+    },
+    {
+      "codigo": "SM-16",
+      "nombre": "Mantenimiento de Equipos de Frío Comerciales",
+      "unidad": "por equipo / por servicio",
+      "descripcion": "Servicio de mantenimiento mayor y menor de EDF's, que incluye carga de gas refrigerante, conversión de sistema de enfriamiento, servicio de descarte, lavado y mantenimiento de abolladuras.",
+      "frecuencia": "mensual",
+      "intencion": "mantenimiento"
+    }
+  ]
+}

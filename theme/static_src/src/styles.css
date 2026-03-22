@@ -11,8 +11,10 @@
 @plugin "@tailwindcss/aspect-ratio";
 @plugin "daisyui";
 @plugin "daisyui" {
-  themes: constructor;
+  themes: constructor, constructor-dark;
 }
+
+/* ── Light theme ─────────────────────────────────────────────────────────── */
 @plugin "daisyui/theme" {
   name: "constructor";
   default: false;
@@ -22,10 +24,10 @@
   --color-base-200: oklch(90% 0 0);
   --color-base-300: oklch(80% 0 0);
   --color-base-content: #000;
-  --color-primary: #cb4040;
-  --color-primary-content: oklch(93% 0.034 272.788);
+  --color-primary: #ff0000;
+  --color-primary-content: #fff;
   --color-secondary: #45484d;
-  --color-secondary-content: oklch(94% 0.028 342.258);
+  --color-secondary-content: #fff;
   --color-accent: #6366f1;
   --color-accent-content: #fff;
   --color-neutral: #45484d;
@@ -49,6 +51,43 @@
   --color-copy-content: #fff;
 }
 
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+@plugin "daisyui/theme" {
+  name: "constructor-dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #3a3a3e;
+  --color-base-200: #2e2e32;
+  --color-base-300: #4a4a50;
+  --color-base-content: #e8e8ed;
+  --color-primary: #ff3b30;
+  --color-primary-content: #fff;
+  --color-secondary: #8e8e93;
+  --color-secondary-content: #fff;
+  --color-accent: #818cf8;
+  --color-accent-content: #fff;
+  --color-neutral: #3a3a3c;
+  --color-neutral-content: #f5f5f7;
+  --color-info: #38bdf8;
+  --color-info-content: #fff;
+  --color-success: #34d399;
+  --color-success-content: #fff;
+  --color-warning: #fbbf24;
+  --color-warning-content: #000;
+  --color-error: #fb923c;
+  --color-error-content: #fff;
+
+  --color-edit: #facc15;
+  --color-edit-content: #000;
+  --color-delete: #fb923c;
+  --color-delete-content: #fff;
+  --color-view: #60a5fa;
+  --color-view-content: #fff;
+  --color-copy: #22d3ee;
+  --color-copy-content: #000;
+}
+
 @layer base {
   body {
     font-family: 'Nunito', sans-serif;
@@ -64,7 +103,7 @@
 
   /* ── AI Spinner – Cupertino style ──────────────────────────────────────── */
   .ai-spinner {
-    @apply fixed inset-0 z-[300] flex items-center justify-center;
+    @apply fixed inset-0 z-300 flex items-center justify-center;
   }
   .ai-spinner__backdrop {
     @apply absolute inset-0 bg-base-300/20 backdrop-blur-sm;
@@ -184,6 +223,15 @@
     @apply text-base!;
   }
 
+  /* Dark mode prose overrides */
+  [data-theme="constructor-dark"] .prose h2,
+  [data-theme="constructor-dark"] .prose h3 {
+    color: #93c5fd !important;
+  }
+  [data-theme="constructor-dark"] .prose h4 {
+    color: var(--color-base-content) !important;
+  }
+
   /* Botones personalizados para DaisyUI */
   .btn.btn-edit {
     --btn-color: var(--color-edit);
@@ -254,6 +302,14 @@
   .bg-copy    { background-color: var(--color-copy); }
   .bg-copy\/10 { background-color: color-mix(in srgb, var(--color-copy) 10%, transparent); }
 
+  .text-edit  { color: var(--color-edit); }
+  .bg-edit    { background-color: var(--color-edit); }
+  .bg-edit\/10 { background-color: color-mix(in srgb, var(--color-edit) 10%, transparent); }
+
+  .text-delete  { color: var(--color-delete); }
+  .bg-delete    { background-color: var(--color-delete); }
+  .bg-delete\/10 { background-color: color-mix(in srgb, var(--color-delete) 10%, transparent); }
+
   /* Avatar colors - únicos por usuario */
   .avatar-c-0 { background-color: color-mix(in srgb, #cb4040 15%, white); color: #9b2020; }
   .avatar-c-1 { background-color: color-mix(in srgb, #45484d 15%, white); color: #2a2c30; }
@@ -265,6 +321,18 @@
   .avatar-c-7 { background-color: color-mix(in srgb, #06b6d4 15%, white); color: #0e7490; }
   .avatar-c-8 { background-color: color-mix(in srgb, #3b82f6 15%, white); color: #1d4ed8; }
   .avatar-c-9 { background-color: color-mix(in srgb, #ea580c 15%, white); color: #9a3412; }
+
+  /* Avatar colors dark mode */
+  [data-theme="constructor-dark"] .avatar-c-0 { background-color: color-mix(in srgb, #cb4040 25%, #2c2c2e); color: #fca5a5; }
+  [data-theme="constructor-dark"] .avatar-c-1 { background-color: color-mix(in srgb, #45484d 25%, #2c2c2e); color: #d1d5db; }
+  [data-theme="constructor-dark"] .avatar-c-2 { background-color: color-mix(in srgb, #0ea5e9 25%, #2c2c2e); color: #7dd3fc; }
+  [data-theme="constructor-dark"] .avatar-c-3 { background-color: color-mix(in srgb, #10b981 25%, #2c2c2e); color: #6ee7b7; }
+  [data-theme="constructor-dark"] .avatar-c-4 { background-color: color-mix(in srgb, #f59e0b 25%, #2c2c2e); color: #fcd34d; }
+  [data-theme="constructor-dark"] .avatar-c-5 { background-color: color-mix(in srgb, #6366f1 25%, #2c2c2e); color: #a5b4fc; }
+  [data-theme="constructor-dark"] .avatar-c-6 { background-color: color-mix(in srgb, #eab308 25%, #2c2c2e); color: #fde68a; }
+  [data-theme="constructor-dark"] .avatar-c-7 { background-color: color-mix(in srgb, #06b6d4 25%, #2c2c2e); color: #67e8f9; }
+  [data-theme="constructor-dark"] .avatar-c-8 { background-color: color-mix(in srgb, #3b82f6 25%, #2c2c2e); color: #93c5fd; }
+  [data-theme="constructor-dark"] .avatar-c-9 { background-color: color-mix(in srgb, #ea580c 25%, #2c2c2e); color: #fdba74; }
 
   /* Icono de imagen sin imágenes - efecto relieve */
   .gestionar-imagenes-btn i.text-base-content\/20 {

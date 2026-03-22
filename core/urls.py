@@ -24,6 +24,7 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(next_page='/login/'), name='logout'),
     path('', include('home.urls')),
     path('proyectos/', include('proyectos.urls')),
+    path('servicios/', include('servicios.urls')),
     path('pliego/', include('pliego_licitacion.urls')),
     path('ubicaciones/', include('ubi_web.urls')),
 ]

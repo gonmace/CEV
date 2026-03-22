@@ -1,0 +1,405 @@
+{
+  "name": "EspTec_01coherencia",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coherencia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f476b2e3-7ee1-44d6-926b-515bb1432d66",
+      "name": "1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        -160
+      ],
+      "webhookId": "78b2ddce-c169-4b90-bb30-60867e8a13f3"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.output }}",
+        "options": {}
+      },
+      "id": "87c6fb67-6c8e-487a-bbcc-8247b2381793",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        720,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actividad: {{ $json.body?.titulo ?? $json.titulo ?? \"\" }}\nDescripción: {{ $json.body?.descripcion ?? $json.descripcion ?? $json.explicacion ?? \"\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Eres un experto en generar pliego de especificaciones. \n\nTu tarea es verificar si la Actividad y la descripción proporcionados son coherentes entre sí para elaborar una especificación técnica, no realices mayores análisis.\n\nAnaliza cuidadosamente si la Actividad representa adecuadamente el contenido de la descripción.\n\nResponde SOLO con un JSON en este formato:\n{\n  \"coherente\": <true o false>,\n  \"razon\": \"breve explicación de por qué son o no son coherentes\"\n}\n\nNo agregues texto adicional, solo el JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        64,
+        -160
+      ],
+      "id": "ebfaa95c-d92a-4946-93ae-3fac4486f178",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        32
+      ],
+      "id": "2a8afd27-15e0-439e-a274-629c5e7c1277",
+      "name": "gpt5mini",
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\t\"coherente\": {\n\t\t\t\"type\": \"boolean\"\n\t\t},\n\t\t\"razon\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        32
+      ],
+      "id": "16f9a94d-de12-4e07-b8cb-b6564b517f41",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0d7e6ab8-88c0-41b1-bd72-61fe40db7a92",
+              "name": "output.id",
+              "value": "={{ $('1').item.json.body.id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        -384
+      ],
+      "id": "c914227c-c0e5-4ecd-92f7-cc95f8b24fa8",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"output\": {\n    \"coherente\": true,\n    \"razon\": \"La actividad indica pintar el exterior y la descripción especifica pintar la fachada con pintura impermeabilizante para prevenir la humedad, por lo que coinciden.\",\n    \"id\": 35\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        -432
+      ],
+      "id": "d2399936-dde9-40e5-b275-0c846271df8d",
+      "name": "test"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "d19397e3-cc0b-47c7-8559-c3aeb76c8e64",
+      "name": "OpenAI Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        -192
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n \"sistema_constructivo\":\"string\",\n \"tipo_elemento\":\"string\",\n \"material_principal\":\"string\",\n \"proceso_principal\":\"string\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        928,
+        -192
+      ],
+      "id": "11026d2e-ddea-4850-9302-cfd6389e57f0",
+      "name": "Structured Output Parser3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actividad: {{ $('1').item.json.body.titulo }}\nUnidad de medida: {{ $('1').item.json.body.unidad_medida }}\nTipo de servicio: {{ $('1').item.json.body.tipo_servicio }}\nDescripción: {{ $('1').item.json.body.descripcion }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Eres un ingeniero especialista en especificaciones técnicas.\n\nA partir de la actividad de entrada identifica:\n\n1. sistema_constructivo\n2. tipo_elemento\n3. material_principal\n4. proceso_principal\n\nResponde SOLO en JSON:\n\n{\n \"sistema_constructivo\":\"\",\n \"tipo_elemento\":\"\",\n \"material_principal\":\"\",\n \"proceso_principal\":\"\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        784,
+        -384
+      ],
+      "id": "3209b49b-1a64-4f1a-b7f5-466a2976cd62",
+      "name": "clasificacion tecnica"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "df9000c6-76fe-4316-992e-e8de06938f93",
+              "leftValue": "={{ $json.output.coherente }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        -160
+      ],
+      "id": "08ff0e4b-7239-4aa2-97f2-da0bb7508030",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.output }}",
+        "options": {}
+      },
+      "id": "c1414801-5721-4e45-a81c-6b4bb17ae846",
+      "name": "Respond to Webhook1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1312,
+        -384
+      ]
+    }
+  ],
+  "pinData": {
+    "1": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.magoreal.com",
+            "x-real-ip": "189.28.68.106",
+            "x-forwarded-for": "189.28.68.106",
+            "x-forwarded-proto": "http",
+            "connection": "upgrade",
+            "content-length": "256",
+            "user-agent": "python-requests/2.32.5",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": 41,
+            "titulo": "pintura exterior",
+            "descripcion": "Se desea pintar toda la fachada exterior de las oficinas con pinturas impermeabilizante para evitar que ingrese la humedad",
+            "tipo_servicio": "Infraestructura / Obras Civiles",
+            "unidad_medida": "m2"
+          },
+          "webhookUrl": "https://n8n.magoreal.com/webhook/coherencia",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gpt5mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "test": {
+      "main": [
+        []
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "clasificacion tecnica",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "clasificacion tecnica",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "clasificacion tecnica",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "clasificacion tecnica": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "3479e6fe-3544-4138-a159-d299adcc09ca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d9c5adb5b47dc1dff2717f3c50997b1de6d705b83f6fc3647d372ee5b662ea9d"
+  },
+  "id": "KL8cswWod9R8xQKS",
+  "tags": []
+}

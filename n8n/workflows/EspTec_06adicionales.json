@@ -1,0 +1,306 @@
+{
+  "name": "EspTec_06adicionales",
+  "nodes": [
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"actividades_adicionales\": [\n    {\n      \"actividad\": \"Preparación y nivelación de la subrasante\",\n      \"unidad_medida\": \"% Proctor relativo\",\n      \"descripcion\": \"Compactar la subrasante hasta alcanzar ≥ 98 % del Proctor estándar en el espesor a recibir la base.\"\n    }\n  ]\n}"
+      },
+      "id": "655ad7ae-38f4-45b1-b0de-f8c65aeeb36c",
+      "name": "Structured Output Parser2",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1b19e75-c545-4b78-b7e0-febf60b4ae20",
+              "name": "output.resumen",
+              "value": "={{ $('resumen').item.json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "dc6891bb-7459-4eed-9857-703368230822",
+              "name": "output.actividades_adicionales",
+              "value": "={{ $json.output.actividades_adicionales.map(a => ({ ...a, check: false })) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c7dff5b1-be5c-4012-b6c8-d84fcb70e967",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        384,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "e5275887-a1fe-40a9-b999-320c4b141692",
+      "name": "Respond to Webhook2",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        608,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "adicionales",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "60fd1362-cf01-4d85-8b44-aa1dfb58025c",
+      "name": "adicionales",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -544,
+        272
+      ],
+      "webhookId": "e1ab7b6a-9937-41e8-a2d7-5d7c867579dd"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -176,
+        528
+      ],
+      "id": "2be8aeec-635c-4eba-baf9-93a83a36995c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=- Título: {{ $json.body.titulo }}\n- Descripción: {{ $json.body.descripcion }}\n- Parámetros: \n{{ $json.body.parametros_materiales.\nmap(p => `  ${p.parametro}: ${p.valor_recomendado} ${p.unidad_medida !== '-' ? p.unidad_medida : ''}`).join('\\n') }}\n{{ $json.body.parametros_ejecucion.\nmap(p => `  ${p.parametro}: ${p.valor_recomendado} ${p.unidad_medida !== '-' ? p.unidad_medida : ''}`).join('\\n') }}\n",
+        "options": {
+          "systemMessage": "Eres un experto en elaboración y análisis de especificaciones técnicas para TODAS las áreas industriales y construcción (construcción, electricidad, mecánica, instrumentación, automatización, HVAC, mantenimiento, SSMA, piping, etc.).\n\nTu tarea es elaborar una DESCRIPCIÓN mejorada , clara y concisa sobre la actividad representada por el **Título**, principalmente la **Descripción** y los **Parámetros**.\n\nREGLAS DEL RESUMEN:\n- Debe describir la actividad principal de manera directa y profesional.\n- Debe integrar los aspectos de TODOS los parámetros técnicos SIN detallarlos numéricamente uno por uno.\n- Debe reflejar el alcance general, propósito técnico y elementos clave de la actividad.\n- No debe incluir procedimientos, pasos, listas, actividades adicionales, cálculos ni recomendaciones.\n- Debe tener un máximo de dos párrafo.\n- Debe ser aplicable a cualquier especialidad.\n- Debe sonar técnico, preciso y orientado a especificaciones.\n- No inventes nada que no se encuentre en la información proporcionada.\n\nDevuelve únicamente el texto solicitado, sin listas, sin viñetas, sin actividades adicionales y sin texto adicional."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -304,
+        272
+      ],
+      "id": "9091cae2-efa0-4741-83fe-490e7ad9bbe3",
+      "name": "resumen"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actividad principal: {{ $json.output }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "## Rol\nEres un ingeniero especialista en **planificación técnica de actividades para construcción, industria y mantenimiento**.\n\n## Tarea\nIdentificar **Actividades Adicionales** relacionadas directamente con la **Actividad principal** y su **Descripción**.\n\n## Definición\nUna **actividad adicional** corresponde a un trabajo, tarea o proceso técnico independiente que tiene relación directa con la actividad principal.\n\nEstas actividades pueden:\n- ejecutarse antes de la **Actividad principal**\n- ejecutarse después de la **Actividad principal**\n- mejorar, habilitar o complementar el desempeño, seguridad o funcionalidad del resultado de la **Actividad principal**\n\nLas actividades adicionales representan **trabajos independientes**, no operaciones internas del procedimiento de ejecución de la actividad principal.\n\n## Reglas\n- Usar terminología técnica utilizada en **construcción, industria y mantenimiento**.\n- Las actividades deben tener **relación técnica directa** con la actividad principal.\n- Las actividades deben representar **trabajos independientes** que puedan ejecutarse de manera separada.\n- Evitar actividades genéricas sin relación técnica clara.\n- Evitar duplicar actividades equivalentes.\n- No considerar controles de calidad de la **Actividad principal**.\n\nRegla crítica:\n\nUna actividad adicional **no debe corresponder a operaciones o tareas que normalmente forman parte del procedimiento de ejecución de la actividad principal**.\n\nSi la actividad corresponde a una operación necesaria para realizar directamente la actividad principal, debe excluirse.\n\n## Exclusiones\nNo incluir:\n\n- parámetros técnicos\n- especificaciones de materiales\n- criterios de calidad\n- normas técnicas\n- controles de calidad\n- pasos internos del procedimiento de la actividad principal\n- operaciones implícitas necesarias para ejecutar la actividad principal\n\nLas operaciones implícitas corresponden a acciones que forman parte natural del proceso de ejecución de la actividad principal y que normalmente no se consideran trabajos independientes.\n\n## Consideraciones\nConsiderar la **Clasificación** proporcionada para identificar actividades adicionales coherentes con la actividad analizada.\n\nValidar antes de proponer una actividad:\n\nSi la actividad normalmente se ejecuta **dentro del mismo proceso técnico de la actividad principal**, debe excluirse.\n\nSolo incluir actividades que puedan ejecutarse como **trabajos independientes dentro de una planificación técnica, presupuesto o contrato**.\n\n## Salida\nDevolver únicamente **JSON válido**, sin texto adicional.\n\nFormato:\n\n{\n  \"actividades\": [\n    {\n      \"actividad\": \"<nombre técnico de la actividad>\",\n      \"unidad_medida\": \"<unidad SI, pieza o global>\",\n      \"descripcion\": \"<descripcion técnica corta>\"\n    }\n  ]\n}\n\nSi no existen actividades adicionales claramente identificables devolver:\n\n{\n  \"actividades\": []\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        32,
+        272
+      ],
+      "id": "1b9e12a1-af06-4b1b-9da5-b856cb8a4e3e",
+      "name": "actividades_adicionales"
+    }
+  ],
+  "pinData": {
+    "adicionales": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.magoreal.com",
+            "x-real-ip": "189.28.68.106",
+            "x-forwarded-for": "189.28.68.106",
+            "x-forwarded-proto": "http",
+            "connection": "upgrade",
+            "content-length": "1922",
+            "user-agent": "python-requests/2.32.5",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "titulo": "Pavimento de hormigón armado e=18 cm",
+            "descripcion": "Pavimento para patio de maniobras de espesor 18 cm con armdura simple para camiones de alto tonelaje",
+            "parametros_materiales": [
+              {
+                "parametro": "Tamaño máximo nominal del árido grueso",
+                "descripcion": "Tamaño máximo del agregado grueso adecuado para losa de pavimento de 18 cm de espesor",
+                "unidad_medida": "mm",
+                "valor_recomendado": "19"
+              },
+              {
+                "parametro": "Tipo de acero de refuerzo",
+                "descripcion": "Acero estructural con nervaduras para armadura simple de losa de pavimento",
+                "unidad_medida": "N/A",
+                "valor_recomendado": "Acero corrugado de alta adherencia"
+              },
+              {
+                "parametro": "Diámetro máximo de barra de refuerzo",
+                "descripcion": "Diámetro nominal máximo recomendado para barras de acero en armadura simple de losa de 18 cm de espesor",
+                "unidad_medida": "mm",
+                "valor_recomendado": "12"
+              }
+            ],
+            "parametros_ejecucion": [
+              {
+                "parametro": "Espesor de losa de hormigón",
+                "descripcion": "Espesor uniforme a ejecutar durante el extendido y nivelación del pavimento de hormigón para el patio de maniobras.",
+                "unidad_medida": "m",
+                "valor_recomendado": "0.18"
+              },
+              {
+                "parametro": "Recubrimiento de armadura superior",
+                "descripcion": "Distancia entre la cara superior de la losa y la armadura simple a mantener mediante calces durante el hormigonado.",
+                "unidad_medida": "m",
+                "valor_recomendado": "0.05"
+              },
+              {
+                "parametro": "Separación entre barras de armadura",
+                "descripcion": "Distancia entre ejes de barras de acero en la armadura simple a respetar durante el armado previo al hormigonado.",
+                "unidad_medida": "m",
+                "valor_recomendado": "0.20"
+              },
+              {
+                "parametro": "Altura de nivel de hormigón fresco sobre armadura",
+                "descripcion": "Espesor mínimo de hormigón a colocar por encima de la armadura durante el vaciado para asegurar el recubrimiento.",
+                "unidad_medida": "m",
+                "valor_recomendado": "0.05"
+              }
+            ]
+          },
+          "webhookUrl": "https://n8n.magoreal.com/webhook/adicionales",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "actividades_adicionales",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "adicionales": {
+      "main": [
+        [
+          {
+            "node": "resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "resumen",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "actividades_adicionales",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "resumen": {
+      "main": [
+        [
+          {
+            "node": "actividades_adicionales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "actividades_adicionales": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "0c6adb2a-6b05-4c49-9691-fc33cb7c31d0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d9c5adb5b47dc1dff2717f3c50997b1de6d705b83f6fc3647d372ee5b662ea9d"
+  },
+  "id": "ufImAM1vHVU8I8PW",
+  "tags": []
+}

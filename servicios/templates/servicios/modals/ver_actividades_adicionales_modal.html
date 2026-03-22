@@ -1,0 +1,257 @@
+<!-- Modal Actividades Adicionales - Servicio -->
+<dialog id="ver-actividades-servicio-modal" class="modal">
+  <div class="modal-box max-w-3xl p-0 overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-primary px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center">
+          <i class="fa-solid fa-table text-primary-content text-sm"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Actividades</p>
+          <h3 id="actividades-servicio-modal-titulo" class="text-sm font-bold text-primary-content leading-tight truncate max-w-xs"></h3>
+        </div>
+      </div>
+      <form method="dialog">
+        <button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors">
+          <i class="fas fa-times text-sm"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="p-5">
+      <div id="actividades-servicio-loading" class="flex items-center justify-center py-12 gap-3 text-base-content/40">
+        <span class="loading loading-spinner loading-sm"></span>
+        <span class="text-sm">Cargando actividades...</span>
+      </div>
+      <div id="actividades-servicio-table-container" class="hidden overflow-x-auto rounded-xl border border-base-200">
+        <table class="table table-sm w-full">
+          <thead>
+            <tr class="bg-base-200 text-[11px] uppercase tracking-wider font-bold text-base-content/60">
+              <th class="py-2.5 pl-4 w-10 text-center">Mostrar</th>
+              <th class="py-2.5 pl-2">Nombre</th>
+              <th class="py-2.5 w-20 text-center">Unidad</th>
+              <th class="py-2.5 w-24 text-center pr-4">Cantidad</th>
+            </tr>
+          </thead>
+          <tbody id="actividades-servicio-table-body"></tbody>
+        </table>
+      </div>
+      <div id="actividades-servicio-empty" class="hidden flex-col items-center justify-center py-12 gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+          <i class="fas fa-inbox text-xl text-base-content/25"></i>
+        </div>
+        <p class="text-sm font-medium text-base-content/40">Sin actividades adicionales</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-5 pb-5 flex justify-end">
+      <form method="dialog">
+        <button class="btn btn-ghost btn-sm">Cerrar</button>
+      </form>
+    </div>
+
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+
+<script>
+(function() {
+  function getCookie(name) {
+    let v = null;
+    if (document.cookie) document.cookie.split(';').forEach(c => {
+      c = c.trim();
+      if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+    });
+    return v;
+  }
+
+  function esc(text) {
+    const d = document.createElement('div');
+    d.textContent = String(text ?? '');
+    return d.innerHTML;
+  }
+
+  async function post(url, body) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify(body),
+    });
+    return r.json();
+  }
+
+  function buildToggle(checked, editable, dataset) {
+    if (!editable) return `<input type="checkbox" class="checkbox checkbox-primary checkbox-xs" ${checked ? 'checked' : ''} disabled>`;
+    const attrs = Object.entries(dataset).map(([k,v]) => `data-${k}="${esc(v)}"`).join(' ');
+    return `<input type="checkbox" class="checkbox checkbox-primary checkbox-xs mostrar-toggle-srv" ${checked ? 'checked' : ''} ${attrs}>`;
+  }
+
+  function buildNombre(nombre, editable, dataset) {
+    if (!editable) return `<span class="text-sm text-base-content/80">${esc(nombre)}</span>`;
+    const attrs = Object.entries(dataset).map(([k,v]) => `data-${k}="${esc(v)}"`).join(' ');
+    return `<input type="text" class="input input-bordered input-xs w-full font-medium nombre-input-srv"
+                   value="${esc(nombre)}" data-original="${esc(nombre)}" ${attrs} placeholder="Nombre">`;
+  }
+
+  function buildCantidad(cantidad, editable, dataset) {
+    if (!editable) return `<span class="text-sm font-mono">${esc(cantidad || '—')}</span>`;
+    const attrs = Object.entries(dataset).map(([k,v]) => `data-${k}="${esc(v)}"`).join(' ');
+    return `<input type="text" class="input input-bordered input-xs w-20 text-center font-mono cantidad-modal-srv"
+                   value="${esc(cantidad || '')}" data-original="${esc(cantidad || '')}" ${attrs} maxlength="10" placeholder="—">`;
+  }
+
+  function flashInput(input, ok) {
+    const cls = ok ? 'input-success' : 'input-error';
+    input.classList.add(cls);
+    setTimeout(() => input.classList.remove(cls), 1200);
+  }
+
+  function attachEvents(tbody, srvId) {
+    tbody.addEventListener('change', async function(e) {
+      const toggle = e.target.closest('.mostrar-toggle-srv');
+      if (toggle) {
+        const checked = toggle.checked;
+        const tipo = toggle.dataset.tipo;
+        let url, data;
+        if (tipo === 'srv') {
+          url = `/servicios/${srvId}/mostrar/`;
+          data = { mostrar: checked };
+        } else {
+          url = `/servicios/${srvId}/actividad/${toggle.dataset.idx}/`;
+          data = { mostrar: checked };
+        }
+        try {
+          const res = await post(url, data);
+          if (!res.success) toggle.checked = !checked;
+        } catch { toggle.checked = !checked; }
+        return;
+      }
+
+      const cantInput = e.target.closest('.cantidad-modal-srv');
+      if (cantInput) {
+        const newVal = cantInput.value.trim();
+        if (newVal === cantInput.dataset.original) return;
+        cantInput.disabled = true;
+        const tipo = cantInput.dataset.tipo;
+        let url, data;
+        if (tipo === 'srv') {
+          url = `/servicios/${srvId}/cantidad/`;
+          data = { cantidad: newVal };
+        } else {
+          url = `/servicios/${srvId}/actividad/${cantInput.dataset.idx}/`;
+          data = { cantidad: newVal };
+        }
+        try {
+          const res = await post(url, data);
+          if (res.success) { cantInput.dataset.original = newVal; flashInput(cantInput, true); }
+          else { cantInput.value = cantInput.dataset.original; flashInput(cantInput, false); }
+        } catch { cantInput.value = cantInput.dataset.original; }
+        finally { cantInput.disabled = false; }
+        return;
+      }
+
+      const nombreInput = e.target.closest('.nombre-input-srv');
+      if (nombreInput) {
+        const newVal = nombreInput.value.trim();
+        if (newVal === nombreInput.dataset.original || !newVal) { nombreInput.value = nombreInput.dataset.original; return; }
+        nombreInput.disabled = true;
+        try {
+          const res = await post(`/servicios/${srvId}/actividad/${nombreInput.dataset.idx}/`, { nombre: newVal });
+          if (res.success) { nombreInput.dataset.original = newVal; flashInput(nombreInput, true); }
+          else { nombreInput.value = nombreInput.dataset.original; flashInput(nombreInput, false); }
+        } catch { nombreInput.value = nombreInput.dataset.original; }
+        finally { nombreInput.disabled = false; }
+      }
+    });
+
+    tbody.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        const input = e.target.closest('.cantidad-modal-srv, .nombre-input-srv');
+        if (input) { e.preventDefault(); input.blur(); }
+      }
+    });
+  }
+
+  window.openActividadesServicioModal = function(servicioId, servicioTitulo) {
+    const modal     = document.getElementById('ver-actividades-servicio-modal');
+    const titulo    = document.getElementById('actividades-servicio-modal-titulo');
+    const loading   = document.getElementById('actividades-servicio-loading');
+    const container = document.getElementById('actividades-servicio-table-container');
+    const tbody     = document.getElementById('actividades-servicio-table-body');
+    const empty     = document.getElementById('actividades-servicio-empty');
+
+    titulo.textContent = servicioTitulo;
+    tbody.innerHTML = '';
+    loading.classList.remove('hidden');
+    container.classList.add('hidden');
+    empty.classList.add('hidden');
+    empty.classList.remove('flex');
+    modal.showModal();
+
+    fetch(`/servicios/${servicioId}/actividades/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(data => {
+      loading.classList.add('hidden');
+      if (!data.success) { empty.classList.remove('hidden'); empty.classList.add('flex'); return; }
+
+      const srv = data.servicio;
+      const editable = srv.es_propietario;
+
+      // Fila principal del servicio
+      const trSrv = document.createElement('tr');
+      trSrv.className = 'bg-primary/5 font-semibold border-b-2 border-primary/20';
+      trSrv.innerHTML = `
+        <td class="py-2 pl-4 text-center">${buildToggle(srv.mostrar, editable, { tipo: 'srv' })}</td>
+        <td class="py-2 pl-2">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+            <span class="text-sm font-semibold">${esc(srv.titulo)}</span>
+          </div>
+        </td>
+        <td class="py-2 text-center">
+          <span class="text-[10px] font-bold text-secondary/70 bg-secondary/10 px-1.5 py-0.5 rounded font-mono">
+            ${esc(srv.unidad_medida || 'glb')}
+          </span>
+        </td>
+        <td class="py-2 text-center pr-4">${buildCantidad(srv.cantidad, editable, { tipo: 'srv' })}</td>
+      `;
+      tbody.appendChild(trSrv);
+
+      // Actividades adicionales
+      if (!data.actividades || !data.actividades.length) {
+        const trEmpty = document.createElement('tr');
+        trEmpty.innerHTML = `<td colspan="4" class="py-6 text-center text-sm text-base-content/40">Sin actividades adicionales</td>`;
+        tbody.appendChild(trEmpty);
+      } else {
+        data.actividades.forEach((act, i) => {
+          const tr = document.createElement('tr');
+          tr.className = 'border-b border-base-200/60 last:border-0 hover:bg-base-200/30 transition-colors';
+          tr.innerHTML = `
+            <td class="py-2 pl-4 text-center">${buildToggle(act.mostrar, editable, { tipo: 'act', idx: i })}</td>
+            <td class="py-2 pl-2 pr-2">${buildNombre(act.nombre, editable, { idx: i })}</td>
+            <td class="py-2 text-center">
+              ${act.unidad_medida
+                ? `<span class="text-[10px] font-bold text-secondary/70 bg-secondary/10 px-1.5 py-0.5 rounded font-mono">${esc(act.unidad_medida)}</span>`
+                : `<span class="text-base-content/30 text-xs">—</span>`}
+            </td>
+            <td class="py-2 text-center pr-4">${buildCantidad(act.cantidad, editable, { tipo: 'act', idx: i })}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      attachEvents(tbody, srv.id);
+      container.classList.remove('hidden');
+    })
+    .catch(() => {
+      loading.classList.add('hidden');
+      empty.classList.remove('hidden');
+      empty.classList.add('flex');
+    });
+  };
+})();
+</script>

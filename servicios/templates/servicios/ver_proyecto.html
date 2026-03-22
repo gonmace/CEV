@@ -1,0 +1,464 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}Servicio: {{ proyecto.nombre }}{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'servicios:lista_proyectos' %}" class="hover:text-primary transition-colors">Servicios</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">{{ proyecto.nombre }}</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-200">
+  <div class="px-4 py-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row lg:items-start gap-4">
+
+    <!-- Columna izquierda: Especificaciones -->
+    <div class="w-full lg:flex-1 flex flex-col gap-3">
+
+      <!-- Especificaciones -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-secondary/10">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <i class="fas fa-list-alt text-primary text-xs"></i>
+            </span>
+            <span class="text-sm font-semibold text-base-content">Especificaciones</span>
+            <span class="text-[10px] font-bold {% if especificaciones %}text-info bg-info/10{% else %}text-base-content/30 bg-base-200{% endif %} px-2 py-0.5 rounded-full">{{ especificaciones|length }}</span>
+          </div>
+          {% if es_propietario %}
+          <div class="flex items-center gap-1">
+            <button id="btn-actualizar-cantidades"
+                    class="hidden items-center gap-1 text-xs font-semibold text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors">
+              <i class="fas fa-save text-xs"></i> Actualizar
+            </button>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if especificaciones %}
+          <div class="overflow-x-auto">
+          <table class="table table-sm w-full">
+            <thead>
+              <tr class="bg-primary text-primary-content text-xs uppercase tracking-wider font-bold">
+                <th class="py-2.5 pl-4 w-1/2">
+                  <div class="flex items-center gap-2">
+                    {% if es_propietario %}<span class="w-6 flex-shrink-0"></span>{% endif %}
+                    <span class="w-6 h-6 flex-shrink-0 inline-flex items-center justify-center text-[10px]">IMG</span>
+                    Descripción
+                  </div>
+                </th>
+                <th class="py-2.5 w-24 text-center">Cantidad</th>
+                <th class="py-2.5 w-20 text-center">Unidad</th>
+                <th class="py-2.5 pr-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="especificaciones-list">
+            {% for especificacion in especificaciones %}
+              <tr class="border-b border-base-200/70 last:border-0 hover:bg-base-200/30 transition-colors especificacion-item"
+                  data-especificacion-id="{{ especificacion.id }}">
+
+                <!-- Descripción -->
+                <td class="py-2 pl-4">
+                  <div class="flex items-center gap-2 min-w-0">
+                    {% if es_propietario %}
+                      <div class="cursor-move text-base-content/25 hover:text-base-content/50 transition-colors flex-shrink-0 w-6 flex items-center justify-center">
+                        <i class="fas fa-grip-vertical text-xs"></i>
+                      </div>
+                    {% endif %}
+                    <button type="button" class="w-6 h-6 flex items-center justify-center flex-shrink-0 gestionar-imagenes-btn"
+                            title="{% if especificacion.cantidad_imagenes > 0 %}Ver imágenes ({{ especificacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}"
+                            data-especificacion-id="{{ especificacion.id }}"
+                            data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                            data-cantidad-imagenes="{{ especificacion.cantidad_imagenes }}">
+                      {% if especificacion.cantidad_imagenes == 0 %}
+                        <i class="fas fa-image text-sm text-base-content/40"></i>
+                      {% elif especificacion.cantidad_imagenes == 1 %}
+                        <i class="fas fa-image text-sm text-warning"></i>
+                      {% else %}
+                        <i class="fas fa-image text-sm text-success"></i>
+                      {% endif %}
+                    </button>
+                    <span class="text-sm font-medium text-base-content truncate">{{ especificacion.titulo }}</span>
+                  </div>
+                </td>
+
+                <!-- Cantidad -->
+                <td class="py-2 text-center">
+                  {% if es_propietario %}
+                  <input type="text"
+                         class="input input-bordered input-xs w-16 text-center font-mono cantidad-input"
+                         value="{{ especificacion.cantidad|default:'' }}"
+                         maxlength="10"
+                         data-original="{{ especificacion.cantidad|default:'' }}"
+                         data-especificacion-id="{{ especificacion.id }}"
+                         placeholder="—">
+                  {% else %}
+                  <span class="text-sm font-mono text-base-content">{{ especificacion.cantidad|default:"—" }}</span>
+                  {% endif %}
+                </td>
+
+                <!-- Unidad -->
+                <td class="py-2 text-center">
+                  {% if especificacion.unidad_medida %}
+                    <span class="text-xs font-semibold text-secondary/70 bg-secondary/10 px-2 py-0.5 rounded font-mono">
+                      {{ especificacion.unidad_medida }}
+                    </span>
+                  {% else %}
+                    <span class="text-base-content/25 text-xs">—</span>
+                  {% endif %}
+                </td>
+
+                <!-- Acciones -->
+                <td class="py-2 pr-3">
+                  <div class="flex items-center justify-end gap-0.5">
+                    {% if es_propietario %}
+                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-accent hover:bg-accent/10 transition-colors mover-especificacion-btn"
+                            title="Mover posición"
+                            data-especificacion-id="{{ especificacion.id }}"
+                            data-especificacion-titulo="{{ especificacion.titulo|escape }}"
+                            data-especificacion-posicion="{{ especificacion.orden }}"
+                            data-proyecto-id="{{ proyecto.id }}"
+                            data-total-especificaciones="{{ especificaciones|length }}">
+                      <i class="fas fa-arrows-alt-v text-xs"></i>
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'servicios:ver_especificacion' especificacion.id %}"
+                       class="w-7 h-7 rounded-md flex items-center justify-center text-info hover:bg-info/10 transition-colors" title="Ver">
+                      <i class="fas fa-eye text-xs"></i>
+                    </a>
+                    {% if es_propietario %}
+                    <a href="{% url 'servicios:editar_especificacion' especificacion.id %}"
+                       class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
+                      <i class="fas fa-edit text-xs"></i>
+                    </a>
+                    <button type="button"
+                            class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors cursor-pointer eliminar-especificacion-btn"
+                            title="Eliminar especificación"
+                            data-especificacion-id="{{ especificacion.id }}"
+                            data-especificacion-titulo="{{ especificacion.titulo|escape }}">
+                      <i class="fas fa-trash text-xs"></i>
+                    </button>
+                    {% endif %}
+                  </div>
+                </td>
+
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        {% else %}
+          <div class="flex flex-col items-center justify-center py-14 gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+              <i class="fas fa-file-alt text-xl text-base-content/25"></i>
+            </div>
+            <p class="text-sm font-medium text-base-content/40">Sin especificaciones registradas</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Columna derecha: Info + Acciones -->
+    <div class="w-full lg:w-72 flex-shrink-0 flex flex-col gap-3">
+
+      <!-- Info del servicio -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <div class="bg-primary px-5 py-4">
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest mb-1">Servicio</p>
+          <h2 class="text-base font-bold text-primary-content leading-snug">{{ proyecto.nombre }}</h2>
+        </div>
+        <div class="px-5 py-4 flex flex-col gap-3">
+          {% if proyecto.solicitante %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Solicitante</p>
+            <p class="text-sm text-base-content">{{ proyecto.solicitante }}</p>
+          </div>
+          {% endif %}
+          <div class="flex gap-4">
+            <div>
+              <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Creado</p>
+              <p class="text-xs text-base-content/70">{{ proyecto.fecha_creacion|date:"d/m/Y" }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Actualizado</p>
+              <p class="text-xs text-base-content/70">{{ proyecto.fecha_actualizacion|date:"d/m/Y" }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            {% if proyecto.publico %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">
+                <i class="fas fa-globe text-[10px]"></i> Público
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-base-200 text-base-content/40">
+                <i class="fas fa-lock text-[10px]"></i> Privado
+              </span>
+            {% endif %}
+          </div>
+          {% if proyecto.descripcion %}
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Descripción</p>
+            <p class="text-xs text-base-content/70 leading-relaxed">{{ proyecto.descripcion|linebreaksbr }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      {% if es_propietario %}
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <div class="px-4 pt-4 pb-2">
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
+        </div>
+        <div class="flex flex-col px-3 pb-3 gap-1">
+          <a href="{% url 'servicios:editar_proyecto' proyecto.id %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-warning hover:bg-warning/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-edit text-warning text-xs"></i>
+            </span>
+            Editar servicio
+          </a>
+          <a href="{% url 'servicios:eliminar_proyecto' proyecto.id %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-error/10 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-trash text-error text-xs"></i>
+            </span>
+            Eliminar servicio
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal eliminar especificación -->
+<dialog id="eliminar-especificacion-modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-2">Eliminar especificación</h3>
+    <p class="text-sm text-base-content/70 mb-4">¿Estás seguro de que deseas eliminar la especificación <strong id="modal-especificacion-titulo"></strong>? Esta acción no se puede deshacer.</p>
+    <div class="modal-action">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('eliminar-especificacion-modal').close()">Cancelar</button>
+      <button class="btn btn-error btn-sm" id="btn-confirmar-eliminar">
+        <i class="fas fa-trash text-xs"></i> Eliminar
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Modal gestionar imágenes -->
+<dialog id="gestionar-imagenes-modal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">Imágenes de <span id="gestionar-imagenes-titulo"></span></h3>
+    <div id="gestionar-imagenes-content" class="min-h-20"></div>
+    <div class="modal-action">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('gestionar-imagenes-modal').close()">Cerrar</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script>
+  // Helpers
+  function getCookie(name) {
+    let v = null;
+    if (document.cookie) {
+      document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+      });
+    }
+    return v;
+  }
+
+  // Eliminar especificación
+  let eliminarEspecificacionId = null;
+
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.eliminar-especificacion-btn');
+    if (button) {
+      event.preventDefault();
+      eliminarEspecificacionId = button.dataset.especificacionId;
+      document.getElementById('modal-especificacion-titulo').textContent = button.dataset.especificacionTitulo;
+      document.getElementById('eliminar-especificacion-modal').showModal();
+    }
+  });
+
+  document.getElementById('btn-confirmar-eliminar').addEventListener('click', function() {
+    if (!eliminarEspecificacionId) return;
+    fetch(`/servicios/especificacion/${eliminarEspecificacionId}/eliminar/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const row = document.querySelector(`.especificacion-item[data-especificacion-id="${eliminarEspecificacionId}"]`);
+        if (row) row.remove();
+        document.getElementById('eliminar-especificacion-modal').close();
+        if (window.flashy) flashy.success('Especificación eliminada correctamente.');
+      } else {
+        alert(data.error || 'Error al eliminar la especificación.');
+      }
+    })
+    .catch(() => alert('Error al eliminar la especificación.'));
+  });
+
+  // Gestionar imágenes
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.gestionar-imagenes-btn');
+    if (button) {
+      event.preventDefault();
+      const especificacionId = button.dataset.especificacionId;
+      const titulo = button.dataset.especificacionTitulo;
+      document.getElementById('gestionar-imagenes-titulo').textContent = titulo;
+      const content = document.getElementById('gestionar-imagenes-content');
+      content.innerHTML = '<div class="flex justify-center py-6"><span class="loading loading-spinner loading-md"></span></div>';
+      document.getElementById('gestionar-imagenes-modal').showModal();
+
+      fetch(`/servicios/especificacion/${especificacionId}/imagenes/`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.imagenes.length > 0) {
+            let html = '<div class="grid grid-cols-2 gap-3">';
+            data.imagenes.forEach(img => {
+              html += `<div class="rounded-lg border border-base-300 overflow-hidden">
+                <img src="${img.url}" alt="" class="w-full h-32 object-cover">
+                <div class="p-2 text-xs text-base-content/60">${img.descripcion || 'Sin descripción'}</div>
+              </div>`;
+            });
+            html += '</div>';
+            content.innerHTML = html;
+          } else {
+            content.innerHTML = '<p class="text-center text-base-content/40 py-6">Sin imágenes</p>';
+          }
+        })
+        .catch(() => {
+          content.innerHTML = '<p class="text-center text-error py-6">Error al cargar imágenes.</p>';
+        });
+    }
+  });
+</script>
+
+{% if es_propietario %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+  (function() {
+    function getCookie(name) {
+      let v = null;
+      if (document.cookie) document.cookie.split(';').forEach(c => { c = c.trim(); if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1)); });
+      return v;
+    }
+
+    const especificacionesList = document.getElementById('especificaciones-list');
+    if (!especificacionesList) return;
+
+    new Sortable(especificacionesList, {
+      animation: 150,
+      handle: '.cursor-move',
+      ghostClass: 'opacity-50',
+      onEnd: function() {
+        const items = especificacionesList.querySelectorAll('.especificacion-item');
+        const ids = Array.from(items).map(item => parseInt(item.dataset.especificacionId));
+
+        fetch('{% url "servicios:reordenar_especificaciones" proyecto.id %}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify({ especificaciones_ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.success) window.location.reload();
+        })
+        .catch(() => window.location.reload());
+      }
+    });
+  })();
+
+  // Cantidad editable
+  const btnActualizar = document.getElementById('btn-actualizar-cantidades');
+
+  function hayModificaciones() {
+    return !!document.querySelector('.cantidad-input[data-modified="1"]');
+  }
+
+  function actualizarVisibilidadBoton() {
+    if (!btnActualizar) return;
+    if (hayModificaciones()) {
+      btnActualizar.classList.remove('hidden');
+      btnActualizar.classList.add('flex');
+    } else {
+      btnActualizar.classList.add('hidden');
+      btnActualizar.classList.remove('flex');
+    }
+  }
+
+  document.addEventListener('input', function(e) {
+    const input = e.target.closest('.cantidad-input');
+    if (!input) return;
+    const changed = input.value.trim() !== input.dataset.original;
+    input.dataset.modified = changed ? '1' : '0';
+    actualizarVisibilidadBoton();
+  });
+
+  function getCookie2(name) {
+    let v = null;
+    if (document.cookie) document.cookie.split(';').forEach(c => { c = c.trim(); if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1)); });
+    return v;
+  }
+
+  if (btnActualizar) {
+    btnActualizar.addEventListener('click', async function() {
+      const inputs = document.querySelectorAll('.cantidad-input[data-modified="1"]');
+      if (!inputs.length) return;
+
+      btnActualizar.disabled = true;
+      btnActualizar.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Guardando...';
+
+      const promises = Array.from(inputs).map(input => {
+        const especId = input.dataset.especificacionId;
+        const cantidad = input.value.trim();
+        return fetch(`/servicios/especificacion/${especId}/cantidad/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie2('csrftoken') },
+          body: JSON.stringify({ cantidad })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            input.dataset.original = data.cantidad;
+            input.dataset.modified = '0';
+          }
+        });
+      });
+
+      try { await Promise.all(promises); } catch(err) { console.error(err); }
+
+      btnActualizar.disabled = false;
+      btnActualizar.innerHTML = '<i class="fas fa-save text-xs"></i> Actualizar';
+      actualizarVisibilidadBoton();
+    });
+  }
+</script>
+{% endif %}
+{% endblock %}

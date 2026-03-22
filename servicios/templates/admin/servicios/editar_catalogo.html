@@ -1,0 +1,371 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Editar Catálogo: {{ catalogo.nombre }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  .catalogo-editor { max-width: 1100px; margin: 0 auto; }
+
+  /* Bloque de categoría */
+  .cat-block {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.07);
+  }
+  .cat-header {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 16px;
+    background: #f0f4ff;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #d1d5db;
+    cursor: pointer; user-select: none;
+  }
+  .cat-header.collapsed { border-radius: 8px; border-bottom: none; }
+  .cat-toggle {
+    font-size: 13px; color: #6366f1; flex-shrink: 0;
+    margin-top: 7px; transition: transform .2s;
+  }
+  .cat-header.collapsed .cat-toggle { transform: rotate(-90deg); }
+  .cat-body { padding: 12px 16px; display: none; }
+  .cat-body.collapsed { display: none; }
+  .cat-body.expanded { display: block; }
+
+  /* Panel JSON */
+  .json-panel {
+    margin-top: 32px; border: 1px solid #d1d5db; border-radius: 8px;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .json-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; background: #f9fafb; border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #d1d5db; cursor: pointer; user-select: none;
+  }
+  .json-panel-header span { font-weight: 700; font-size: 13px; color: #000; }
+  .json-panel-body { padding: 12px 16px; }
+  .json-panel-body textarea {
+    width: 100%; min-height: 300px; font-family: monospace; font-size: 12px;
+    color: #000; background: #f8fafc; border: 1px solid #d1d5db; border-radius: 5px;
+    padding: 10px; resize: vertical; box-sizing: border-box;
+  }
+  .btn-apply-json {
+    margin-top: 8px; padding: 6px 16px; font-size: 13px; font-weight: 600;
+    background: #4f46e5; color: #fff; border: none; border-radius: 5px; cursor: pointer;
+  }
+  .btn-apply-json:hover { background: #4338ca; }
+  .cat-header input[name="cat_nombre"] {
+    font-weight: 700; font-size: 14px; color: #000;
+    border: 1px solid #c7d2fe; border-radius: 5px;
+    padding: 5px 10px; background: #fff; width: 100%;
+  }
+  .cat-header-fields {
+    flex: 1; display: flex; flex-direction: column; gap: 6px;
+  }
+  .cat-header-meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .cat-header-meta .field-group label { font-size: 10px; }
+  .cat-header-meta textarea {
+    width: 100%; border: 1px solid #c7d2fe; border-radius: 4px;
+    padding: 4px 8px; font-size: 12px; font-family: inherit;
+    background: #fff; color: #000; resize: vertical; min-height: 44px;
+    box-sizing: border-box;
+  }
+  .cat-header-meta textarea:focus {
+    outline: none; border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.15);
+  }
+  .cat-body { padding: 12px 16px; }
+
+  /* Tarjeta de subcategoría */
+  .sub-card {
+    border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px; background: #fafafa;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .sub-row-top {
+    display: grid;
+    grid-template-columns: 90px 1fr 120px 180px auto;
+    gap: 8px; align-items: end;
+  }
+  .sub-row-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* Grupos de campo */
+  .field-group { display: flex; flex-direction: column; gap: 3px; }
+  .field-group label {
+    font-size: 10px; font-weight: 700; color: #000;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .field-group input, .field-group textarea {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 4px;
+    padding: 5px 8px; font-size: 13px; font-family: inherit;
+    background: #fff; resize: vertical; color: #000; box-sizing: border-box;
+  }
+  .field-group textarea { min-height: 62px; }
+  .field-group input:focus, .field-group textarea:focus {
+    outline: none; border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.15);
+  }
+
+  /* Botones */
+  .btn-del-sub {
+    padding: 5px 10px; font-size: 12px;
+    background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;
+    border-radius: 4px; cursor: pointer; white-space: nowrap; align-self: end;
+    height: 30px;
+  }
+  .btn-del-sub:hover { background: #fecaca; }
+  .btn-del-cat {
+    padding: 5px 12px; font-size: 12px;
+    background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;
+    border-radius: 4px; cursor: pointer; white-space: nowrap;
+  }
+  .btn-del-cat:hover { background: #fecaca; }
+  .btn-add-sub {
+    margin-top: 4px; padding: 5px 14px; font-size: 12px;
+    background: #eef2ff; color: #000; border: 1px solid #c7d2fe;
+    border-radius: 5px; cursor: pointer; font-weight: 600;
+  }
+  .btn-add-sub:hover { background: #e0e7ff; }
+  .btn-add-cat {
+    padding: 8px 18px; font-size: 13px;
+    background: #f0fdf4; color: #000; border: 1px solid #86efac;
+    border-radius: 6px; cursor: pointer; font-weight: 600; margin-bottom: 16px;
+  }
+  .btn-add-cat:hover { background: #dcfce7; }
+  .actions-bar {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 16px 0; border-top: 1px solid #e5e7eb; margin-top: 8px;
+  }
+  .btn-save {
+    padding: 9px 24px; background: #4f46e5; color: #fff;
+    border: none; border-radius: 6px; font-weight: 700; font-size: 14px;
+    cursor: pointer;
+  }
+  .btn-save:hover { background: #4338ca; }
+  .btn-cancel {
+    padding: 9px 20px; background: #f3f4f6; color: #000;
+    border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .divider-label {
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="catalogo-editor">
+  <h1 style="margin-bottom:6px;color:#000;">Catálogo de Servicios</h1>
+  <p style="color:#000;font-size:13px;margin-bottom:20px;">
+    Edita categorías y subcategorías. Los campos <strong>Definición</strong>, <strong>Alcance</strong> y <strong>Descripción breve</strong> son usados por la IA para verificar coherencia.
+  </p>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div style="padding:10px 16px;border-radius:6px;margin-bottom:12px;
+      {% if msg.level == 25 %}background:#f0fdf4;border:1px solid #86efac;color:#000;
+      {% else %}background:#fef2f2;border:1px solid #fca5a5;color:#000;{% endif %}">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" id="catalogo-form">
+    {% csrf_token %}
+    <input type="hidden" name="datos_json" id="datos-json-input">
+
+    <button type="button" class="btn-add-cat" onclick="agregarCategoria()">+ Agregar Categoría</button>
+
+    <div id="categorias-container"></div>
+
+    <div class="actions-bar">
+      <a href="{% url 'admin:servicios_catalogoservicios_changelist' %}" class="btn-cancel">Cancelar</a>
+      <button type="submit" class="btn-save" onclick="return prepararJSON()">Guardar catálogo</button>
+    </div>
+  </form>
+
+  <!-- Panel JSON directo -->
+  <div class="json-panel">
+    <div class="json-panel-header" onclick="toggleJsonPanel(this)">
+      <span>▶ Editar JSON directamente</span>
+      <span style="font-size:11px;color:#6b7280;font-weight:400;">Expandir para editar el JSON crudo</span>
+    </div>
+    <div class="json-panel-body" style="display:none;">
+      <textarea id="json-directo" spellcheck="false"></textarea>
+      <button type="button" class="btn-apply-json" onclick="aplicarJsonDirecto()">Aplicar JSON al formulario</button>
+    </div>
+  </div>
+</div>
+
+<template id="tpl-categoria">
+  <div class="cat-block">
+    <div class="cat-header collapsed" onclick="toggleCategoria(this)">
+      <span class="cat-toggle">▼</span>
+      <div class="cat-header-fields" onclick="event.stopPropagation()">
+        <input type="text" name="cat_nombre" placeholder="Nombre de la categoría" autocomplete="off">
+        <div class="cat-header-meta">
+          <div class="field-group">
+            <label>Definición de la categoría</label>
+            <textarea name="cat_definicion" placeholder="Descripción general de esta categoría..."></textarea>
+          </div>
+          <div class="field-group">
+            <label>Alcance de la categoría</label>
+            <textarea name="cat_alcance" placeholder="Qué tipo de trabajos abarca..."></textarea>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn-del-cat" onclick="event.stopPropagation(); this.closest('.cat-block').remove()">✕ Eliminar categoría</button>
+    </div>
+    <div class="cat-body">
+      <div class="subcategorias-container"></div>
+      <button type="button" class="btn-add-sub" onclick="agregarSubcategoria(this)">+ Agregar Subcategoría</button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-subcategoria">
+  <div class="sub-card">
+    <!-- Fila 1: identificación -->
+    <div class="sub-row-top">
+      <div class="field-group">
+        <label>Código</label>
+        <input type="text" name="sub_codigo" placeholder="SM-01" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label>Nombre</label>
+        <input type="text" name="sub_nombre" placeholder="Nombre de la subcategoría" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label>Unidad</label>
+        <input type="text" name="sub_unidad" placeholder="glb / hr / mes" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label>Frecuencia</label>
+        <input type="text" name="sub_frecuencia" placeholder="Mensual / Anual / Puntual" autocomplete="off">
+      </div>
+      <button type="button" class="btn-del-sub" onclick="this.closest('.sub-card').remove()" title="Eliminar subcategoría">✕</button>
+    </div>
+    <!-- Fila 2: descripción e intención -->
+    <div class="sub-row-bottom" style="grid-template-columns: 1fr 30%;">
+      <div class="field-group">
+        <label>Descripción</label>
+        <textarea name="sub_descripcion" placeholder="Descripción del servicio..."></textarea>
+      </div>
+      <div class="field-group">
+        <label>Intención</label>
+        <input type="text" name="sub_intencion" placeholder="Ej: Predictivo / Correctivo" autocomplete="off">
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+function toggleCategoria(header) {
+  const body = header.closest('.cat-block').querySelector('.cat-body');
+  const isOpen = body.classList.contains('expanded');
+  body.classList.toggle('expanded', !isOpen);
+  header.classList.toggle('collapsed', !isOpen);
+}
+
+const datosIniciales = {{ datos_json|safe }};
+
+function agregarCategoria(data) {
+  const tpl = document.getElementById('tpl-categoria');
+  const clone = tpl.content.cloneNode(true);
+  if (data) {
+    clone.querySelector('[name="cat_nombre"]').value     = data.nombre     || '';
+    clone.querySelector('[name="cat_definicion"]').value = data.definicion || '';
+    clone.querySelector('[name="cat_alcance"]').value    = data.alcance    || '';
+    const container = clone.querySelector('.subcategorias-container');
+    (data.subcategorias || []).forEach(sub => agregarSubcategoriaEn(container, sub));
+  }
+  document.getElementById('categorias-container').appendChild(clone);
+}
+
+function agregarSubcategoria(btn) {
+  const container = btn.previousElementSibling;
+  agregarSubcategoriaEn(container, null);
+}
+
+function agregarSubcategoriaEn(container, data) {
+  const tpl = document.getElementById('tpl-subcategoria');
+  const clone = tpl.content.cloneNode(true);
+  if (data) {
+    clone.querySelector('[name="sub_codigo"]').value      = data.codigo      || '';
+    clone.querySelector('[name="sub_nombre"]').value      = data.nombre      || '';
+    clone.querySelector('[name="sub_unidad"]').value      = data.unidad      || '';
+    clone.querySelector('[name="sub_frecuencia"]').value  = data.frecuencia  || '';
+    clone.querySelector('[name="sub_descripcion"]').value = data.descripcion || '';
+    clone.querySelector('[name="sub_intencion"]').value   = data.intencion   || '';
+  }
+  container.appendChild(clone);
+}
+
+function prepararJSON() {
+  const categorias = [];
+  document.querySelectorAll('#categorias-container .cat-block').forEach(catEl => {
+    const nombre = catEl.querySelector('[name="cat_nombre"]').value.trim();
+    if (!nombre) return;
+    const subcategorias = [];
+    catEl.querySelectorAll('.sub-card').forEach(subEl => {
+      const codigo    = subEl.querySelector('[name="sub_codigo"]').value.trim();
+      const subNombre = subEl.querySelector('[name="sub_nombre"]').value.trim();
+      if (!codigo && !subNombre) return;
+      subcategorias.push({
+        codigo,
+        nombre:      subNombre,
+        unidad:      subEl.querySelector('[name="sub_unidad"]').value.trim(),
+        descripcion: subEl.querySelector('[name="sub_descripcion"]').value.trim(),
+        intencion:   subEl.querySelector('[name="sub_intencion"]').value.trim(),
+        frecuencia:  subEl.querySelector('[name="sub_frecuencia"]').value.trim(),
+      });
+    });
+    categorias.push({
+      nombre,
+      definicion: catEl.querySelector('[name="cat_definicion"]').value.trim(),
+      alcance:    catEl.querySelector('[name="cat_alcance"]').value.trim(),
+      subcategorias,
+    });
+  });
+  document.getElementById('datos-json-input').value = JSON.stringify(categorias);
+  return true;
+}
+
+datosIniciales.forEach(cat => agregarCategoria(cat));
+
+// Poblar JSON directo con los datos iniciales
+document.getElementById('json-directo').value = JSON.stringify(datosIniciales, null, 2);
+
+function toggleJsonPanel(header) {
+  const body = header.nextElementSibling;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  header.querySelector('span').textContent = isHidden ? '▼ Editar JSON directamente' : '▶ Editar JSON directamente';
+  if (isHidden) {
+    // Sincronizar JSON con estado actual del formulario antes de mostrar
+    prepararJSON();
+    try {
+      document.getElementById('json-directo').value =
+        JSON.stringify(JSON.parse(document.getElementById('datos-json-input').value), null, 2);
+    } catch(e) {}
+  }
+}
+
+function aplicarJsonDirecto() {
+  try {
+    const datos = JSON.parse(document.getElementById('json-directo').value);
+    document.getElementById('categorias-container').innerHTML = '';
+    datos.forEach(cat => agregarCategoria(cat));
+    alert('JSON aplicado al formulario correctamente.');
+  } catch(e) {
+    alert('JSON inválido: ' + e.message);
+  }
+}
+</script>
+{% endblock %}

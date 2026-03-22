@@ -1,0 +1,95 @@
+{
+  "nombre": "Servicios Infraestructura OOCC",
+  "definicion": "Son los servicios de mantenimiento preventivo y correctivo de la infraestructura edilicia industrial, orientadas a preservar su funcionalidad y seguridad. Estos servicios abarcan intervenciones sobre elementos constructivos y sistemas asociados tales como fachadas, pisos, oficinas, zócalos, cubiertas, sistemas de drenaje, plomería, líneas de presión positiva y componentes como puertas, cerraduras, vidrios y canales industriales, incluyendo actividades de reparación, reposición, limpieza, pintura y mantenimiento operativo.",
+  "alcance": "Reparación de fachadas, pisos, oficinas, zócalos. Pintura industrial, cambio de vidrios, mantenimiento de puertas y cerraduras. Servicios de plomería, drenaje, limpieza de canales. Reposición de cubiertas plásticas y galvanizadas. Mantenimiento de líneas de presión positiva.",
+  "subcategorias": [
+    {
+      "codigo": "SINFRA-01",
+      "nombre": "Mantenimiento y Cambio de Filtros – Presión Positiva",
+      "unidad": "hora hombre",
+      "descripcion": "Revisión de estado, sustitución, limpieza y control de filtros en líneas de presión aire positiva de las líneas de producción. Los filtros los provee Embol.",
+      "frecuencia": "anual",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "SINFRA-02",
+      "nombre": "Reparación de Fachadas – Revoque Interior y Exterior",
+      "unidad": "hora hombre / m²",
+      "descripcion": "Restauración de muros, revoques y acabados en exteriores e interiores, incluyendo intervención sobre superficies deterioradas para recuperar condiciones estructurales y estéticas.",
+      "frecuencia": "mensual",
+      "intencion": "reparación"
+    },
+    {
+      "codigo": "SINFRA-03",
+      "nombre": "Reparación de Oficinas y Áreas Comunes",
+      "unidad": "hora hombre",
+      "descripcion": "Intervenciones menores en mobiliario, techos, paredes y pisos dentro de oficinas y áreas comunes, orientadas a la recuperación de condiciones operativas.",
+      "frecuencia": "mensual",
+      "intencion": "reparación"
+    },
+    {
+      "codigo": "SINFRA-04",
+      "nombre": "Pintura Interior, Exterior y de Pisos",
+      "unidad": "hora hombre / m²",
+      "descripcion": "Aplicación de pintura látex, óleo y epóxica en muros y superficies interiores, exteriores y pisos, asegurando recubrimiento, protección y acabado.",
+      "frecuencia": "semestral",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "SINFRA-05",
+      "nombre": "Reparación de Pisos y Zócalos",
+      "unidad": "hora hombre",
+      "descripcion": "Restauración de cerámica, concreto, juntas y acabados en pisos y zócalos. Trabajos menores (hasta 10 m²).",
+      "frecuencia": "mensual",
+      "intencion": "reparación"
+    },
+    {
+      "codigo": "SINFRA-06",
+      "nombre": "Cambio de Vidrios",
+      "unidad": "m²",
+      "descripcion": "Reemplazo de vidrios rotos o dañados en ventanas, puertas y mamparas, asegurando la restitución de cerramientos.",
+      "frecuencia": "mensual",
+      "intencion": "reparación"
+    },
+    {
+      "codigo": "SINFRA-07",
+      "nombre": "Mantenimiento de Puertas, Cerraduras y Brazos Hidráulicos",
+      "unidad": "hora hombre",
+      "descripcion": "Ajuste, lubricación y reemplazo de cerraduras y mecanismos de cierre en puertas y brazos hidráulicos, garantizando su correcto funcionamiento.",
+      "frecuencia": "mensual",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "SINFRA-08",
+      "nombre": "Servicios de Drenaje y Canalización",
+      "unidad": "punto",
+      "descripcion": "Limpieza, reparación y construcción de sistemas de drenaje pluvial o sanitario. Ej: Canaletas, bajantes.",
+      "frecuencia": "mensual",
+      "intencion": "mantenimiento, reparación"
+    },
+    {
+      "codigo": "SINFRA-09",
+      "nombre": "Servicios de Plomería en General",
+      "unidad": "hora hombre",
+      "descripcion": "Reparación de tuberías, grifería, sanitarios y redes hidráulicas, incluyendo intervención sobre componentes dañados o con fallas.",
+      "frecuencia": "mensual",
+      "intencion": "reparación"
+    },
+    {
+      "codigo": "SINFRA-10",
+      "nombre": "Limpieza de Cámaras y Canales Industriales",
+      "unidad": "punto",
+      "descripcion": "Extracción de sedimentos, residuos y mantenimiento de canales de proceso, asegurando la continuidad operativa de los sistemas.",
+      "frecuencia": "mensual",
+      "intencion": "limpieza"
+    },
+    {
+      "codigo": "SINFRA-11",
+      "nombre": "Reposición y Arreglo de Cubiertas (Techos) Plásticas y Galvanizadas",
+      "unidad": "hora hombre",
+      "descripcion": "Reparación, sustitución y sellado de techos industriales y cubiertas metálicas o plásticas, incluyendo reposición de elementos deteriorados.",
+      "frecuencia": "mensual",
+      "intencion": "reparación"
+    }
+  ]
+}

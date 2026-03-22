@@ -1,0 +1,31 @@
+{
+  "nombre": "Servicios Logística Y Distribución",
+  "definicion": "Servicios operativos y técnicos orientados al movimiento, acondicionamiento, almacenamiento y disposición de productos, equipos y residuos, tanto dentro como fuera de planta. Incluye actividades asociadas al manejo físico de materiales, preparación y organización para despacho, así como el alquiler de maquinaria móvil especializada para carga, descarga, traslado y soporte logístico.",
+  "alcance": "Alquiler de camiones grúa, grúas con plataforma, montacargas, manlift, retroexcavadoras, manipuladores telescópicos. Picking, encajonado, repaletizado, vaciado de mermas. Mantenimiento de racks, reparación de topes. Descarte de productos no conformes. Provisión de cilindros de GNV y remolques.",
+  "subcategorias": [
+    {
+      "codigo": "LOG-01",
+      "nombre": "Alquiler de Equipos Pesados (de varias Tn)",
+      "unidad": "hora / jornada",
+      "descripcion": "Suministro de equipo pesado para actividades de carga, descarga y traslado de maquinaria o estructuras dentro y fuera de planta. Incluye equipos como ser: grúa, grúa con plataforma, remolque, retroexcavadora, martillo, montacargas, manlift y plataforma elevadora, utilizados en operaciones logísticas y de manipulación de materiales.",
+      "frecuencia": "por demanda",
+      "intencion": "alquiler"
+    },
+    {
+      "codigo": "LOG-02",
+      "nombre": "Descarte de Producto No Conforme (PNC)",
+      "unidad": "lote",
+      "descripcion": "Retiro, clasificación y disposición de productos fuera de especificación (PNC), incluyendo su segregación, manejo controlado y gestión para su descarte conforme a procedimientos operativos.",
+      "frecuencia": "mensual",
+      "intencion": "disposición"
+    },
+    {
+      "codigo": "LOG-03",
+      "nombre": "Servicio de Apoyo Logístico",
+      "unidad": "caja / palet / ruma / hora",
+      "descripcion": "Preparación de pedidos mediante actividades de selección, agrupamiento y acondicionamiento de productos para despacho. Incluye encajonado, Picking, Sorting, Repaletizado, selección y recuperado de productos varios, descarte y rotura de envases, reempaque, armado de packs, armado de rumas, limpieza y orden de bodega, y vaciado de mermas.",
+      "frecuencia": "mensual",
+      "intencion": "operación"
+    }
+  ]
+}

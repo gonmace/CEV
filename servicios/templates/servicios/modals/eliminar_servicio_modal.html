@@ -1,0 +1,116 @@
+<dialog id="eliminar-servicio-modal" class="modal">
+  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden max-w-md">
+    <!-- Header -->
+    <div class="bg-primary px-5 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-primary-content/10 flex items-center justify-center">
+          <i class="fas fa-trash text-primary-content text-xs"></i>
+        </span>
+        <span class="text-sm font-semibold text-primary-content">Eliminar servicio</span>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 hover:text-primary-content transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-5 flex flex-col gap-3">
+      <div class="flex items-start gap-3 p-3 rounded-lg bg-error/5 border border-error/20">
+        <i class="fas fa-exclamation-triangle text-error text-sm mt-0.5 flex-shrink-0"></i>
+        <p class="text-sm text-base-content/70 leading-relaxed">
+          ¿Está seguro de que desea eliminar
+          <span id="eliminar-servicio-titulo" class="font-semibold text-base-content"></span>?
+          <span class="block mt-1 text-xs text-error/80">Esta acción no se puede deshacer.</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-secondary/10">
+      <form id="eliminar-servicio-form" method="post">
+        {% csrf_token %}
+        <input type="hidden" id="eliminar-servicio-id" name="servicio_id" value="">
+        <button type="submit"
+                class="flex items-center gap-1.5 text-xs font-semibold text-error bg-error/10 hover:bg-error/20 border border-error/20 px-3 py-2 rounded-lg transition-colors">
+          <i class="fas fa-trash text-xs"></i> Eliminar
+        </button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('eliminar-servicio-modal');
+    const form = document.getElementById('eliminar-servicio-form');
+    const tituloEl = document.getElementById('eliminar-servicio-titulo');
+    const idInput = document.getElementById('eliminar-servicio-id');
+
+    function getCookie(name) {
+      let v = null;
+      if (document.cookie) document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+      });
+      return v;
+    }
+
+    window.openEliminarServicioModal = function(servicioId, servicioTitulo) {
+      if (!modal) return;
+      tituloEl.textContent = `"${servicioTitulo}"`;
+      idInput.value = servicioId;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-trash text-xs"></i> Eliminar'; }
+      modal.showModal();
+    };
+
+    if (form) {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const servicioId = idInput.value;
+        if (!servicioId) return;
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> Eliminando...';
+
+        try {
+          const r = await fetch(`/servicios/${servicioId}/eliminar/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({})
+          });
+          if (r.ok) {
+            const data = await r.json();
+            if (data.success) {
+              modal.close();
+              if (window.flashy) flashy.success(data.message || 'Servicio eliminado.');
+              // Si hay fila en tabla, animarla; si no, redirigir
+              const row = document.querySelector(`[data-servicio-id="${servicioId}"]`);
+              if (row && row.tagName === 'TR') {
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0';
+                setTimeout(() => { row.remove(); }, 300);
+              } else {
+                window.location.href = '/servicios/';
+              }
+            } else throw new Error(data.error);
+          } else {
+            throw new Error('Error al eliminar');
+          }
+        } catch(err) {
+          if (window.flashy) flashy.error('Error al eliminar el servicio.');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-trash text-xs"></i> Eliminar';
+        }
+      });
+    }
+  })();
+</script>

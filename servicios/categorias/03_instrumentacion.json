@@ -1,0 +1,63 @@
+{
+  "nombre": "Servicios Instrumentación",
+  "definicion": "Mano de obra contratada destinada a la calibración, verificación, instalación, mantenimiento, diagnóstico y reparación de instrumentos de medición, sistemas de control y automatización industrial; utilizados en procesos industriales, bajo trazabilidad metrológica, incluyendo la intervención sobre válvulas de seguridad, instrumentos en línea, sensores de gases, instrumentación general, patrones, sistemas de control (PLC, SCADA, HMI, lazos de control, tableros de control, sistemas de adquisición de datos, sala de servidores y redes), así como servomotores y actuadores electrónicos.",
+  "alcance": "Comprende todas las actividades de mantenimiento de instrumentación industrial, incluyendo de forma explícita: Calibración de instrumentos en línea, sensores de gases, válvulas de seguridad y patrones. Mantenimiento de sistemas de control y automatización (PLC, SCADA, HMI, lazos de control, tableros de control, sistema de adquisición de datos, sala de servidores y redes). Diagnóstico y ajuste de servomotores y actuadores electrónicos. Verificación de instrumentos portátiles (multímetros, testers, controladores).",
+  "subcategorias": [
+    {
+      "codigo": "SI-01",
+      "nombre": "Calibración de Válvulas de Seguridad",
+      "unidad": "por grupo de válvula de distinto diámetro",
+      "descripcion": "Calibración de válvulas de seguridad con patrones de presión trazables, incluyendo el ajuste en caso de desvío, colocación de tag de calibración con la información necesaria, abarcando válvulas de sobre presión y vacío de distintos gases. Desarrollado según la norma de calibración del Ibmetro. Ej: (Válvula de sobrepresión compresor de NH3, Válvula de sobre presión caldero)",
+      "frecuencia": "anual",
+      "intencion": "calibración"
+    },
+    {
+      "codigo": "SI-02",
+      "nombre": "Calibración de Instrumentos en Línea",
+      "unidad": "por instrumento",
+      "descripcion": "Calibración con instrumentos patrón trazables aplicada a instrumentos en línea. Ej: Caudalímetro planta de osmosis inversa, transmisores de presión, temperatura, nivel",
+      "frecuencia": "anual",
+      "intencion": "calibración"
+    },
+    {
+      "codigo": "SI-03",
+      "nombre": "Calibración de Sensores de Gases",
+      "unidad": "por sensor",
+      "descripcion": "Calibración con soluciones patrón de detectores de NH₃, CO₂, O₂, CH₄ y otros gases industriales, asegurando la correcta medición de concentraciones de gases en procesos industriales",
+      "frecuencia": "anual",
+      "intencion": "calibración"
+    },
+    {
+      "codigo": "SI-04",
+      "nombre": "Calibración de Instrumentación General",
+      "unidad": "por instrumento",
+      "descripcion": "Calibración o verificación con patrones trazables de multímetros, controladores, registradores y fuentes de alimentación, asegurando la exactitud de medición y operación de la instrumentación",
+      "frecuencia": "anual",
+      "intencion": "calibración"
+    },
+    {
+      "codigo": "SI-05",
+      "nombre": "Calibración de Patrones",
+      "unidad": "por patrón",
+      "descripcion": "Calibración de pesas, termómetros, manómetros, patrones eléctricos y de presión, garantizando su trazabilidad metrológica para su uso como referencia",
+      "frecuencia": "anual",
+      "intencion": "calibración"
+    },
+    {
+      "codigo": "SI-06",
+      "nombre": "Mantenimiento de Sistemas de Control",
+      "unidad": "por sistema / por equipo",
+      "descripcion": "Mantenimiento de PLC, SCADA, HMI, controladores lógicos y pantallas de supervisión, incluyendo actividades necesarias para asegurar la continuidad operativa y correcta funcionalidad de los sistemas de control y automatización",
+      "frecuencia": "anual",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "SI-07",
+      "nombre": "Mantenimiento de Servomotores y Actuadores Electrónicos",
+      "unidad": "por servomotor / por equipo",
+      "descripcion": "Diagnóstico, ajuste y reemplazo de servomotores, drivers y posicionadores, asegurando su correcto funcionamiento dentro de los sistemas de control y automatización",
+      "frecuencia": "anual",
+      "intencion": "mantenimiento"
+    }
+  ]
+}

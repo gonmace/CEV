@@ -1,0 +1,395 @@
+{
+  "name": "EspTec_07final",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "final",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "4cc572e5-d95e-4515-aa04-797bbdb97ef6",
+      "name": "final",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -560,
+        272
+      ],
+      "webhookId": "254f2e80-9b41-42ac-9851-c4217a611810"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "58b02259-6637-4051-989c-74b134398e09",
+      "name": "OpenAI Chat Model4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        576
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Nombre de la actividad:\n{{ $('final').item.json.body.titulo }}\n\n--------------------------------------\nResumen técnico del trabajo:\n{{ $('final').item.json.body.resumen }}\n\n--------------------------------------\nMateriales utilizados en la actividad:\n-{{ $json.output.materiales.replace(/,\\s*/g, \"\\n-\") }}\n\nNOTA PARA REDACCIÓN:\nLos materiales listados anteriormente no deben repetirse dentro del texto del procedimiento.\nSi un parámetro describe un material ya presente en esta lista, solo debe mencionarse la propiedad técnica del parámetro y no el nombre del material.\n--------------------------------------\nParámetros de materiales:\n{{ $('final').item.json.body.parametros_materiales.map(p => `- ${p.parametro}: ${p.valor_recomendado} ${p.unidad_medida == \"N/A\" ? \"\" : p.unidad_medida}`)\n.join('\\n') }}\n\n--------------------------------------\nParámetros de ejecución:\n{{ $('final').item.json.body.parametros_ejecucion.map(p => `- ${p.parametro}: ${p.valor_recomendado} ${p.unidad_medida == \"N/A\" ? \"\" : p.unidad_medida}`)\n.join('\\n') }}\n\n--------------------------------------\nNormas aplicables:\n{{ $('final').item.json.body.normas_aplicables ? $('final').item.json.body.normas_aplicables.map(p => `- ${p.parametro}`).join('\\n') : \"Ninguna\" }}\n\n--------------------------------------\nActividades adicionales:\n{{ $('final').item.json.body.actividades_adicionales ? $('final').item.json.body.actividades_adicionales.map(p => `- ${p.nombre}`).join('\\n') : \"Ninguna\" }}",
+        "options": {
+          "systemMessage": "=## Rol\n\nEres un ingeniero especialista en redacción de **procesos de ejecución para especificaciones técnicas de obras civiles, industriales y trabajos de mantenimiento**.\n\nTienes experiencia elaborando documentos utilizados en **pliegos técnicos de ingeniería, especificaciones constructivas y contratos de obra**.\n\nTu redacción debe seguir el estilo técnico utilizado en **documentación de ingeniería y construcción**.\n\n---\n\n## Tarea\n\nGenerar el **texto del proceso de ejecución del trabajo** correspondiente a la actividad indicada.\n\nEl texto debe describir **cómo se desarrolla técnicamente la actividad**, integrando de manera coherente:\n\n- el **Resumen técnico del trabajo**\n- los **Parámetros técnicos**\n- las **Actividades adicionales**\n- las **Normas aplicables** (si existen)\n\nEl resultado debe ser un **texto técnico continuo**, propio de una especificación técnica de ingeniería.\n\n---\n\n## Definición\n\nEl proceso de ejecución describe **cómo debe desarrollarse la actividad en obra**, incluyendo:\n\n- condiciones previas\n- preparación de superficies o área de trabajo\n- forma de ejecución\n- control de parámetros técnicos\n- integración de trabajos complementarios\n- controles durante la ejecución\n- cumplimiento de normas aplicables\n\nEl texto debe describir **el desarrollo técnico del trabajo**, no únicamente las características del elemento.\n\n---\n\n## Análisis técnico obligatorio antes de redactar\n\nAntes de redactar el texto, el modelo debe realizar internamente el siguiente análisis:\n\n1. Identificar todos los **Materiales** listados en la entrada.\n2. Analizar los **Parámetros de materiales**.\n3. Determinar qué parámetros describen propiedades de materiales ya incluidos en la lista de **Materiales**.\n4. Para esos parámetros:\n   - eliminar el nombre del material\n   - conservar únicamente la **propiedad técnica del parámetro**.\n5. Integrar posteriormente los parámetros técnicos en el texto de forma natural.\n\nEste análisis previo es obligatorio para evitar **repetición innecesaria de materiales** dentro del procedimiento.\n\n---\n\n## Estructura esperada del texto\n\nEl texto debe desarrollar implícitamente la siguiente secuencia técnica:\n\n1. Condiciones previas y preparación del área o superficie.\n2. Preparación del soporte o del sistema constructivo.\n3. Desarrollo técnico de la ejecución del trabajo.\n4. Control de parámetros técnicos durante la ejecución.\n5. Integración de actividades adicionales asociadas.\n6. Control de calidad durante y después de la ejecución.\n7. Protección o condiciones finales del elemento ejecutado.\n8. Cumplimiento de normas aplicables (si existen).\n\nEsta estructura debe mantenerse dentro de **párrafos continuos**, sin enumeraciones.\n\n---\n\n## Reglas estrictas de redacción\n\n- Redactar entre **3 y 8 párrafos técnicos**.\n- Cada párrafo debe separarse por **una línea en blanco**.\n- No usar listas, numeraciones, viñetas ni subtítulos.\n- No mencionar la palabra **procedimiento**.\n- Usar redacción técnica propia de **especificaciones de ingeniería**.\n- Utilizar verbos técnicos como:\n\nejecutar, disponer, aplicar, colocar, instalar, extender, proyectar, conformar, verificar, controlar, asegurar, compactar, regular, integrar, proteger, entre otros.\n\n- No inventar parámetros ni valores técnicos que no estén presentes en la información proporcionada.\n- No repetir innecesariamente parámetros ya mencionados.\n\n---\n\n## Uso de parámetros técnicos\n\n### Parámetros de ejecución\n\nTodos los **Parámetros de ejecución** deben integrarse dentro del texto y resaltarse en **negrilla**.\n\nEjemplos de parámetros de ejecución incluyen:\n\n- espesores\n- tiempos\n- dimensiones\n- tolerancias\n- niveles\n- distancias\n- secuencias de aplicación\n\nEstos parámetros deben incorporarse naturalmente dentro de la redacción técnica.\n\n---\n\n### Parámetros de materiales\n\nLos **Parámetros de materiales** deben compararse con la lista de **Materiales**.\n\nRegla obligatoria:\n\nSi un parámetro describe un material que **ya está presente en la lista de Materiales**, el texto **no debe volver a mencionar el nombre del material**.\n\nEn ese caso solo debe mencionarse **la propiedad técnica del parámetro**, resaltándola en **negrilla**.\n\nEjemplo conceptual:\n\nMaterial:\ncemento Portland\n\nParámetro de materiales:\nTipo de cemento para mortero: cemento Portland compuesto IP\n\nForma correcta en el texto:\n\n**cemento para mortero**\n\nNo repetir el Parámetro si ya aparece en la lista de materiales.\n\n---\n\n## Uso de actividades adicionales\n\nLas **Actividades adicionales** representan trabajos complementarios necesarios para ejecutar correctamente la actividad principal.\n\nEstas actividades deben integrarse dentro del texto como **parte del proceso constructivo**, resaltando su texto en **negrilla**.\n\nNo deben presentarse como listas ni enumeraciones.\n\n---\n\n## Normativa\n\nSi existen **Normas aplicables**, deben mencionarse en el **último párrafo**, indicando que la ejecución del trabajo debe cumplir con normativa y las indicacciones de la Supervisión.\n\nNo describir el contenido de las normas.\n\nSi no existen normas, no mencionar normativa.\n\n---\n\n## Consideraciones de redacción\n\nEl texto debe ser:\n\n- técnico\n- claro\n- preciso\n- coherente con documentación de ingeniería\n\nDebe describir **el proceso técnico de ejecución**, incluyendo controles durante el trabajo, condiciones de aplicación y verificación de calidad.\n\nLa redacción debe ser **genérica y aplicable a diferentes tipos de actividades constructivas, industriales o de mantenimiento**.\n\n---\n\n## Formato de salida\n\n- Texto plano compatible con **Markdown**.\n- Usar **negrilla Markdown** con `**texto**`.\n- No usar fences de código.\n- No agregar títulos ni explicaciones adicionales."
+        }
+      },
+      "id": "c1af3352-3fbc-4c76-b45b-0559f3b6ce1d",
+      "name": "procedimiento",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        320,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Nombre de la Actividad: {{ $('final').item.json.body.titulo }}\n\nUnidad de Medida: {{ $('final').item.json.body.unidad_medida }}\n\nResumen técnico:\n{{ $('final').item.json.body.resumen }}\n\nCriterios de calidad para verificación:\n{{ $('final').item.json.body.criterios_calidad \n? $('final').item.json.body.criterios_calidad.map(p => `- ${p.parametro}: ${p.descripcion} (${p.valor_recomendado} ${p.unidad_medida})`).join('\\n')\n: \"Ninguno\" }}",
+        "options": {
+          "systemMessage": "=## Rol\nEres un ingeniero especialista en elaboración de **especificaciones técnicas para proyectos de construcción, infraestructura y mantenimiento industrial**.\n\nTienes experiencia redactando secciones de **Medición y Forma de Pago** utilizadas en pliegos técnicos de ingeniería y contratos de obra.\n\n---\n\n## Tarea\nGenerar exclusivamente la sección **Medición y Forma de Pago** correspondiente a la actividad indicada.\n\nEl texto debe describir cómo se mide el trabajo ejecutado, cómo se realiza su verificación técnica y bajo qué condiciones se autoriza el pago.\n\n---\n\n## Estructura obligatoria\n\nDebes generar **exactamente tres párrafos consecutivos**, separados por **una línea en blanco**.\n\n### Párrafo 1 — Medición del trabajo\n\nDebe describir el criterio de medición del trabajo ejecutado de acuerdo con la unidad de medida proporcionada.\n\nLa unidad de medida debe mencionarse obligatoriamente indicando **nombre de la unidad y abreviación en negrilla**.\n\nLa medición debe referirse únicamente al trabajo efectivamente ejecutado y aprobado en obra.\n\n---\n\n### Párrafo 2 — Verificación técnica y control de calidad\n\nDebe describir el proceso de verificación técnica del trabajo ejecutado.\n\nDebe indicar que la verificación técnica es realizada por **EMBOL S.A.**, el cual debe aparecer **obligatoriamente en negrilla**.\n\nLos **criterios de calidad proporcionados deben integrarse ubligatoriamente dentro del texto**, indicando que estos parámetros serán utilizados para verificar la conformidad técnica del trabajo ejecutado.\n\nLos criterios deben mencionarse como parámetros de control técnico y no como lista y en **negrillas**.\n\n---\n\n### Párrafo 3 — Forma de pago\n\nDebe describir las condiciones bajo las cuales el trabajo será aceptado para efectos de pago.\n\nDebe establecer que el pago se realizará únicamente por las cantidades medidas y verificadas que cumplan con los criterios técnicos de aceptación.\n\nDebe indicar que la aprobación del trabajo se encuentra sujeta a la verificación realizada por **EMBOL S.A.** y al cumplimiento de los **criterios de calidad verificados**.\n\n---\n\n## Reglas estrictas\n\n- Generar **exactamente tres párrafos**.\n- Cada párrafo debe separarse por **doble salto de línea**.\n- No utilizar listas, numeraciones ni viñetas.\n- No agregar subtítulos ni encabezados.\n- No inventar información técnica.\n- No modificar la unidad de medida proporcionada.\n- Integrar los criterios de calidad dentro del texto técnico.\n- No copiar los criterios como lista.\n- Utilizar redacción técnica continua propia de especificaciones de ingeniería.\n- **EMBOL S.A. debe aparecer siempre en negrilla** usando formato Markdown: **EMBOL S.A.**\n\n---\n\n## Uso de criterios de calidad\n\nLos criterios de calidad representan **parámetros técnicos utilizados para verificar la conformidad del trabajo ejecutado**.\n\nEstos parámetros deben mencionarse dentro del texto como parte del proceso de verificación técnica, indicando que el trabajo ejecutado será evaluado conforme a dichos criterios.\n\n---\n\n## Formato de salida\n\n- La salida debe ser **Markdown válido**.\n- No incluir fences de código.\n- No incluir explicaciones adicionales.\n- Generar únicamente los **tres párrafos solicitados**."
+        }
+      },
+      "id": "0840076c-9f56-4519-97ca-fb90c3b7085e",
+      "name": "medicion&pago",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        656,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n\"response\":\"{{ \"### \" + $('final').item.json.body.titulo}}\n\n\n#### Descripción\n\n{{ $('descripcion').item.json.output }}\n\n\n#### Materiales, Equipos y Herramientas\n\n- **Materiales:** {{ $('materiales').item.json.output.materiales }}\n- **Equipos:** {{ $('materiales').item.json.output.equipos }}\n- **Herramientas:** {{ $('materiales').item.json.output.herrameintas }}\n- **EPP:** {{ $('materiales').item.json.output.EPP }}\n\n\n#### Procedimiento\n\n{{ $('procedimiento').item.json.output }}\n\n\n#### Medición y Forma de Pago\n\n{{ $json.output }}\"\n}",
+        "options": {}
+      },
+      "id": "12246d89-ee76-44ed-ae75-8f84da38425c",
+      "name": "Edit Fields6",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "5bc982a9-3766-4fed-8003-39ca5089c5b0",
+      "name": "Respond to Webhook3",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1232,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actividad: {{ $json.body.titulo }}\n\nDescripción inicial: {{ $json.body.descripcion }}\n\nResumen: {{ $json.body.resumen }}\n\nActividades adicionales: \n{{ $json.body.actividades_adicionales.map(p => `  - ${p.nombre}`).join('\\n') }}",
+        "options": {
+          "systemMessage": "## Rol\nEres un ingeniero especialista en elaboración de **especificaciones técnicas para construcción, infraestructura y mantenimiento industrial**.\n\nTienes experiencia redactando documentos técnicos utilizados en **pliegos de especificaciones, para construcción y mantenimiento de obras civiles e industriales**.\n\n---\n\n## Tarea\nGenerar la **Descripción de la actividad -objetivo- **, utilizando la siguiente información de entrada:\n\n- Título de la actividad\n- Descripción inicial\n- Resumen de la actividad\n- Actividades adicionales\n\nLa descripción debe consolidar y mejorar la información disponible en un texto técnico claro y coherente.\n\n---\n\n## Definición\nLa **Descripción de la actividad** es un texto concreto que resume el objetivo de la actividad, sus características generales y los elementos principales que lo componen.\n\nLa descripción:\n- Explica **El objetivo de la actividad**.\n- Describe **sus características generales**.\n- Indica **su finalidad o desempeño esperado**.\n\nNo describe procedimientos constructivos ni instrucciones de ejecución.\n\n---\n\n## Reglas\n- Redactar **máximo tres párrafos** en total.\n- Usar **tono técnico profesional**, claro, preciso y conciso.\n- Integrar la información proporcionada sin modificar su significado técnico.\n- No repetir información entre párrafos.\n- No inventar datos técnicos que no estén presentes en la información de entrada.\n- Utilizar **terminología técnica empleada en Bolivia**.\n- Cuando se mencionen valores técnicos, deben expresarse como **número + símbolo de unidad del Sistema Internacional**.\n- Evitar redundancias o repeticiones innecesarias.\n\n---\n\n## Exclusiones\nEstá estrictamente prohibido:\n\n- Incluir **procedimientos constructivos**.\n- Incluir **pasos de ejecución**.\n- Incluir **secuencias de trabajo**.\n- Incluir **recomendaciones de instalación o montaje**.\n- Inventar materiales, dimensiones o propiedades no indicadas en la información de entrada.\n- Crear listas, viñetas o numeraciones dentro del texto.\n\n---\n\n## Consideraciones\n- El texto debe mantener coherencia técnica con el **título de la actividad** y el **Resumen**.\n- Priorizar la información del **Resumen**.\n- La **descripción inicial** puede utilizarse como contexto.\n- Las **actividades adicionales** deben incorporarse únicamente en el último párrafo y en el orden cronológico que debería ejecutarse.\n\n---\n\n## Salida\nLa salida debe cumplir estrictamente lo siguiente:\n\n- Formato: **Markdown plano**\n- No utilizar fences de código.\n- No agregar encabezados, títulos o secciones adicionales.\n- No incluir explicaciones fuera del texto solicitado.\n\nEstructura esperada:\n\nPárrafo 1  \nDescripción general del elemento o actividad.\n\nPárrafo 2  \nCaracterísticas, configuración o comportamiento esperado.\n\nPárrafo 3  \nActividades adicionales"
+        }
+      },
+      "id": "65e1e2b5-f10c-4d44-9b80-56d53363b6e2",
+      "name": "descripcion",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -352,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actividad: {{ $('final').item.json.body.titulo }}\n\nResumen: {{ $('final').item.json.body.resumen }}\n\nParámetros:\n{{ $('final').item.json.body.parametros_materiales.map(p => `  - ${p.parametro}: ${p.valor_recomendado} ${p.unidad_medida}`).join('\\n') }}\n\nActividades adicionales: \n{{ $('final').item.json.body.actividades_adicionales.map(p => `  - ${p.nombre}`).join('\\n') }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Eres un experto en elaboración de especificaciones técnicas para construcción, obras civiles y mantenimiento industrial.\n\nTu tarea es generar la lista de **Materiales, Equipos, Herramientas y EPP** necesarios para ejecutar la actividad, considerando la **Actividad**, **Resumen**, **Parámetros técnicos** y **Actividades adicionales**.\n\n### Materiales, Equipos, Herramientas y EPP\n\nDebes generar EXACTAMENTE cuatro viñetas en este orden:\n\n- **Materiales**: [lista en una sola línea separada por comas]\n- **Equipos**: [lista en una sola línea separada por comas]\n- **Herramientas**: [lista en una sola línea separada por comas]\n- **EPP**: [lista en una sola línea separada por comas]\n\n### Definiciones\n\n- **Materiales**: insumos, productos o componentes que quedan incorporados en la obra o se consumen durante la ejecución.\n- **Equipos**: maquinaria o equipos mecánicos utilizados para realizar la actividad en obra.\n- **Herramientas**: herramientas manuales o de uso directo por el personal para ejecutar el trabajo.\n- **EPP**: elementos de protección personal requeridos para la seguridad del personal.\n\n### Reglas estrictas\n\n- Usar terminología técnica empleada en Bolivia.\n- No incluir viñetas adicionales ni comentarios.\n- Cada categoría debe aparecer en una sola línea.\n- No repetir elementos entre categorías.\n\n**Materiales**\n- Si un material principal ya está definido en los parámetros técnicos, priorizar ese material.\n- No duplicar materiales equivalentes ni listar sus componentes.\n- Si se utiliza un material industrial, prefabricado o premezclado, no descomponerlo en sus materias primas.\n\n**Equipos**\n- Incluir únicamente equipos utilizados directamente durante la ejecución en obra.\n- No incluir equipos de fabricación industrial o infraestructura del proveedor (por ejemplo plantas de producción).\n- Priorizar equipos típicos de obra.\n\n**Herramientas**\n- Incluir únicamente herramientas manuales o portátiles necesarias para ejecutar la actividad.\n\n**EPP**\n- Incluir únicamente los elementos de protección personal típicos para la actividad.\n\n### Reglas de calidad\n- Priorizar únicamente los elementos realmente relevantes para la actividad.\n- Evitar listas excesivas o irrelevantes.\n- Mantener coherencia con los parámetros técnicos definidos.\n\n### Salida\nLa salida debe ser **texto Markdown plano** y **NO debe incluir fences de código**."
+        }
+      },
+      "id": "51423b09-bba3-43d7-b794-2f2f32588198",
+      "name": "materiales",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -16,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"materiales\": \"materiales\",\n\t\"equipos\": \"equipos\",\n    \"herrameintas\": \"herrameintas\",\n    \"EPP\": \"Equipo de Protección Personal\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        576
+      ],
+      "id": "b3b0596e-87a0-4cab-ab3c-25cd57ab1e7d",
+      "name": "Structured Output Parser"
+    }
+  ],
+  "pinData": {
+    "final": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.magoreal.com",
+            "x-real-ip": "189.28.68.106",
+            "x-forwarded-for": "189.28.68.106",
+            "x-forwarded-proto": "http",
+            "connection": "upgrade",
+            "content-length": "4406",
+            "user-agent": "python-requests/2.32.5",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "titulo": "Instalación de porcelanato esmaltado",
+            "descripcion": "Se requiere colocar porcelanato en todas las áreas de oficina del edificio principal",
+            "resumen": "Instalación de porcelanato esmaltado rectificado en todas las áreas de oficinas del edificio principal, utilizando piezas con baja absorción de agua, resistencia adecuada a la abrasión y a la flexión, y adhesivo cementicio aplicado con espesor y dimensionamiento de llana dentada definidos para garantizar la correcta adherencia, nivelación y desempeño mecánico del sistema de revestimiento. \n\nLa ejecución considera el control del ancho de junta entre piezas, el respeto al tiempo abierto del adhesivo durante la colocación y el cumplimiento del tiempo mínimo de curado antes de habilitar el tránsito peatonal, asegurando la estabilidad dimensional, durabilidad y acabado uniforme del pavimento instalado.",
+            "unidad_medida": "m2",
+            "parametros_materiales": [
+              {
+                "parametro": "Tipo de porcelanato",
+                "descripcion": "Porcelanato de masa compacta con capa esmaltada y bordes rectificados para juntas mínimas en pisos interiores de alto tránsito",
+                "unidad_medida": "",
+                "valor_recomendado": "Porcelanato esmaltado rectificado"
+              },
+              {
+                "parametro": "Absorcion de agua del porcelanato",
+                "descripcion": "Porcentaje máximo de absorción de agua del cuerpo cerámico, propio de porcelanato de baja absorción apto para interiores",
+                "unidad_medida": "%",
+                "valor_recomendado": "0.5"
+              },
+              {
+                "parametro": "Resistencia a la abrasion superficial del porcelanato",
+                "descripcion": "Clase PEI mínima recomendada para soportar tránsito medio a alto en áreas de oficinas",
+                "unidad_medida": "",
+                "valor_recomendado": "4"
+              },
+              {
+                "parametro": "Resistencia a la flexion del porcelanato",
+                "descripcion": "Tensión mínima de rotura a flexión del baldosín de porcelanato para asegurar adecuado desempeño mecánico",
+                "unidad_medida": "MPa",
+                "valor_recomendado": "35"
+              }
+            ],
+            "parametros_ejecucion": [
+              {
+                "parametro": "Espesor de capa de mortero adhesivo",
+                "descripcion": "Espesor promedio de la capa de mortero adhesivo bajo la pieza de porcelanato durante la colocación, medido entre soporte y dorso de la baldosa",
+                "unidad_medida": "mm",
+                "valor_recomendado": "8"
+              },
+              {
+                "parametro": "Tiempo abierto del adhesivo",
+                "descripcion": "Tiempo máximo disponible entre el extendido del adhesivo sobre el soporte y la colocación de la pieza de porcelanato para asegurar adecuada adherencia",
+                "unidad_medida": "min",
+                "valor_recomendado": "20"
+              },
+              {
+                "parametro": "Dimensión de llana dentada",
+                "descripcion": "Altura del diente de la llana metálica utilizada para el peinado del adhesivo sobre el soporte en la colocación de porcelanato de formato estándar",
+                "unidad_medida": "mm",
+                "valor_recomendado": "10"
+              },
+              {
+                "parametro": "Ancho de junta entre piezas",
+                "descripcion": "Separación nominal entre bordes de piezas de porcelanato durante la colocación para permitir el llenado con fragüe",
+                "unidad_medida": "mm",
+                "valor_recomendado": "3"
+              },
+              {
+                "parametro": "Tiempo mínimo antes de permitir tránsito peatonal",
+                "descripcion": "Tiempo de curado mínimo del sistema adhesivo y fragüe antes de habilitar el tránsito normal sobre el porcelanato colocado",
+                "unidad_medida": "h",
+                "valor_recomendado": "24"
+              }
+            ],
+            "normas_aplicables": [
+              {
+                "parametro": "ISO 10545 (serie) – Ceramic tiles",
+                "descripcion": "Conjunto de normas que definen los métodos de ensayo para baldosas cerámicas y porcelanato respecto a propiedades físicas, mecánicas y superficiales aplicables a pisos interiores."
+              }
+            ],
+            "criterios_calidad": [
+              {
+                "parametro": "Desviación de planeidad de superficie de piso",
+                "descripcion": "La superficie terminada del piso con porcelanato no debe presentar desniveles locales mayores a 3 mm medidos con regla de 2 m apoyada en cualquier dirección.",
+                "unidad_medida": "",
+                "valor_recomendado": "≤ 3 mm cada 2 m"
+              }
+            ],
+            "actividades_adicionales": [
+              {
+                "nombre": "Demolición y retiro de revestimientos de piso existentes",
+                "unidad_medida": "m2",
+                "descripcion": "Demolición mecánica o manual de pavimentos, adhesivos y morteros existentes, con corte perimetral, acopio, carga y retiro de escombros para habilitar la superficie de colocación del nuevo porcelanato."
+              }
+            ]
+          },
+          "webhookUrl": "https://n8n.magoreal.com/webhook/final",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "final": {
+      "main": [
+        [
+          {
+            "node": "descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "descripcion",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "materiales",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "procedimiento",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "medicion&pago",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "procedimiento": {
+      "main": [
+        [
+          {
+            "node": "medicion&pago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "medicion&pago": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "descripcion": {
+      "main": [
+        [
+          {
+            "node": "materiales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "materiales": {
+      "main": [
+        [
+          {
+            "node": "procedimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "materiales",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/La_Paz",
+    "binaryMode": "separate"
+  },
+  "versionId": "0415962c-3b57-47f4-b4b9-ad3d52a809e6",
+  "meta": {
+    "instanceId": "d9c5adb5b47dc1dff2717f3c50997b1de6d705b83f6fc3647d372ee5b662ea9d"
+  },
+  "id": "tqxCfqBMR0WXaHG6",
+  "tags": []
+}

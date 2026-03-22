@@ -1,0 +1,64 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}{% tailwind_css %}{% endblock %}
+
+{% block title %}Eliminar: {{ servicio.titulo }}{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:lista_servicios' %}" class="hover:text-primary transition-colors">Servicios</a>
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:ver_servicio' servicio.id %}" class="hover:text-primary transition-colors truncate max-w-xs">{{ servicio.titulo }}</a>
+</li>
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-error">Eliminar</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-[60vh] px-4">
+  <div class="w-full max-w-md">
+    <div class="card bg-base-100 shadow-xl border border-error/20">
+      <div class="card-body gap-4">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-trash text-error text-base"></i>
+          </span>
+          <h2 class="text-lg font-bold text-base-content">Eliminar Servicio</h2>
+        </div>
+
+        <div class="rounded-xl bg-error/5 border border-error/20 p-4 flex items-start gap-3">
+          <i class="fas fa-exclamation-triangle text-error mt-0.5 flex-shrink-0"></i>
+          <div>
+            <p class="text-sm text-base-content/80 leading-relaxed">
+              ¿Estás seguro de que deseas eliminar
+              <span class="font-semibold text-base-content">"{{ servicio.titulo }}"</span>?
+            </p>
+            <p class="text-xs text-error/80 mt-1">Esta acción no se puede deshacer.</p>
+          </div>
+        </div>
+
+        <div class="card-actions justify-end gap-2 pt-2">
+          <a href="{% url 'servicios:ver_servicio' servicio.id %}" class="btn btn-ghost btn-sm">
+            <i class="fas fa-times mr-1"></i> Cancelar
+          </a>
+          <form method="post" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-error btn-sm">
+              <i class="fas fa-trash mr-1"></i> Eliminar
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

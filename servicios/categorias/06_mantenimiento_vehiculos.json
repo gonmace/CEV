@@ -1,0 +1,47 @@
+{
+  "nombre": "Servicios Mantenimiento Vehículos",
+  "definicion": "Servicios técnicos orientados al mantenimiento preventivo y correctivo de vehículos industriales y equipos de movilización interna, incluyendo montacargas, traspalets manuales y eléctricos, así como vehículos livianos y pesados, garantizando su disponibilidad operativa, seguridad, confiabilidad y continuidad de operación mediante inspecciones, intervenciones, provisión de repuestos, lavado y limpieza de flota.",
+  "alcance": "Mantenimiento y reparación de vehículos y montacargas. Provisión de repuestos originales o equivalentes. Lavado y limpieza de flota. Mantenimiento de transpalets manuales y eléctricos.",
+  "subcategorias": [
+    {
+      "codigo": "VEH-01",
+      "nombre": "Mantenimiento Preventivo de Equipo Pesado",
+      "unidad": "por equipo / por servicio",
+      "descripcion": "Revisión periódica de sistemas hidráulicos, eléctricos, neumáticos y mecánicos, incluyendo actividades de lavado, fumigado y engrasado de montacargas y traspalet, ejecutadas en función de las horas de uso para asegurar condiciones óptimas de operación.",
+      "frecuencia": "mensual",
+      "intencion": "preventivo"
+    },
+    {
+      "codigo": "VEH-02",
+      "nombre": "Mantenimiento Preventivo de Vehículos",
+      "unidad": "por vehículo / por servicio",
+      "descripcion": "Inspección y ajuste de sistemas de motor, frenos, suspensión, iluminación y fluidos en vehículos, realizados en función de los kilómetros recorridos conforme a cronogramas de mantenimiento establecidos.",
+      "frecuencia": "programado",
+      "intencion": "preventivo"
+    },
+    {
+      "codigo": "VEH-03",
+      "nombre": "Mantenimiento Correctivo de Equipo Pesado con Provisión de Repuestos",
+      "unidad": "por intervención",
+      "descripcion": "Intervención correctiva ante fallas mecánicas, eléctricas o estructurales en montacargas y traspalets, incluyendo diagnóstico, reparación y provisión de repuestos necesarios para la restitución de la funcionalidad del equipo.",
+      "frecuencia": "por demanda",
+      "intencion": "correctivo"
+    },
+    {
+      "codigo": "VEH-04",
+      "nombre": "Mantenimiento Correctivo de Vehículos con Provisión de Repuestos",
+      "unidad": "por intervención",
+      "descripcion": "Reparación de componentes dañados o desgastados en vehículos livianos o pesados, incluyendo la identificación de fallas y el reemplazo de los repuestos a cambiar para restablecer las condiciones operativas.",
+      "frecuencia": "por demanda",
+      "intencion": "correctivo"
+    },
+    {
+      "codigo": "VEH-05",
+      "nombre": "Provisión de Tanques de GNV",
+      "unidad": "por unidad / por servicio",
+      "descripcion": "Suministro de tanques de gas natural vehicular (GNV) para flota o equipos, asegurando compatibilidad con los sistemas de almacenamiento y uso de combustible.",
+      "frecuencia": "por demanda",
+      "intencion": "instalación"
+    }
+  ]
+}

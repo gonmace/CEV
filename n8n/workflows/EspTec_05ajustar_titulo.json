@@ -1,0 +1,240 @@
+{
+  "name": "EspTec_05ajustar_titulo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "titulo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "27371fff-fc60-4984-839d-5a023588415d",
+      "name": "3",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        272
+      ],
+      "webhookId": "cf26182b-4b24-48de-b8eb-6a2f1b003ccf"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2aedc3c4-9b42-4ad8-bced-9d380899367c",
+              "name": "titulo",
+              "value": "={{ $json.body.titulo }}",
+              "type": "string"
+            },
+            {
+              "id": "d67134c1-3c12-4af8-a389-a1ae7596bcac",
+              "name": "descripcion",
+              "value": "={{ $json.body.descripcion }}",
+              "type": "string"
+            },
+            {
+              "id": "23c290f1-5238-451f-a622-601377233d2b",
+              "name": "parametros",
+              "value": "={{ $json.body.parametros_materiales }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2626ea86-93c8-4929-b162-d1cc04e8c418",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "31e902a8-bea3-4a57-866a-c8d1e73099d0",
+      "name": "OpenAI Chat Model3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        48,
+        480
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Titulo: {{ $json.titulo }}\nDescricpión: {{ $json.descripcion }}\nParametros: \n{{ $json.parametros.map(p => `${p.parametro}: ${p.valor_recomendado} ${p.unidad_medida !== \"N/A\" ? p.unidad_medida : \"\"}`).join('\\n') }}",
+        "options": {
+          "systemMessage": "=Eres un experto en elaboración de pliego de especificaciones técnicas para cualquier área industrial \n(construcción, mecánica, electricidad, instrumentación, piping, HVAC, SSMA, mantenimiento, logística, etc.).\n\nTu objetivo es generar un nombre ADECUADO para la ACTIVIDAD a partir del titulo principalmente, su descripción y los parámetros.\n\nREGLAS GENERALES (OBLIGATORIAS):\n\n1. El título debe ser:\n   - Corto (máximo 50 caracteres).\n   - Técnico, profesional y directo.\n   - Representativo de la actividad principal.\n\n2. Puedes utilizar uno de los parámetros proporcionados SOLO si ayuda a clarificar la actividad, por ejemplo espesor, capacidad, diámetro, potencia, presión, temperatura, etc.\n\n3. Regla de Unidades:\n   - Convertir automáticamente valores a unidades prácticas:\n       0.15 m → 15 cm\n       0.02 m → 20 mm\n   - Usar SIEMPRE número + símbolo (15 cm, 50 mm, 420 MPa, 230 V, etc.).\n   - Prohibido escribir números o unidades en palabras.\n\n4. Si el parámetro principal es un espesor, puedes usar la notación técnica:\n   e=15 cm\n   Ø8 mm\n   P=230 V\n   T=5 °C\n   (solo si aporta claridad y sigue siendo breve)\n\n5. El título NO debe incluir explicación ni notas técnicas.\n6. El resultado debe ser SOLO el título, sin texto adicional.\n\nTu salida debe ser EXCLUSIVAMENTE el título final.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        48,
+        272
+      ],
+      "id": "aec230ca-45fc-4188-994c-e9ea4021bab8",
+      "name": "mejorar_titulo"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"titulo_inicial\": $(\"3\").item.json.body.titulo, \"titulo_propuesto\": $json.output } }}",
+        "options": {}
+      },
+      "id": "5ca889ef-ac24-47f1-924b-5c1dcf695075",
+      "name": "respond_titulo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        400,
+        272
+      ]
+    }
+  ],
+  "pinData": {
+    "3": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.magoreal.com",
+            "x-real-ip": "189.28.68.106",
+            "x-forwarded-for": "189.28.68.106",
+            "x-forwarded-proto": "http",
+            "connection": "upgrade",
+            "content-length": "1369",
+            "user-agent": "python-requests/2.32.5",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "titulo": "Pavimento de hotrmigon armado",
+            "descripcion": "Pavimento para patio de maniobras de espesor 10 cm con doble armadura",
+            "parametros_materiales": [
+              {
+                "parametro": "Espesor de losa de hormigón",
+                "descripcion": "Espesor estructural de la losa de pavimento de hormigón armado para patio de maniobras",
+                "unidad_medida": "cm",
+                "valor_recomendado": "10"
+              },
+              {
+                "parametro": "Asentamiento del hormigón (slump)",
+                "descripcion": "Consistencia plástica media adecuada para pavimentos de hormigón armado con doble armadura (rango típico 5–9 cm)",
+                "unidad_medida": "cm",
+                "valor_recomendado": "7"
+              },
+              {
+                "parametro": "Tipo de acero de refuerzo",
+                "descripcion": "Acero de refuerzo de barras corrugadas con límite de fluencia de aproximadamente 420 MPa para armaduras superior e inferior",
+                "unidad_medida": "N/A",
+                "valor_recomendado": "Acero corrugado fy=420"
+              },
+              {
+                "parametro": "Límite de fluencia del acero de refuerzo fy",
+                "descripcion": "Tensión de fluencia característica del acero corrugado usado en la doble armadura de la losa",
+                "unidad_medida": "MPa",
+                "valor_recomendado": "420"
+              },
+              {
+                "parametro": "Diámetro típico de barras de refuerzo",
+                "descripcion": "Diámetro nominal de barras corrugadas usual para mallas de doble armadura en losa de 10 cm de espesor",
+                "unidad_medida": "mm",
+                "valor_recomendado": "10"
+              }
+            ]
+          },
+          "webhookUrl": "https://n8n.magoreal.com/webhook/titulo",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "mejorar_titulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "mejorar_titulo",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mejorar_titulo": {
+      "main": [
+        [
+          {
+            "node": "respond_titulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "05f42e47-26ff-483d-95e0-5c1baef899e8",
+  "meta": {
+    "instanceId": "d9c5adb5b47dc1dff2717f3c50997b1de6d705b83f6fc3647d372ee5b662ea9d"
+  },
+  "id": "QwGSeaKowKJexLYu",
+  "tags": []
+}

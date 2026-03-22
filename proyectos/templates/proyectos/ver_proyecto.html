@@ -13,10 +13,6 @@
 {% block breadcrumbs %}
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
-    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
-  </li>
-  <li class="flex items-center gap-2">
-    <span class="text-base-content/50">›</span>
     <span class="font-semibold text-base-content">{{ proyecto.nombre }}</span>
   </li>
 {% endblock %}
@@ -31,74 +27,113 @@
       <!-- Ubicación (colapsable) -->
       <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
         <details class="group" {% if not ubicaciones %}open{% endif %}>
-          <summary class="flex items-center justify-between px-5 py-3.5 cursor-pointer list-none select-none">
-            <div class="flex items-center gap-2">
-              <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
-                <i class="fas fa-map-marker-alt text-secondary text-xs"></i>
-              </span>
-              <span class="text-sm font-semibold text-base-content">Ubicación</span>
-              {% if tiene_ubicacion_con_pdf %}
-                <span class="text-[10px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full">Con PDF</span>
-              {% endif %}
-            </div>
-            <div class="flex items-center gap-2">
-              {% if es_propietario and not ubicaciones %}
-                <a href="{% url 'ubi_web:crear_ubicacion' proyecto.id %}"
-                   onclick="event.stopPropagation()"
-                   class="flex items-center gap-1 text-xs font-semibold text-success hover:bg-success/10 px-2 py-1 rounded-lg transition-colors">
-                  <i class="fas fa-plus text-xs"></i> Nueva
-                </a>
-              {% endif %}
-              <i class="fas fa-chevron-down text-xs text-base-content/30 transition-transform group-open:rotate-180"></i>
+
+          <summary class="list-none select-none cursor-pointer">
+            <div class="flex items-center justify-between px-5 py-3.5 bg-base-100 hover:bg-base-200/40 transition-colors">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-map-marker-alt text-primary text-xs"></i>
+                </span>
+                <div>
+                  <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest leading-none mb-0.5">Sitio</p>
+                  <span class="text-sm font-semibold text-base-content">
+                    {% if ubicaciones %}{{ ubicaciones.0.nombre }}{% else %}Ubicación del proyecto{% endif %}
+                  </span>
+                </div>
+                {% if tiene_ubicacion_con_pdf %}
+                  <span class="text-[10px] font-bold text-success bg-success/10 px-2 py-0.5 rounded-full border border-success/20">PDF</span>
+                {% endif %}
+              </div>
+              <div class="flex items-center gap-2">
+                {% if es_propietario and not ubicaciones %}
+                  <a href="{% url 'ubi_web:crear_ubicacion' proyecto.id %}"
+                     onclick="event.stopPropagation()"
+                     class="flex items-center gap-1.5 text-xs font-semibold text-success bg-success/10 hover:bg-success/20 border border-success/20 px-2.5 py-1 rounded-lg transition-colors">
+                    <i class="fas fa-plus text-[10px]"></i> Nueva
+                  </a>
+                {% endif %}
+                <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
+                  <i class="fas fa-chevron-down text-[10px] text-secondary/50 transition-transform duration-200 group-open:rotate-180"></i>
+                </span>
+              </div>
             </div>
           </summary>
-          <div class="px-4 pb-4 border-t border-secondary/10">
+
+          <div class="border-t border-secondary/10">
             {% if ubicaciones %}
-              <div class="space-y-2 pt-3">
+              <div class="p-3 space-y-2">
                 {% for ubicacion in ubicaciones %}
-                  <div class="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-base-200/50 border border-secondary/10">
-                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                  <div class="rounded-lg border border-secondary/10 overflow-hidden">
+                    <!-- Fila principal -->
+                    <div class="flex items-center gap-3 px-3 py-2.5 bg-base-200/30">
                       {% if ubicacion.mapa_imagen %}
-                        <img src="{{ ubicacion.mapa_imagen.url }}" alt="Mapa" class="w-10 h-10 object-cover rounded-lg border border-base-300 cursor-pointer hover:opacity-80 flex-shrink-0" onclick="window.open('{{ ubicacion.mapa_imagen.url }}', '_blank')">
+                        <img src="{{ ubicacion.mapa_imagen.url }}" alt="Mapa"
+                             class="w-12 h-12 object-cover rounded-lg border border-base-300 cursor-pointer hover:opacity-80 flex-shrink-0 shadow-sm"
+                             onclick="window.open('{{ ubicacion.mapa_imagen.url }}', '_blank')">
+                      {% else %}
+                        <span class="w-12 h-12 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center flex-shrink-0">
+                          <i class="fas fa-map text-base-content/20 text-lg"></i>
+                        </span>
                       {% endif %}
-                      <span class="text-sm font-medium text-base-content truncate">{{ ubicacion.nombre }}</span>
-                    </div>
-                    <div class="flex items-center gap-0.5 flex-shrink-0">
-                      <button type="button"
-                              class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-base-300 transition-colors gestionar-imagenes-ubicacion-btn"
-                              data-ubicacion-id="{{ ubicacion.id }}"
-                              data-ubicacion-nombre="{{ ubicacion.nombre|escape }}"
-                              data-cantidad-imagenes="{{ ubicacion.cantidad_imagenes }}"
-                              title="{% if ubicacion.cantidad_imagenes > 0 %}Ver imágenes ({{ ubicacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}">
-                        <i class="fas fa-images text-sm {% if ubicacion.cantidad_imagenes == 0 %}text-base-content/40{% elif ubicacion.cantidad_imagenes == 1 %}text-warning{% else %}text-success{% endif %}"></i>
-                      </button>
-                      {% if es_propietario %}
-                      {% if ubicacion.documento_pdf %}
-                        <a href="{% url 'ubi_web:descargar_pdf' ubicacion.id %}" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors" title="Descargar PDF">
-                          <i class="fas fa-file-pdf text-xs"></i>
-                        </a>
-                      {% endif %}
-                      <a href="{% url 'ubi_web:editar_ubicacion' ubicacion.id %}" class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
-                        <i class="fas fa-edit text-xs"></i>
-                      </a>
-                      <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-ubicacion-btn"
-                              data-ubicacion-id="{{ ubicacion.id }}" data-ubicacion-nombre="{{ ubicacion.nombre|escape }}">
-                        <i class="fas fa-trash text-xs"></i>
-                      </button>
-                      {% endif %}
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-base-content truncate">{{ ubicacion.nombre }}</p>
+                        {% if ubicacion.ciudad %}
+                          <p class="text-xs text-secondary/60 truncate">{{ ubicacion.ciudad }}</p>
+                        {% endif %}
+                      </div>
+                      <div class="flex items-center gap-0.5 flex-shrink-0">
+                        <button type="button"
+                                class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-base-300 transition-colors gestionar-imagenes-ubicacion-btn"
+                                data-ubicacion-id="{{ ubicacion.id }}"
+                                data-ubicacion-nombre="{{ ubicacion.nombre|escape }}"
+                                data-cantidad-imagenes="{{ ubicacion.cantidad_imagenes }}"
+                                title="{% if ubicacion.cantidad_imagenes > 0 %}Ver imágenes ({{ ubicacion.cantidad_imagenes }}){% else %}Agregar imágenes{% endif %}">
+                          <i class="fas fa-images text-sm {% if ubicacion.cantidad_imagenes == 0 %}text-base-content/25{% elif ubicacion.cantidad_imagenes == 1 %}text-warning{% else %}text-success{% endif %}"></i>
+                        </button>
+                        {% if es_propietario %}
+                          {% if ubicacion.documento_pdf %}
+                            <a href="{% url 'ubi_web:descargar_pdf' ubicacion.id %}"
+                               class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors"
+                               title="Descargar PDF">
+                              <i class="fas fa-file-pdf text-xs"></i>
+                            </a>
+                          {% endif %}
+                          <a href="{% url 'ubi_web:editar_contenido_ubicacion' ubicacion.id %}"
+                             class="w-7 h-7 rounded-md flex items-center justify-center text-info hover:bg-info/10 transition-colors"
+                             title="Editar texto generado">
+                            <i class="fas fa-file-alt text-xs"></i>
+                          </a>
+                          <a href="{% url 'ubi_web:editar_ubicacion' ubicacion.id %}"
+                             class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors"
+                             title="Editar datos">
+                            <i class="fas fa-edit text-xs"></i>
+                          </a>
+                          <button type="button"
+                                  class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors cursor-pointer eliminar-ubicacion-btn"
+                                  title="Eliminar ubicación"
+                                  data-ubicacion-id="{{ ubicacion.id }}"
+                                  data-ubicacion-nombre="{{ ubicacion.nombre|escape }}">
+                            <i class="fas fa-trash text-xs"></i>
+                          </button>
+                        {% endif %}
+                      </div>
                     </div>
                   </div>
                 {% endfor %}
               </div>
             {% else %}
-              <div class="flex flex-col items-center justify-center py-8 gap-2">
-                <div class="w-10 h-10 rounded-xl bg-base-200 flex items-center justify-center">
-                  <i class="fas fa-map-marker-alt text-base-content/25"></i>
+              <div class="flex flex-col items-center justify-center py-10 gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+                  <i class="fas fa-map-marker-alt text-xl text-base-content/20"></i>
                 </div>
-                <p class="text-xs text-base-content/40 font-medium">Sin ubicación registrada</p>
+                <div class="text-center">
+                  <p class="text-xs font-semibold text-base-content/40">Sin ubicación registrada</p>
+                  <p class="text-[10px] text-base-content/30 mt-0.5">Agrega una ubicación para el proyecto</p>
+                </div>
               </div>
             {% endif %}
           </div>
+
         </details>
       </div>
 
@@ -240,7 +275,9 @@
                        class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
                       <i class="fas fa-edit text-xs"></i>
                     </a>
-                    <button type="button" class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-especificacion-btn"
+                    <button type="button"
+                            class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors cursor-pointer eliminar-especificacion-btn"
+                            title="Eliminar especificación"
                             data-especificacion-id="{{ especificacion.id }}"
                             data-especificacion-titulo="{{ especificacion.titulo|escape }}">
                       <i class="fas fa-trash text-xs"></i>

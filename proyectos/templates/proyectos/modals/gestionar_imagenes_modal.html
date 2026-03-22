@@ -3,17 +3,23 @@
 <!-- Modal confirmar eliminar imagen -->
 <dialog id="confirmar-eliminar-imagen-modal" class="modal">
   <div class="modal-box max-w-sm p-0 overflow-hidden">
-    <div class="bg-error px-5 py-4 flex items-center gap-3">
-      <span class="w-8 h-8 rounded-lg bg-error-content/10 flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-trash text-error-content text-sm"></i>
-      </span>
-      <p class="text-sm font-bold text-error-content">¿Eliminar imagen?</p>
+    <div class="bg-error px-5 py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-error-content/10 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-trash text-error-content text-sm"></i>
+        </span>
+        <p class="text-sm font-bold text-error-content">¿Eliminar imagen?</p>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-error-content/60 hover:bg-error-content/10 hover:text-error-content transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
     </div>
     <div class="p-5">
       <p class="text-sm text-base-content/70">Esta acción no se puede deshacer.</p>
     </div>
     <div class="px-5 pb-5 flex justify-end gap-2">
-      <button type="button" class="btn btn-ghost btn-sm" id="confirmar-eliminar-imagen-cancel">Cancelar</button>
       <button type="button" class="btn btn-error btn-sm" id="confirmar-eliminar-imagen-confirm">
         <i class="fas fa-trash text-xs"></i> Eliminar
       </button>

@@ -1,0 +1,159 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}Editar: {{ servicio.titulo }}{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:lista_servicios' %}" class="hover:text-primary transition-colors">Servicios</a>
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:ver_servicio' servicio.id %}" class="hover:text-primary transition-colors truncate max-w-xs">{{ servicio.titulo }}</a>
+</li>
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Editar</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+  <div class="w-full max-w-4xl">
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body space-y-6">
+
+        <div class="flex items-center gap-3 pb-2 border-b border-secondary/10">
+          <span class="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+            <i class="fas fa-edit text-warning text-sm"></i>
+          </span>
+          <h2 class="text-lg font-bold text-base-content">Editar Servicio</h2>
+        </div>
+
+        <form method="post" class="space-y-5">
+          {% csrf_token %}
+
+          <!-- Categoría / Subcategoría -->
+          <div class="rounded-xl border border-primary/20 bg-primary/3 p-4 flex flex-col gap-3">
+            <p class="text-[10px] font-bold text-primary/60 uppercase tracking-widest">Clasificación</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label" for="{{ form.categoria.id_for_label }}">
+                  <span class="label-text font-semibold">{{ form.categoria.label }}</span>
+                </label>
+                {{ form.categoria }}
+              </div>
+              <div class="form-control">
+                <label class="label" for="{{ form.subcategoria_codigo.id_for_label }}">
+                  <span class="label-text font-semibold">{{ form.subcategoria_codigo.label }}</span>
+                </label>
+                {{ form.subcategoria_codigo }}
+                {% if form.subcategoria_codigo.errors %}
+                  <label class="label"><span class="label-text-alt text-error">{{ form.subcategoria_codigo.errors.0 }}</span></label>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-control">
+            <label class="label" for="{{ form.titulo.id_for_label }}">
+              <span class="label-text font-semibold">{{ form.titulo.label }}</span>
+            </label>
+            {{ form.titulo }}
+            {% if form.titulo.errors %}
+              <label class="label"><span class="label-text-alt text-error">{{ form.titulo.errors.0 }}</span></label>
+            {% endif %}
+          </div>
+
+          <div class="form-control">
+            <label class="label" for="{{ form.descripcion.id_for_label }}">
+              <span class="label-text font-semibold">{{ form.descripcion.label }} <span class="text-error">*</span></span>
+            </label>
+            {{ form.descripcion }}
+            <div class="flex items-start gap-2 mt-2 p-3 rounded-lg bg-info/10 border border-info/30">
+              <i class="fas fa-circle-info text-info mt-0.5 text-sm shrink-0"></i>
+              <p class="text-sm text-base-content">Describe brevemente qué servicio se realizará, sobre qué equipos o sistemas y con qué propósito.</p>
+            </div>
+            {% if form.descripcion.errors %}
+              <label class="label"><span class="label-text-alt text-error">{{ form.descripcion.errors.0 }}</span></label>
+            {% endif %}
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              {{ form.publico }}
+              <span class="label-text font-semibold">{{ form.publico.label }}</span>
+              <span class="label-text-alt text-base-content/40 ml-1">Visible para todos los usuarios</span>
+            </label>
+          </div>
+
+          <div class="card-actions justify-end pt-2">
+            <a href="{% url 'servicios:ver_servicio' servicio.id %}" class="btn btn-ghost">
+              <i class="fas fa-times mr-2"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save mr-2"></i> Guardar cambios
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const categorias = {{ categorias_json|safe }};
+    const selectCat = document.getElementById('id_categoria');
+    const selectSub = document.getElementById('id_subcategoria_codigo');
+
+    const todasSubOpts = Array.from(selectSub.options).slice(1).map(o => ({
+      value: o.value, text: o.textContent,
+    }));
+
+    function filtrarSubcategorias(catNombre) {
+      const currentVal = selectSub.value;
+      while (selectSub.options.length > 1) selectSub.remove(1);
+      if (!catNombre) return;
+      const cat = categorias.find(c => c.id === catNombre);
+      if (!cat) return;
+      const codigos = new Set(cat.subcategorias.map(s => s.codigo));
+      todasSubOpts.forEach(o => {
+        if (codigos.has(o.value)) {
+          const opt = new Option(o.text, o.value, false, o.value === currentVal);
+          selectSub.appendChild(opt);
+        }
+      });
+    }
+
+    selectCat.addEventListener('change', () => filtrarSubcategorias(selectCat.value));
+
+    // Al cargar: restaurar la categoría de la subcategoría actual
+    const preselected = selectSub.value;
+    if (preselected) {
+      for (const cat of categorias) {
+        if (cat.subcategorias.some(s => s.codigo === preselected)) {
+          selectCat.value = cat.id;
+          filtrarSubcategorias(cat.id);
+          selectSub.value = preselected;
+          break;
+        }
+      }
+    } else {
+      while (selectSub.options.length > 1) selectSub.remove(1);
+    }
+  });
+</script>
+{% endblock %}

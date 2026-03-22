@@ -12,15 +12,11 @@
 {% block breadcrumbs %}
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
-    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
-  </li>
-  <li class="flex items-center gap-2">
-    <span class="text-base-content/50">›</span>
     <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto.nombre }}</a>
   </li>
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
-    <span class="font-semibold text-base-content">Editar Contenido</span>
+    <span class="font-semibold text-base-content">Editar Contenido — {{ ubicacion.nombre }}</span>
   </li>
 {% endblock %}
 

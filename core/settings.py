@@ -17,6 +17,7 @@ ADMIN_URL = config('ADMIN_URL', default='admin/')
 INSTALLED_APPS = [
     'home',
     'proyectos',
+    'servicios',
     'pliego_licitacion',
     'ubi_web',
 

@@ -4,10 +4,6 @@
 {% block title %}Especificaciones Disponibles{% endblock %}
 
 {% block breadcrumbs %}
-  <li class="flex items-center gap-2">
-    <span class="text-base-content/50">›</span>
-    <a href="{% url 'proyectos:lista_proyectos' %}" class="hover:text-primary transition-colors">Proyectos</a>
-  </li>
   {% if dest_project %}
     <li class="flex items-center gap-2">
       <span class="text-base-content/50">›</span>

@@ -1,0 +1,258 @@
+<!-- Modal confirmar eliminar imagen -->
+<dialog id="confirmar-eliminar-imagen-servicio-modal" class="modal">
+  <div class="modal-box max-w-sm p-0 overflow-hidden">
+    <div class="bg-error px-5 py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-error-content/10 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-trash text-error-content text-sm"></i>
+        </span>
+        <p class="text-sm font-bold text-error-content">¿Eliminar imagen?</p>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-error-content/60 hover:bg-error-content/10 hover:text-error-content transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+    <div class="p-5">
+      <p class="text-sm text-base-content/70">Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="px-5 pb-5 flex justify-end gap-2">
+      <button type="button" class="btn btn-error btn-sm" id="confirmar-eliminar-imagen-servicio-confirm">
+        <i class="fas fa-trash text-xs"></i> Eliminar
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+
+<!-- Modal gestionar imágenes de servicio -->
+<dialog id="gestionar-imagenes-servicio-modal" class="modal">
+  <div class="modal-box max-w-4xl p-0 overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-primary px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center">
+          <i class="fas fa-images text-primary-content text-sm"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Imágenes</p>
+          <h3 id="gestionar-imagenes-servicio-titulo" class="text-sm font-bold text-primary-content leading-tight truncate max-w-sm"></h3>
+        </div>
+      </div>
+      <form method="dialog">
+        <button class="w-8 h-8 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors">
+          <i class="fas fa-times text-sm"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="p-5 flex flex-col gap-5">
+
+      <!-- Galería -->
+      <div>
+        <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-3">Imágenes existentes</p>
+        <div id="gestionar-imagenes-servicio-loading" class="flex items-center justify-center py-8 gap-2 text-base-content/40">
+          <span class="loading loading-spinner loading-sm"></span>
+          <span class="text-sm">Cargando...</span>
+        </div>
+        <div id="gestionar-imagenes-servicio-lista" class="grid grid-cols-2 md:grid-cols-3 gap-3 hidden"></div>
+        <div id="gestionar-imagenes-servicio-vacio" class="hidden flex-col items-center justify-center py-10 gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+            <i class="fas fa-image text-xl text-base-content/30"></i>
+          </div>
+          <p class="text-sm font-medium text-base-content/40">Sin imágenes agregadas</p>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div class="rounded-xl border border-dashed border-secondary/30 bg-base-200/40 p-4">
+        <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-3">Agregar imágenes</p>
+        <form id="gestionar-imagenes-servicio-form" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="hidden" id="gestionar-imagenes-servicio-id" name="servicio_id" value="">
+          <div class="flex items-center gap-3 flex-wrap">
+            <input type="file"
+                   id="gestionar-imagenes-servicio-input"
+                   name="imagenes"
+                   accept="image/*"
+                   multiple
+                   class="file-input file-input-bordered file-input-sm flex-1 min-w-0">
+            <button type="submit" class="btn btn-primary btn-sm flex-shrink-0" id="gestionar-imagenes-servicio-submit">
+              <i class="fas fa-upload text-xs"></i> Subir
+            </button>
+          </div>
+          <p class="text-xs text-base-content/40 mt-2">
+            <i class="fas fa-info-circle mr-1"></i>Múltiples archivos. Se optimizan automáticamente.
+          </p>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="px-5 pb-5 flex justify-end">
+      <button type="button" class="btn btn-ghost btn-sm" id="gestionar-imagenes-servicio-cancel">Cerrar</button>
+    </div>
+
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+
+<script>
+  (function () {
+    const modal = document.getElementById('gestionar-imagenes-servicio-modal');
+    const form = document.getElementById('gestionar-imagenes-servicio-form');
+    const tituloEl = document.getElementById('gestionar-imagenes-servicio-titulo');
+    const servicioIdInput = document.getElementById('gestionar-imagenes-servicio-id');
+    const galeriaLista = document.getElementById('gestionar-imagenes-servicio-lista');
+    const galeriaVacio = document.getElementById('gestionar-imagenes-servicio-vacio');
+    const galeriaLoading = document.getElementById('gestionar-imagenes-servicio-loading');
+    const submitButton = document.getElementById('gestionar-imagenes-servicio-submit');
+    const fileInput = document.getElementById('gestionar-imagenes-servicio-input');
+    const confirmModal = document.getElementById('confirmar-eliminar-imagen-servicio-modal');
+    const confirmBtn = document.getElementById('confirmar-eliminar-imagen-servicio-confirm');
+
+    let currentServicioId = null;
+    let imagenAEliminarId = null;
+
+    function getCookie(name) {
+      let v = null;
+      if (document.cookie) document.cookie.split(';').forEach(c => {
+        c = c.trim();
+        if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+      });
+      return v;
+    }
+
+    function setGaleriaState(state) {
+      galeriaLoading.classList.toggle('hidden', state !== 'loading');
+      galeriaLista.classList.toggle('hidden', state !== 'images');
+      galeriaVacio.classList.toggle('hidden', state !== 'empty');
+      if (state === 'empty') galeriaVacio.classList.add('flex');
+    }
+
+    async function cargarImagenes(servicioId) {
+      setGaleriaState('loading');
+      try {
+        const r = await fetch(`/servicios/${servicioId}/imagenes/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await r.json();
+        mostrarImagenes(data.imagenes || []);
+      } catch { mostrarImagenes([]); }
+    }
+
+    function mostrarImagenes(imagenes) {
+      if (!imagenes.length) { setGaleriaState('empty'); return; }
+      setGaleriaState('images');
+      galeriaLista.innerHTML = imagenes.map(img => `
+        <div class="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-sm group">
+          <div class="relative">
+            <img src="${img.url}" alt="Imagen"
+                 class="w-full h-40 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                 onclick="window.open('${img.url}', '_blank')">
+            <button type="button"
+                    class="eliminar-img-btn absolute top-2 right-2 w-7 h-7 rounded-lg bg-error flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                    data-imagen-id="${img.id}" title="Eliminar">
+              <i class="fas fa-trash text-error-content text-xs"></i>
+            </button>
+          </div>
+          <div class="p-2.5">
+            <input type="text" class="input input-bordered input-xs w-full descripcion-img-input"
+                   placeholder="Descripción..." value="${img.descripcion || ''}"
+                   data-imagen-id="${img.id}" data-original="${img.descripcion || ''}">
+            <button type="button" class="guardar-desc-btn hidden btn btn-xs btn-primary mt-1.5 w-full" data-imagen-id="${img.id}">
+              <i class="fas fa-save text-xs"></i> Guardar descripción
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      galeriaLista.querySelectorAll('.eliminar-img-btn').forEach(btn => {
+        btn.addEventListener('click', () => { imagenAEliminarId = btn.dataset.imagenId; confirmModal.showModal(); });
+      });
+      galeriaLista.querySelectorAll('.descripcion-img-input').forEach(input => {
+        const id = input.dataset.imagenId;
+        const btn = galeriaLista.querySelector(`.guardar-desc-btn[data-imagen-id="${id}"]`);
+        input.addEventListener('input', () => btn.classList.toggle('hidden', input.value === input.dataset.original));
+        btn.addEventListener('click', async () => {
+          await guardarDescripcion(id, input.value);
+          input.dataset.original = input.value;
+          btn.classList.add('hidden');
+        });
+      });
+    }
+
+    confirmBtn.addEventListener('click', async () => {
+      if (!imagenAEliminarId) return;
+      try {
+        const r = await fetch(`/servicios/imagen/${imagenAEliminarId}/eliminar/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await r.json();
+        if (data.success) {
+          if (window.flashy) flashy.success('Imagen eliminada.');
+          await cargarImagenes(currentServicioId);
+        }
+      } catch { if (window.flashy) flashy.error('Error al eliminar la imagen.'); }
+      imagenAEliminarId = null;
+      confirmModal.close();
+    });
+
+    async function guardarDescripcion(imagenId, descripcion) {
+      try {
+        const r = await fetch(`/servicios/imagen/${imagenId}/descripcion/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify({ descripcion })
+        });
+        const data = await r.json();
+        if (data.success && window.flashy) flashy.success('Descripción guardada.');
+      } catch { if (window.flashy) flashy.error('Error al guardar descripción.'); }
+    }
+
+    window.openGestionarImagenesServicioModal = function(servicioId, servicioTitulo) {
+      currentServicioId = servicioId;
+      tituloEl.textContent = servicioTitulo;
+      servicioIdInput.value = servicioId;
+      fileInput.value = '';
+      cargarImagenes(servicioId);
+      modal.showModal();
+    };
+
+    document.getElementById('gestionar-imagenes-servicio-cancel').addEventListener('click', () => modal.close());
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (!fileInput.files.length) {
+        if (window.flashy) flashy.warning('Selecciona al menos una imagen.');
+        return;
+      }
+      const fd = new FormData();
+      fd.append('servicio_id', currentServicioId);
+      for (const f of fileInput.files) fd.append('imagenes', f);
+
+      const orig = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Subiendo...';
+      try {
+        const r = await fetch(`/servicios/${currentServicioId}/subir-imagenes/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+          body: fd
+        });
+        const data = await r.json();
+        if (data.success) {
+          if (window.flashy) flashy.success(data.message || 'Imágenes subidas.');
+          fileInput.value = '';
+          await cargarImagenes(currentServicioId);
+          // Recargar galería en la página si existe
+          if (document.getElementById('imagenes-galeria')) window.location.reload();
+        } else throw new Error(data.error);
+      } catch { if (window.flashy) flashy.error('Error al subir las imágenes.'); }
+      finally { submitButton.disabled = false; submitButton.innerHTML = orig; }
+    });
+  })();
+</script>

@@ -5,7 +5,7 @@
   {% tailwind_css %}
 {% endblock %}
 
-{% block title %}Gestión de Proyectos{% endblock %}
+{% block title %}Especificaciones para Licitación{% endblock %}
 
 {% block body_class %}bg-base-200{% endblock %}
 
@@ -41,25 +41,34 @@
 
       <!-- Proyecto activo -->
       {% if proyecto_seleccionado %}
-      <div class="rounded-xl bg-primary text-primary-content shadow-sm overflow-hidden">
-        <div class="px-4 pt-4 pb-1">
-          <p class="text-[10px] font-bold uppercase tracking-widest opacity-60">
-            <i class="fas fa-folder-open mr-1"></i> Proyecto Activo
-          </p>
-          <p class="font-bold text-sm leading-snug mt-1.5">{{ proyecto_seleccionado.nombre }}</p>
+      <div class="rounded-xl bg-base-100 border border-primary/30 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="bg-primary/8 border-b border-primary/15 px-4 py-2.5 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-md bg-primary/15 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-folder-open text-primary text-[10px]"></i>
+          </span>
+          <p class="text-[10px] font-bold text-primary/70 uppercase tracking-widest">Proyecto activo</p>
         </div>
-        <div class="flex flex-col px-3 pb-3 mt-2 gap-0.5">
+        <!-- Nombre -->
+        <div class="px-4 py-3">
+          <p class="text-sm font-bold text-base-content leading-snug">{{ proyecto_seleccionado.nombre }}</p>
+          {% if proyecto_seleccionado.solicitante %}
+            <p class="text-xs text-secondary/60 mt-0.5 truncate">{{ proyecto_seleccionado.solicitante }}</p>
+          {% endif %}
+        </div>
+        <!-- Acciones -->
+        <div class="flex flex-col px-3 pb-3 gap-0.5 border-t border-secondary/10 pt-2">
           <a href="{% url 'proyectos:proyecto_detalle' proyecto_seleccionado.id %}"
-             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 hover:bg-white/25 transition-colors">
+             class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-primary bg-primary/8 hover:bg-primary/15 transition-colors">
             <i class="fas fa-sign-in-alt text-xs"></i> Ingresar
           </a>
           {% if proyecto_seleccionado.creado_por_id == request.user.id %}
           <a href="{% url 'proyectos:editar_proyecto' proyecto_seleccionado.id %}"
-             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm opacity-80 hover:opacity-100 hover:bg-white/10 transition-colors">
+             class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-edit hover:bg-edit/10 transition-colors">
             <i class="fas fa-edit text-xs"></i> Editar
           </a>
           <a href="{% url 'proyectos:eliminar_proyecto' proyecto_seleccionado.id %}"
-             class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm opacity-80 hover:opacity-100 hover:bg-white/10 transition-colors">
+             class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-delete hover:bg-delete/10 transition-colors">
             <i class="fas fa-trash text-xs"></i> Eliminar
           </a>
           {% endif %}
@@ -197,7 +206,7 @@
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary/70">
             <span class="whitespace-nowrap">Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }}</span>
             <form method="get" class="flex items-center gap-1">
-              <select name="per_page" class="select select-bordered select-xs w-16 text-base-content bg-base-100 font-medium" onchange="this.form.submit()">
+              <select name="per_page" class="select select-bordered select-sm text-base-content bg-base-100 font-medium" onchange="this.form.submit()">
                 {% for option in per_page_options %}
                   <option value="{{ option }}" {% if per_page == option %}selected{% endif %}>{{ option }}</option>
                 {% endfor %}

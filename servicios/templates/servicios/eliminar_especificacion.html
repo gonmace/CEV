@@ -1,0 +1,75 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}Eliminar Especificación — {{ especificacion.titulo }}{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'servicios:lista_proyectos' %}" class="hover:text-primary transition-colors">Servicios</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <a href="{% url 'servicios:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto.nombre }}</a>
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content">Eliminar especificación</span>
+  </li>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-200 py-6 px-4">
+  <div class="max-w-lg mx-auto">
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+
+      <!-- Header -->
+      <div class="bg-primary px-6 py-4 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-primary-content/10 flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-trash text-primary-content text-sm"></i>
+        </span>
+        <div>
+          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Especificación</p>
+          <h2 class="text-sm font-bold text-primary-content">Eliminar especificación</h2>
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="px-6 pt-5 pb-3 flex flex-col gap-3">
+        <div class="rounded-lg bg-base-200/60 border border-base-300 px-4 py-3 flex flex-col gap-2">
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Especificación</p>
+            <p class="text-sm font-semibold text-base-content">{{ especificacion.titulo }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Servicio</p>
+            <p class="text-sm text-base-content">{{ proyecto.nombre }}</p>
+          </div>
+        </div>
+
+        <p class="text-xs text-error/80 flex items-start gap-1.5 leading-relaxed">
+          <i class="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+          Esta acción eliminará la especificación permanentemente. Esta operación no se puede deshacer.
+        </p>
+      </div>
+
+      <!-- Botones -->
+      <form method="post" class="px-6 pb-5">
+        {% csrf_token %}
+        <div class="flex justify-end gap-2 pt-1">
+          <a href="{% url 'servicios:proyecto_detalle' proyecto.id %}" class="btn btn-ghost btn-sm">Cancelar</a>
+          <button type="submit" class="btn btn-error btn-sm">
+            <i class="fas fa-trash text-xs"></i> Eliminar especificación
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

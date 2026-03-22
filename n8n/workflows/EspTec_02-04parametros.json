@@ -1,0 +1,988 @@
+{
+  "name": "EspTec_02-04parametros",
+  "nodes": [
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "c26d5df5-770c-41e7-840b-ed2a8cd32059",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1056,
+        -80
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n \"parametros\": [\n         {\n        \"parametro\": \"Tipo y formato de porcelanato\",\n        \"valor_recomendado\": \"Porcelanato esmaltado o técnico; formato según diseño\",\n        \"unidad_medida\": \"—\",\n        \"descripcion\": \"Seleccionar pieza apta para uso residencial/comercial ligero en cocina, compatible con modulación del ambiente y cortes mínimos.\",\n           \"check\": false\n      }\n ]\n}"
+      },
+      "id": "5bde7e0c-e9a4-4a82-a73a-5679251366b3",
+      "name": "Structured Output Parser1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1184,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "911a268f-f66a-4114-ac0f-36594b7f1e4c",
+      "name": "Respond parametros",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1616,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "3c40a53b-4173-4b28-805c-88f43791bc0e",
+      "name": "OpenAI Chat Model3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        64
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n \"parametros\": [\n         {\n        \"parametro\": \"Tipo y formato de porcelanato\",\n        \"valor_recomendado\": \"Porcelanato esmaltado o técnico; formato según diseño\",\n        \"descripcion\": \"Seleccionar pieza apta para uso residencial/comercial ligero en cocina, compatible con modulación del ambiente y cortes mínimos.\"\n      }\n ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        160,
+        64
+      ],
+      "id": "1396d2ac-b949-4095-83d3-cee5f2e21f1b",
+      "name": "Structured Output Parser4"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actividad: {{ $json.titulo }}\nDescripción: {{ $json.descripcion }}\n\n----\nClasificación:\n{{ Object.entries($json.clasificacion)\n.map(([k,v]) => ` - ${k}: ${v}`)\n.join('\\n') }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "={{ $json.system_prompt }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        16,
+        -176
+      ],
+      "id": "addf12b9-a099-450e-8991-a45793889aed",
+      "name": "parametros tecnicos",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.tipo }}",
+                    "rightValue": "=parametros_material",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "61e7b0ec-0f28-4114-ae3b-00f179dc51e7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "material"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3f3d9efa-0bf4-40fd-98af-931abe49ea80",
+                    "leftValue": "={{ $json.body.tipo }}",
+                    "rightValue": "parametros_ejecucion",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ejecucion"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6f1c0dfd-0693-4aeb-b59d-e1cde4285dbb",
+                    "leftValue": "={{ $json.body.tipo }}",
+                    "rightValue": "normas_aplicables",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "normas_aplicables"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f69d3423-ffc4-4710-8291-044d2e471de2",
+                    "leftValue": "={{ $json.body.tipo }}",
+                    "rightValue": "criterios_calidad",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "criterios_calidad"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -432,
+        -176
+      ],
+      "id": "d7350078-cf3f-4f47-8714-cc68ad6c4950",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d86ac27d-862f-4508-944c-28ed54e8c0ff",
+              "name": "parametros",
+              "value": "={{ $json.output.parametros.map(a => ({ ...a, check: false })) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9f939948-ef47-4264-a13c-24ebeb1f45a6",
+      "name": "check",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6acdf22a-1993-4ae2-a34b-5feafad44f3d",
+              "name": "tipo_parametro",
+              "value": "Parámetros de materiales",
+              "type": "string"
+            },
+            {
+              "id": "698a3c7c-e0d7-40da-b41e-6aedf5ceea30",
+              "name": "clasificacion",
+              "value": "={\n\"Tipo de elemento\": \"{{ $json.body.clasificacion.tipo_elemento }}\",\n\"Proceso principal\": \"{{ $json.body.clasificacion.proceso_principal }}\"\n}",
+              "type": "object"
+            },
+            {
+              "id": "35efe17d-fb03-429e-a5dd-f808cfc97436",
+              "name": "system_prompt",
+              "value": "=Eres un ingeniero especialista en especificaciones técnicas de materiales para construcción, industria y mantenimiento.\n\n## Tarea\nIdentificar únicamente **Parámetros de Materiales** asociados a la **Actividad** y su **Descripción**.\n\n## Definición\nUn **parámetro de material** describe propiedades, características técnicas o condiciones nominales propias de un **material, producto, insumo o componente** que forma parte de la actividad y que sean medibles al momento de ejecutar y validar.\n\nEl parámetro debe referirse exclusivamente a **propiedades intrínsecas del material**, tales como composición, resistencia, tipo de material, dosificación, propiedades físicas o químicas, características mecánicas o especificaciones de fabricación.\n\n## Reglas\n- Usa terminología técnica utilizada en Bolivia.\n- Los parámetros deben ser **específicos y técnicamente definidos**.\n- Evitar parámetros genéricos o ambiguos.\n- No inventar parámetros si no pueden inferirse razonablemente de la actividad.\n- Evitar duplicar parámetros equivalentes.\n- Priorizar parámetros típicos del material principal involucrado en la actividad.\n- Verificar que el parámetro sea una **propiedad intrínseca del material**.\n\n### Formato del nombre del parámetro\nEl campo **\"parametro\"** debe escribirse como nombre técnico legible en español.\n\nReglas de formato:\n\n- usar palabras separadas por espacios\n- usar mayúscula inicial\n- no usar snake_case\n- no usar camelCase\n- no usar guiones ni underscores (_)\n- no usar abreviaturas innecesarias\n- el nombre debe poder leerse como una propiedad técnica de un material\n\n### Formato del valor\n- **valor_recomendado** debe contener un único valor recomendado\n- no usar rangos\n- los rangos o referencias pueden incluirse en la descripción\n\n### Unidad de medida\n- Usar unidades del Sistema Internacional cuando corresponda.\n- Seleccionar la escala de unidad que produzca el valor numérico más legible.\n- Si el valor en la unidad base genera uno o más decimales, cambiar a la subunidad que lo exprese como entero.\n- Un valor entero siempre es preferible a un valor decimal, independientemente de cuál sea la unidad base del SI.\n- Cuando se cambie la escala, convertir el valor numérico para mantener equivalencia.\n- Preferir valores con máximo un decimal cuando no sea posible expresar el valor como entero.\n- Si el parámetro no tiene unidad cuantificable, usar \"N/A\".\n\n## Exclusiones\nNo incluir información relacionada con:\n\n- métodos de ejecución\n- procedimientos de instalación o montaje\n- geometría o dimensiones de obra\n- espesores de elementos constructivos\n- pendientes o alineaciones\n- tolerancias de ejecución\n- condiciones de aceptación o rechazo\n- métodos de ensayo o verificación\n- normas técnicas o regulatorias\n\nEstos pertenecen a otras categorías técnicas.\n\n## Consideraciones\nConsidera la **Clasificación** proporcionada para determinar los materiales predominantes y los parámetros asociados.\n\n## Salida\nDevuelve únicamente **JSON válido**, sin texto adicional.\n\nFormato:\n\n{\n  \"parametros\": [\n    {\n      \"parametro\": \"<nombre del parámetro técnico>\",\n      \"valor_recomendado\": \"<valor recomendado>\",\n      \"unidad_medida\": \"<unidad SI o N/A>\",\n      \"descripcion\": \"<descripcion técnica corta>\"\n    }\n  ]\n}\n\nSi no existen parámetros claros, devolver:\n\n{\n  \"parametros\": []\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "body.titulo, body.descripcion, body.unidad_medida",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -464
+      ],
+      "id": "b266d8bc-1611-4a8f-ae02-3122e089cac7",
+      "name": "materiales"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6acdf22a-1993-4ae2-a34b-5feafad44f3d",
+              "name": "tipo_parametro",
+              "value": "Parámetros de ejecución",
+              "type": "string"
+            },
+            {
+              "id": "698a3c7c-e0d7-40da-b41e-6aedf5ceea30",
+              "name": "clasificacion",
+              "value": "={\n\"Tipo de elemento\": \"{{ $json.body.clasificacion.tipo_elemento }}\",\n\"Proceso principal\": \"{{ $json.body.clasificacion.proceso_principal }}\",\n\"Sistema constructivo\": \"{{ $json.body.clasificacion.sistema_constructivo }}\"\n}",
+              "type": "object"
+            },
+            {
+              "id": "3d5ad225-eb70-48f8-8e24-754599bcdac9",
+              "name": "system_prompt",
+              "value": "=Eres un ingeniero especialista en procedimientos técnicos para construcción, industria y mantenimiento.\n\n## Tarea\nIdentificar únicamente **Parámetros de Ejecución** asociados a la **Actividad** y su **Descripción**.\n\n## Definición\nUn **parámetro de ejecución** describe condiciones técnicas, configuraciones operativas o requisitos necesarios para realizar el trabajo o proceso asociado a la actividad.\n\nLos parámetros de ejecución definen **cómo debe ejecutarse el trabajo o proceso**, incluyendo condiciones operativas, configuraciones de equipos, secuencia técnica o requisitos de operación durante la ejecución de la actividad.\n\nEstos parámetros se refieren exclusivamente al **proceso de ejecución del trabajo**.\n\n## Reglas\n- Usar terminología técnica utilizada en Bolivia.\n- Los parámetros deben ser **específicos y técnicamente definidos**.\n- Evitar parámetros genéricos o ambiguos.\n- No inventar parámetros si no pueden inferirse razonablemente de la actividad.\n- Evitar duplicar parámetros equivalentes.\n- Priorizar parámetros que describan **condiciones técnicas necesarias para ejecutar la actividad**.\n\nAntes de incluir un parámetro, verificar que describa **una condición del proceso de ejecución** y no una propiedad del material o un criterio de calidad.\n\n### Formato del nombre del parámetro\nEl campo **\"parametro\"** debe escribirse como **nombre técnico legible en español**.\n\nReglas de formato:\n\n- usar palabras separadas por espacios  \n- usar mayúscula inicial  \n- no usar snake_case  \n- no usar camelCase  \n- no usar guiones ni underscores (_)  \n- no usar abreviaturas innecesarias  \n\n### Formato del valor\n- El campo **valor_recomendado** debe contener un único valor recomendado.\n- No usar rangos en este campo.\n- Los rangos o referencias pueden incluirse en la descripción.\n\n### Unidad de medida\n- Usar unidades del Sistema Internacional cuando corresponda.\n- Seleccionar la escala de unidad que produzca el valor numérico más legible.\n- Si el valor en la unidad base genera uno o más decimales, cambiar a la subunidad que lo exprese como entero.\n- Un valor entero siempre es preferible a un valor decimal, independientemente de cuál sea la unidad base del SI.\n- Cuando se cambie la escala, convertir el valor numérico para mantener equivalencia.\n- Preferir valores con máximo un decimal cuando no sea posible expresar el valor como entero.\n- Si el parámetro no tiene unidad cuantificable, usar \"N/A\".\n\n## Exclusiones\nNo incluir información relacionada con:\n\n- propiedades o características del material\n- composición o especificaciones de materiales\n- condiciones de aceptación o control de calidad\n- métodos de ensayo o verificación\n- normas técnicas o regulatorias\n\nEstos pertenecen a otras categorías técnicas.\n\n## Consideraciones\nConsiderar la **Clasificación** proporcionada para determinar los parámetros de ejecución asociados al tipo de actividad.\n\n## Salida\nDevolver únicamente **JSON válido**, sin texto adicional.\n\nFormato:\n\n{\n  \"parametros\": [\n    {\n      \"parametro\": \"<nombre del parámetro técnico>\",\n      \"valor_recomendado\": \"<valor recomendado>\",\n      \"unidad_medida\": \"<unidad SI o N/A>\",\n      \"descripcion\": \"<descripción técnica corta>\"\n    }\n  ]\n}\n\nSi no existen parámetros claros, devolver:\n\n{\n  \"parametros\": []\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "body.titulo, body.descripcion, body.unidad_medida",
+        "options": {
+          "ignoreConversionErrors": false
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -272
+      ],
+      "id": "17f6f9e0-6c49-4ff1-b9b4-1dcfd353b87a",
+      "name": "ejecucion"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7a1b1f93-f90d-4ce9-ba5a-ad4f5acb057c",
+              "name": "body.id",
+              "value": "={{ $('parametros').item.json.body.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ed2ec703-42e6-483e-a5f7-2ef7e0094f79",
+              "name": "body.tipo",
+              "value": "={{ $('parametros').item.json.body.tipo }}",
+              "type": "string"
+            },
+            {
+              "id": "a0f7c920-421d-4d27-86ef-1d54fa9a1e54",
+              "name": "body.parametros",
+              "value": "={{ $json.output.parametros }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "66fefaee-2aba-4ac6-9bbe-c04977218769",
+      "name": "data output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6acdf22a-1993-4ae2-a34b-5feafad44f3d",
+              "name": "tipo_parametro",
+              "value": "Normas Aplicables",
+              "type": "string"
+            },
+            {
+              "id": "698a3c7c-e0d7-40da-b41e-6aedf5ceea30",
+              "name": "clasificacion",
+              "value": "={\n\"Tipo de elemento\": \"{{ $json.body.clasificacion.tipo_elemento }}\",\n\"Proceso principal\": \"{{ $json.body.clasificacion.proceso_principal }}\",\n\"Material principal\": \"{{ $json.body.clasificacion.material_principal }}\",\n\"Sistema constructivo\": \"{{ $json.body.clasificacion.sistema_constructivo }}\"\n}",
+              "type": "object"
+            },
+            {
+              "id": "13a9d3ca-0597-48c1-9c59-bd96ada92733",
+              "name": "system_prompt",
+              "value": "=Eres un ingeniero especialista en **normativa técnica aplicable a construcción, industria y mantenimiento**.\n\n## Tarea\nIdentificar únicamente **Normas Aplicables** relacionadas con la **Actividad** y su **Descripción**.\n\n## Definición\nUna **norma aplicable** corresponde a un documento técnico emitido por organismos de normalización que establece requisitos, métodos de ensayo, procedimientos o criterios técnicos aplicables a materiales, equipos, procesos o verificaciones técnicas.\n\nLas normas pueden corresponder a estándares nacionales o internacionales que regulan aspectos técnicos de diseño, fabricación, instalación, ensayo o control de calidad.\n\n## Reglas\n- Usar terminología técnica utilizada en Bolivia.\n- Priorizar normativa boliviana y americana cuando exista.\n- Si no existe normativa boliviana aplicable, utilizar normativa internacional equivalente.\n- Incluir únicamente normas que tengan relación técnica con la actividad descrita.\n- Evitar incluir normas irrelevantes o demasiado generales.\n- No inventar normas si no pueden inferirse razonablemente de la actividad.\n\n### Formato del nombre de la norma\nEl campo **\"norma\"** debe contener el **código y título de la norma técnica**.\n\n### Referencia técnica\nEl campo **descripción** debe incluir una referencia técnica breve asociada a la norma cuando sea aplicable.\n\n## Exclusiones\nNo incluir información relacionada con:\n\n- parámetros técnicos de materiales\n- parámetros de ejecución\n- valores técnicos específicos\n- requisitos operativos del procedimiento\n\nEstos pertenecen a otras categorías técnicas.\n\n## Consideraciones\nConsiderar la **Clasificación** proporcionada para determinar las normas aplicables al tipo de actividad.\n\n## Salida\nDevolver únicamente **JSON válido**, sin texto adicional.\n\nFormato:\n\n{\n  \"parametros\": [\n    {\n      \"parametro\": \"<referencia de la norma técnica>\",\n      \"descripcion\": \"<descripcion corta de su aplicación>\"\n    }\n  ]\n}\n\nSi no existen normas claramente aplicables, devolver:\n\n{\n  \"parametros\": []\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "body.titulo, body.descripcion, body.unidad_medida",
+        "options": {
+          "ignoreConversionErrors": false
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -80
+      ],
+      "id": "85c408d4-3300-4f0a-8bf8-41f9f518407c",
+      "name": "normas"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6acdf22a-1993-4ae2-a34b-5feafad44f3d",
+              "name": "tipo_parametro",
+              "value": "Criterios de Calidad",
+              "type": "string"
+            },
+            {
+              "id": "698a3c7c-e0d7-40da-b41e-6aedf5ceea30",
+              "name": "clasificacion",
+              "value": "={\n\"Tipo de elemento\": \"{{ $json.body.clasificacion.tipo_elemento }}\",\n\"Proceso principal\": \"{{ $json.body.clasificacion.proceso_principal }}\",\n\"Material principal\": \"{{ $json.body.clasificacion.material_principal }}\",\n\"Sistema constructivo\": \"{{ $json.body.clasificacion.sistema_constructivo }}\"\n}",
+              "type": "object"
+            },
+            {
+              "id": "13a9d3ca-0597-48c1-9c59-bd96ada92733",
+              "name": "system_prompt",
+              "value": "=Eres un ingeniero especialista en **control de calidad para actividades de construcción, industria y mantenimiento**.\n\n## Tarea\nIdentificar únicamente **Criterios de Calidad** asociados a la **Actividad**, **Descripción** y **Actividades adicionales\n\n## Definición\nUn **criterio de calidad** corresponde a una condición técnica verificable que permite determinar si el resultado de una actividad, proceso o trabajo cumple los requisitos establecidos y puede ser aceptado.\n\nLos criterios de calidad deben ser **medibles, observables o verificables** mediante inspección, medición, ensayos de laboratorio o validación técnica.\n\nEstos criterios describen **condiciones del resultado final del trabajo ejecutado**, no propiedades de materiales ni condiciones del proceso de ejecución.\n\n## Reglas\n- Usar terminología técnica utilizada en los ámbitos de **construcción, industria y mantenimiento**.\n- Los criterios deben ser **objetivos, verificables y técnicamente definidos**.\n- Evitar descripciones subjetivas o ambiguas.\n- Evitar duplicar criterios equivalentes.\n- Incluir únicamente criterios que permitan **evaluar el resultado final de la actividad o proceso**.\n- No inventar criterios si no pueden inferirse razonablemente de la actividad descrita.\n\nAntes de incluir un criterio, verificar que permita determinar **aceptación o rechazo del resultado del trabajo**.\n\n## Validación conceptual del criterio\n\nAntes de generar un criterio de calidad, verificar lo siguiente:\n\n1. El criterio debe permitir determinar si el resultado **es aceptable o no aceptable**.\n2. El valor debe representar una **tolerancia, límite máximo, desviación permitida o condición de aceptación**.\n3. El valor **NO debe representar el valor de diseño del elemento evaluado**.\n\nRegla fundamental:\n\nSi el valor responde a **\"cuál debe ser el valor del elemento\"**, no es un criterio de calidad.\n\nSi el valor responde a **\"cuál es la desviación máxima permitida o condición de aceptación\"**, entonces sí es un criterio de calidad.\n\n## Formato del nombre del criterio\n\nEl campo **parametro** debe escribirse como un **nombre técnico claro y legible**.\n\nReglas de formato:\n\n- usar palabras separadas por espacios  \n- usar mayúscula inicial  \n- no usar snake_case  \n- no usar camelCase  \n- no usar guiones ni underscores  \n- evitar abreviaturas innecesarias  \n\n## Formato del valor\n\nEl campo **valor_recomendado** debe representar **la tolerancia máxima y mínima o desviación permitida** del criterio de calidad, evitando texto.\n\nReglas:\n\n- No usar valores de diseño del elemento.\n- Priorizar tolerancias o límites máximos.\n- El valor debe ser único cuando sea posible.\n- Si se requiere contexto adicional, incluirlo en la descripción.\n\n## Unidad de medida\n\nUsar unidades coherentes con el tipo de verificación técnica.\n\nPriorizar unidades del **Sistema Internacional (SI)** o unidades técnicas comúnmente utilizadas en **construcción e industria**.\n\nTipos de unidades permitidas según el criterio evaluado:\n\n### Mediciones dimensionales\nUsar cuando se mida longitud, desviación, separación o tolerancias geométricas.\n\n### Mediciones angulares\nUsar cuando se mida inclinación o alineación angular.\n\n### Fuerza o esfuerzo\nUsar cuando se evalúe fuerza de operación, presión o carga aplicada.\n\n### Cobertura o proporción\nUsar cuando se evalúe continuidad, cobertura o proporción de cumplimiento (%, etc.).\n\n### Pruebas de funcionamiento\nUsar cuando el criterio requiera ejecutar ciclos de operación o repetición de pruebas (repeticiones, ciclos, etc.).\n\n### Defectos o incidencias detectadas\nUsar cuando el criterio se base en la ausencia o número máximo de defectos observados (unidad)\n\n### Condiciones funcionales verificadas por inspección\nUsar cuando la verificación sea visual o funcional sin medición directa (global)\n\n\nReglas adicionales:\n\n- La unidad de medida debe ser coherente con el **valor_recomendado**.\n- No inventar unidades no reconocidas técnicamente.\n- Si el criterio no requiere unidad de medida usar cadena vacía \"\".\n\n## Exclusiones\n\nNo incluir información relacionada con:\n\n- propiedades o características de materiales  \n- especificaciones de materiales o equipos  \n- parámetros de ejecución del proceso  \n- configuraciones operativas de trabajo  \n- normas técnicas o regulatorias  \n- requisitos de instalación o cantidad de componentes  \n- limpieza de obra o retiro de residuos  \n\nEstos pertenecen a otras categorías técnicas.\n\n## Consideraciones\n\nConsiderar la **Clasificación** proporcionada para identificar los criterios de calidad aplicables a la actividad.\n\nLos criterios deben evaluar **el estado final del elemento instalado, construido o intervenido**.\n\n## Salida\n\nDevolver únicamente **JSON válido**, sin texto adicional.\n\nFormato:\n\n{\n  \"parametros\": [\n    {\n      \"parametro\": \"<nombre del criterio de calidad>\",\n      \"valor_recomendado\": \"<tolerancia o desviación permitida>\",\n      \"descripcion\": \"<condición de aceptación>\"\n    }\n  ]\n}\n\nSi no existen criterios claramente identificables devolver:\n\n{\n  \"parametros\": []\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "body.titulo, body.descripcion, body.unidad_medida",
+        "options": {
+          "ignoreConversionErrors": false
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        128
+      ],
+      "id": "c467d51e-342a-4f9e-8965-2e792c31e055",
+      "name": "calidad"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "parametros",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a318b712-8b63-40ec-be54-897e0c467366",
+      "name": "parametros",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -656,
+        -144
+      ],
+      "webhookId": "1cf2431c-fe47-4dbe-8b85-aa95c8f34999"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('parametros').item.json.body.tipo }}",
+                    "rightValue": "=parametros_material",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "61e7b0ec-0f28-4114-ae3b-00f179dc51e7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "material"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3f3d9efa-0bf4-40fd-98af-931abe49ea80",
+                    "leftValue": "={{ $('parametros').item.json.body.tipo }}",
+                    "rightValue": "parametros_ejecucion",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ejecucion"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6f1c0dfd-0693-4aeb-b59d-e1cde4285dbb",
+                    "leftValue": "={{ $('parametros').item.json.body.tipo }}",
+                    "rightValue": "normas_aplicables",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "normas_aplicables"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f69d3423-ffc4-4710-8291-044d2e471de2",
+                    "leftValue": "={{ $('parametros').item.json.body.tipo }}",
+                    "rightValue": "criterios_calidad",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "criterios_calidad"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        -208
+      ],
+      "id": "5d94eb94-983c-4efb-8dcf-fbfe3a3ba2be",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "84705289-8509-435f-b564-001aaaf04c21",
+              "name": "promptSystem",
+              "value": "=Eres un analista técnico especializado en materiales utilizados en actividades de construcción, industriales y mecánicas.\n\nTu tarea es revisar una lista de parámetros técnicos asociados a materiales o componentes y validar dos aspectos:\n\n1. Si el parámetro corresponde a los materiales o componentes del sistema descrito en el Título o la Descripción.\n2. Si la unidad de medida es válida.\n\n--------------------------------------------------\n\nREGLAS PARA EL CAMPO \"check\"\n\nCambiar \"check\" a true SOLO cuando el parámetro sea estrictamente necesario para definir técnicamente el material o componente principal de la actividad.\n\nUn parámetro es válido cuando cumple ambas condiciones:\n\n1. Está relacionado con el material o sistema descrito.\n2. Es una propiedad esencial o mínima necesaria para especificar técnicamente ese material o componente.\n\n--------------------------------------------------\n\nCRITERIO DE SELECCIÓN\n\nMarcar true únicamente para un conjunto mínimo de parámetros técnicos que permitan identificar o caracterizar el material o componente principal.\n\nNo marcar true para:\n\n- propiedades secundarias\n- propiedades de control de calidad\n- ensayos de laboratorio\n- parámetros de dosificación o fabricación\n- características complementarias\n- materiales auxiliares o insumos\n\nSi varios parámetros describen el mismo material, seleccionar solo los más representativos.\n\n--------------------------------------------------\n\nREGLAS PARA EL CAMPO \"unidad_medida\"\n\n1. Si la unidad es \"N/A\", reemplazar según corresponda:\n\n- usar \"pza\" si el valor representa cantidad de elementos\n- usar \"global\" si el parámetro describe una condición general\n- si no corresponde ninguna unidad, usar cadena vacía \"\"\n\n2. Si la unidad ya corresponde a una unidad física o técnica válida, mantenerla sin cambios.\n\n--------------------------------------------------\n\nREGLAS GENERALES\n\n- Mantener exactamente la misma estructura del JSON recibido.\n- No eliminar parámetros.\n- No agregar campos nuevos.\n- No modificar \"valor_recomendado\".\n- Evaluar cada parámetro de forma independiente.\n\n--------------------------------------------------\n\nPROCEDIMIENTO INTERNO\n\n1. Identificar el material o sistema principal de la actividad.\n2. Identificar los componentes estructurales directos del sistema.\n3. Seleccionar únicamente los parámetros esenciales para definir esos materiales o componentes.\n4. Marcar esos parámetros con \"check\": true.\n5. Mantener el resto en false.\n\n--------------------------------------------------\n\nCONTEXTO\n\nTitulo:\n{{ $('parametros').item.json.body.titulo }}\n\nDescripcion:\n{{ $('parametros').item.json.body.descripcion }}\n\n--------------------------------------------------\n\nSALIDA\n\nDevolver únicamente JSON válido.",
+              "type": "string"
+            },
+            {
+              "id": "64414b19-482e-49fd-bc8c-4b63903b2093",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        -464
+      ],
+      "id": "08dbf453-7d56-4c73-aacc-092cc4f75ce8",
+      "name": "materiales check"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.parametros }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "={{ $json.promptSystem }}"
+        }
+      },
+      "id": "be07d4de-c409-4f3a-8497-6284d4a462a2",
+      "name": "check parametros",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        -304
+      ],
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "84705289-8509-435f-b564-001aaaf04c21",
+              "name": "promptSystem",
+              "value": "=Eres un analista técnico especializado en actividades de construcción, mantenimiento industrial y trabajos mecánicos.\n\nTu tarea es revisar una lista de posibles **parámetros de ejecución** de una actividad y validar dos aspectos:\n\n1. Si el parámetro corresponde directamente a la forma de ejecutar la actividad descrita en el Título o la Descripción.\n2. Si la unidad de medida es válida.\n\n--------------------------------------------------\n\nREGLAS PARA EL CAMPO \"check\"\n\nCambiar \"check\" a true SOLO cuando el parámetro sea estrictamente necesario para definir las condiciones de ejecución de la actividad.\n\nUn parámetro de ejecución válido describe:\n\n- condiciones de instalación\n- condiciones de montaje\n- condiciones de aplicación\n- condiciones operativas\n- controles básicos durante la ejecución\n- requisitos necesarios para realizar el trabajo correctamente\n\n--------------------------------------------------\n\nCRITERIO DE SELECCIÓN\n\nSeleccionar únicamente un conjunto mínimo de parámetros que definan cómo se debe ejecutar la actividad.\n\nMarcar true solo para parámetros esenciales.\n\nNo marcar true para:\n\n- controles de laboratorio\n- ensayos especializados\n- parámetros de fabricación de materiales\n- características internas del material\n- propiedades que no afectan directamente la ejecución\n- condiciones secundarias o complementarias\n\nSi varios parámetros describen la misma condición de ejecución, seleccionar solo el más representativo.\n\n--------------------------------------------------\n\nREGLAS PARA EL CAMPO \"unidad_medida\"\n\n1. Si la unidad es \"N/A\", reemplazar según corresponda:\n\n- usar \"pza\" si representa cantidad de elementos\n- usar \"global\" si describe una condición general\n- si no corresponde unidad, usar cadena vacía \"\"\n\n2. Si la unidad ya corresponde a una unidad técnica válida, mantenerla sin cambios.\n\n--------------------------------------------------\n\nREGLAS GENERALES\n\n- Mantener exactamente la misma estructura del JSON recibido.\n- No eliminar parámetros.\n- No agregar campos nuevos.\n- No modificar \"valor_recomendado\".\n- Evaluar cada parámetro de forma independiente.\n\n--------------------------------------------------\n\nPROCEDIMIENTO INTERNO\n\n1. Identificar la actividad principal descrita en el Título y la Descripción.\n2. Identificar las condiciones básicas necesarias para ejecutar esa actividad.\n3. Seleccionar únicamente los parámetros de ejecución esenciales.\n4. Marcar esos parámetros con \"check\": true.\n5. Mantener el resto en false.\n\n--------------------------------------------------\n\nCONTEXTO\n\nTitulo:\n{{ $('parametros').item.json.body.titulo }}\n\nDescripcion:\n{{ $('parametros').item.json.body.descripcion }}\n\n--------------------------------------------------\n\nSALIDA\n\nDevolver únicamente JSON válido.",
+              "type": "string"
+            },
+            {
+              "id": "64414b19-482e-49fd-bc8c-4b63903b2093",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        -272
+      ],
+      "id": "3621ee92-5746-45a3-84b0-8d268f308998",
+      "name": "ejecucion check"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "64414b19-482e-49fd-bc8c-4b63903b2093",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1200,
+        144
+      ],
+      "id": "9a01921f-00ca-4a99-a26b-c5cc9a4f3093",
+      "name": "normas&calidad check"
+    }
+  ],
+  "pinData": {
+    "parametros": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.magoreal.com",
+            "x-real-ip": "189.28.68.106",
+            "x-forwarded-for": "189.28.68.106",
+            "x-forwarded-proto": "http",
+            "connection": "upgrade",
+            "content-length": "515",
+            "user-agent": "python-requests/2.32.5",
+            "accept-encoding": "gzip, deflate",
+            "accept": "*/*",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": 85,
+            "titulo": "Colocación de Porcelanato para pisos",
+            "descripcion": "Se requiere colocar porcelanato en todas las áreas de oficina del edificio principal",
+            "tipo_servicio": "Infraestructura / Obras Civiles",
+            "unidad_medida": "m2",
+            "clasificacion": {
+              "tipo_elemento": "Piso interior",
+              "proceso_principal": "Colocación y pegado de porcelanato sobre superficie preparada",
+              "material_principal": "Porcelanato",
+              "sistema_constructivo": "Acabados arquitectónicos"
+            },
+            "tipo": "criterios_calidad"
+          },
+          "webhookUrl": "https://n8n.magoreal.com/webhook/parametros",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "check parametros",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "check parametros",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "parametros tecnicos",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser4": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "parametros tecnicos",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parametros tecnicos": {
+      "main": [
+        [
+          {
+            "node": "check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "materiales",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ejecucion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "normas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "calidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "materiales": {
+      "main": [
+        [
+          {
+            "node": "parametros tecnicos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ejecucion": {
+      "main": [
+        [
+          {
+            "node": "parametros tecnicos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data output": {
+      "main": [
+        [
+          {
+            "node": "Respond parametros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normas": {
+      "main": [
+        [
+          {
+            "node": "parametros tecnicos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "calidad": {
+      "main": [
+        [
+          {
+            "node": "parametros tecnicos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parametros": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "materiales check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ejecucion check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "normas&calidad check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "normas&calidad check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "materiales check": {
+      "main": [
+        [
+          {
+            "node": "check parametros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check parametros": {
+      "main": [
+        [
+          {
+            "node": "data output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ejecucion check": {
+      "main": [
+        [
+          {
+            "node": "check parametros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normas&calidad check": {
+      "main": [
+        [
+          {
+            "node": "Respond parametros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "28a1156e-d779-446e-a652-c71901cd28d2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d9c5adb5b47dc1dff2717f3c50997b1de6d705b83f6fc3647d372ee5b662ea9d"
+  },
+  "id": "Y9KztM9LVHniOdZi",
+  "tags": []
+}

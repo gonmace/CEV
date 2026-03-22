@@ -1,0 +1,361 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}{{ servicio.titulo }}{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:lista_servicios' %}" class="hover:text-primary transition-colors">Servicios</a>
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content truncate max-w-xs">{{ servicio.titulo }}</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-200">
+<div class="px-4 py-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row lg:items-start gap-4">
+
+  <!-- Columna principal -->
+  <div class="w-full lg:flex-1 flex flex-col gap-3">
+
+    <!-- Contenido -->
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-secondary/10">
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+            <i class="fas fa-file-alt text-primary text-xs"></i>
+          </span>
+          <span class="text-sm font-semibold text-base-content">Contenido</span>
+        </div>
+        {% if es_propietario %}
+        <a href="{% url 'servicios:editar_servicio' servicio.id %}"
+           class="flex items-center gap-1 text-xs font-semibold text-warning hover:bg-warning/10 px-3 py-1.5 rounded-lg transition-colors">
+          <i class="fas fa-edit text-xs"></i> Editar
+        </a>
+        {% endif %}
+      </div>
+
+      {% if servicio.contenido %}
+      <div class="px-6 py-5 prose prose-sm max-w-none
+                  prose-headings:text-base-content prose-headings:font-bold
+                  prose-p:text-base-content/80 prose-p:leading-relaxed
+                  prose-strong:text-base-content prose-strong:font-semibold
+                  prose-ul:text-base-content/80 prose-ol:text-base-content/80
+                  prose-li:my-0.5 prose-a:text-primary
+                  prose-table:w-full prose-td:border prose-td:border-base-300 prose-td:px-3 prose-td:py-2
+                  prose-th:border prose-th:border-base-300 prose-th:bg-base-200 prose-th:px-3 prose-th:py-2">
+        {{ preview_html }}
+      </div>
+      {% else %}
+      <div class="flex flex-col items-center justify-center py-14 gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+          <i class="fas fa-file-alt text-xl text-base-content/25"></i>
+        </div>
+        <p class="text-sm font-medium text-base-content/40">Sin contenido registrado</p>
+        {% if es_propietario %}
+          <a href="{% url 'servicios:editar_servicio' servicio.id %}"
+             class="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors">
+            <i class="fas fa-edit text-xs"></i> Agregar contenido
+          </a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Imágenes -->
+    {% with n=servicio.imagenes.count %}
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+      <details class="group" {% if not n %}open{% endif %}>
+        <summary class="list-none select-none cursor-pointer">
+          <div class="flex items-center justify-between px-5 py-3.5 hover:bg-base-200/40 transition-colors">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
+                <i class="fas fa-images text-secondary text-xs"></i>
+              </span>
+              <span class="text-sm font-semibold text-base-content">Imágenes</span>
+              <span class="text-[10px] font-bold {% if n %}text-success bg-success/10{% else %}text-base-content/30 bg-base-200{% endif %} px-2 py-0.5 rounded-full">{{ n }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              {% if es_propietario %}
+              <button type="button"
+                      class="flex items-center gap-1 text-xs font-semibold text-secondary hover:bg-secondary/10 px-2.5 py-1 rounded-lg transition-colors gestionar-imagenes-btn"
+                      data-servicio-id="{{ servicio.id }}"
+                      data-servicio-titulo="{{ servicio.titulo|escape }}"
+                      onclick="event.stopPropagation()">
+                <i class="fas fa-plus text-[10px]"></i> Gestionar
+              </button>
+              {% endif %}
+              <span class="w-6 h-6 rounded-md bg-secondary/10 flex items-center justify-center">
+                <i class="fas fa-chevron-down text-[10px] text-secondary/50 transition-transform duration-200 group-open:rotate-180"></i>
+              </span>
+            </div>
+          </div>
+        </summary>
+        <div class="border-t border-secondary/10 p-4">
+          {% if n %}
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="imagenes-galeria">
+            {% for img in servicio.imagenes.all %}
+            <div class="rounded-xl border border-base-200 overflow-hidden shadow-sm">
+              <img src="{{ img.imagen.url }}" alt="{{ img.descripcion|default:servicio.titulo }}"
+                   class="w-full h-32 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                   onclick="window.open('{{ img.imagen.url }}', '_blank')">
+              {% if img.descripcion %}
+              <div class="px-2 py-1.5">
+                <p class="text-[11px] text-base-content/60 truncate">{{ img.descripcion }}</p>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="flex flex-col items-center justify-center py-10 gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+              <i class="fas fa-images text-xl text-base-content/20"></i>
+            </div>
+            <p class="text-sm font-medium text-base-content/40">Sin imágenes agregadas</p>
+            {% if es_propietario %}
+            <button type="button"
+                    class="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:bg-secondary/10 px-3 py-1.5 rounded-lg transition-colors gestionar-imagenes-btn"
+                    data-servicio-id="{{ servicio.id }}"
+                    data-servicio-titulo="{{ servicio.titulo|escape }}">
+              <i class="fas fa-plus text-xs"></i> Agregar imágenes
+            </button>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </details>
+    </div>
+    {% endwith %}
+
+  </div>
+
+  <!-- Columna derecha (info + acciones) -->
+  <div class="w-full lg:w-72 flex-shrink-0 flex flex-col gap-3">
+
+    <!-- Info del servicio -->
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+      <div class="bg-primary px-5 py-4">
+        <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest mb-1">Servicio</p>
+        <h2 class="text-base font-bold text-primary-content leading-snug">{{ servicio.titulo }}</h2>
+      </div>
+      <div class="px-5 py-4 flex flex-col gap-3">
+        {% if servicio.subcategoria %}
+        <div>
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Categoría</p>
+          <p class="text-xs text-base-content/70">{{ servicio.subcategoria.categoria.nombre }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Subcategoría</p>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded font-mono">{{ servicio.subcategoria.codigo }}</span>
+            <p class="text-xs text-base-content/80">{{ servicio.subcategoria.nombre }}</p>
+          </div>
+        </div>
+        {% endif %}
+        {% if servicio.solicitante %}
+        <div>
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Solicitante</p>
+          <p class="text-sm text-base-content">{{ servicio.solicitante }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Cantidad y Unidad -->
+        <div class="flex gap-3">
+          <div class="flex-1">
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Cantidad</p>
+            {% if es_propietario %}
+            <input type="text"
+                   class="input input-bordered input-xs w-full text-center font-mono cantidad-input"
+                   value="{{ servicio.cantidad|default:'' }}"
+                   maxlength="10"
+                   data-original="{{ servicio.cantidad|default:'' }}"
+                   data-servicio-id="{{ servicio.id }}"
+                   placeholder="—">
+            {% else %}
+            <span class="text-sm font-mono text-base-content">{{ servicio.cantidad|default:"—" }}</span>
+            {% endif %}
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Unidad</p>
+            {% if servicio.unidad_medida %}
+              <span class="text-xs font-semibold text-secondary/70 bg-secondary/10 px-2 py-0.5 rounded font-mono">{{ servicio.unidad_medida }}</span>
+            {% else %}
+              <span class="text-xs text-base-content/25">—</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if es_propietario %}
+        <button id="btn-actualizar-cantidad"
+                class="hidden items-center gap-1 text-xs font-semibold text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors w-full justify-center">
+          <i class="fas fa-save text-xs"></i> Guardar cantidad
+        </button>
+        {% endif %}
+
+        <div class="flex gap-4">
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Creado</p>
+            <p class="text-xs text-base-content/70">{{ servicio.fecha_creacion|date:"d/m/Y" }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Actualizado</p>
+            <p class="text-xs text-base-content/70">{{ servicio.fecha_actualizacion|date:"d/m/Y" }}</p>
+          </div>
+        </div>
+
+        <div>
+          {% if servicio.publico %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">
+              <i class="fas fa-globe text-[10px]"></i> Público
+            </span>
+          {% else %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-base-200 text-base-content/40">
+              <i class="fas fa-lock text-[10px]"></i> Privado
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+      <div class="px-4 pt-4 pb-2">
+        <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
+      </div>
+      <div class="flex flex-col px-3 pb-3 gap-1">
+        <button type="button"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:bg-secondary/10 transition-colors w-full text-left ver-actividades-btn"
+                data-servicio-id="{{ servicio.id }}"
+                data-servicio-titulo="{{ servicio.titulo|escape }}">
+          <span class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-table text-secondary text-xs"></i>
+          </span>
+          Actividades adicionales
+          {% if tiene_cantidad %}
+            <span class="ml-auto w-2 h-2 rounded-full bg-success flex-shrink-0"></span>
+          {% endif %}
+        </button>
+        {% if es_propietario %}
+        <button type="button"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-info hover:bg-info/10 transition-colors w-full text-left gestionar-imagenes-btn"
+                data-servicio-id="{{ servicio.id }}"
+                data-servicio-titulo="{{ servicio.titulo|escape }}">
+          <span class="w-7 h-7 rounded-lg bg-info/10 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-images text-info text-xs"></i>
+          </span>
+          Gestionar imágenes
+        </button>
+        <a href="{% url 'servicios:editar_servicio' servicio.id %}"
+           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-warning hover:bg-warning/10 transition-colors">
+          <span class="w-7 h-7 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-edit text-warning text-xs"></i>
+          </span>
+          Editar servicio
+        </a>
+        <button type="button"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors w-full text-left eliminar-servicio-btn"
+                data-servicio-id="{{ servicio.id }}"
+                data-servicio-titulo="{{ servicio.titulo|escape }}">
+          <span class="w-7 h-7 rounded-lg bg-error/10 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-trash text-error text-xs"></i>
+          </span>
+          Eliminar servicio
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+{% include 'servicios/modals/gestionar_imagenes_modal.html' %}
+{% include 'servicios/modals/eliminar_servicio_modal.html' %}
+{% include 'servicios/modals/ver_actividades_adicionales_modal.html' %}
+{% endblock %}
+
+{% block js %}
+<script>
+  // Dispatch eventos de botones
+  document.addEventListener('click', function(e) {
+    const btnImg = e.target.closest('.gestionar-imagenes-btn');
+    if (btnImg && window.openGestionarImagenesServicioModal) {
+      e.preventDefault();
+      window.openGestionarImagenesServicioModal(btnImg.dataset.servicioId, btnImg.dataset.servicioTitulo);
+    }
+
+    const btnDel = e.target.closest('.eliminar-servicio-btn');
+    if (btnDel && window.openEliminarServicioModal) {
+      e.preventDefault();
+      window.openEliminarServicioModal(btnDel.dataset.servicioId, btnDel.dataset.servicioTitulo);
+    }
+
+    const btnAct = e.target.closest('.ver-actividades-btn');
+    if (btnAct && window.openActividadesServicioModal) {
+      e.preventDefault();
+      window.openActividadesServicioModal(btnAct.dataset.servicioId, btnAct.dataset.servicioTitulo);
+    }
+  });
+
+  {% if es_propietario %}
+  // Cantidad editable
+  function getCookie(name) {
+    let v = null;
+    if (document.cookie) document.cookie.split(';').forEach(c => {
+      c = c.trim();
+      if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+    });
+    return v;
+  }
+
+  const cantidadInput = document.querySelector('.cantidad-input');
+  const btnActualizar = document.getElementById('btn-actualizar-cantidad');
+
+  if (cantidadInput && btnActualizar) {
+    cantidadInput.addEventListener('input', function() {
+      const changed = this.value.trim() !== this.dataset.original;
+      btnActualizar.classList.toggle('hidden', !changed);
+      btnActualizar.classList.toggle('flex', changed);
+    });
+
+    btnActualizar.addEventListener('click', async function() {
+      const servicioId = cantidadInput.dataset.servicioId;
+      const cantidad = cantidadInput.value.trim();
+      btnActualizar.disabled = true;
+      btnActualizar.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Guardando...';
+      try {
+        const r = await fetch(`/servicios/${servicioId}/cantidad/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify({ cantidad })
+        });
+        const data = await r.json();
+        if (data.success) {
+          cantidadInput.dataset.original = data.cantidad;
+          btnActualizar.classList.add('hidden');
+          btnActualizar.classList.remove('flex');
+          if (window.flashy) flashy.success('Cantidad guardada.');
+        }
+      } catch(err) {
+        if (window.flashy) flashy.error('Error al guardar la cantidad.');
+      } finally {
+        btnActualizar.disabled = false;
+        btnActualizar.innerHTML = '<i class="fas fa-save text-xs"></i> Guardar cantidad';
+      }
+    });
+  }
+  {% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,329 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}{% tailwind_css %}{% endblock %}
+
+{% block title %}Especificaciones para Servicios{% endblock %}
+
+{% block body_class %}bg-base-200{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Servicios</span>
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-200">
+  <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row lg:items-start gap-6">
+
+    <!-- Sidebar izquierdo -->
+    <aside class="w-full lg:w-64 shrink-0 flex flex-col gap-3">
+
+      <!-- Acciones -->
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+        <div class="px-4 pt-4 pb-2">
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
+        </div>
+        <div class="flex flex-col px-3 pb-3 gap-1">
+          <a href="{% url 'servicios:crear_servicio' %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-success hover:bg-success/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+              <i class="fas fa-plus text-success text-xs"></i>
+            </span>
+            Crear Nuevo Servicio
+          </a>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-1">
+            <i class="fas fa-cogs text-primary text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-primary leading-none">{{ page_obj.paginator.count }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Servicios</span>
+        </div>
+        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mb-1">
+            <i class="fas fa-users text-success text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-success leading-none">{{ total_usuarios }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Usuarios</span>
+        </div>
+        <button onclick="abrirVisor('categorias')"
+                class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1 text-left hover:border-warning/40 hover:bg-warning/5 transition-colors cursor-pointer">
+          <div class="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center mb-1">
+            <i class="fas fa-folder text-warning text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-warning leading-none">{{ total_categorias }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Categorías</span>
+        </button>
+        <button onclick="abrirVisor('subcategorias')"
+                class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1 text-left hover:border-info/40 hover:bg-info/5 transition-colors cursor-pointer">
+          <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mb-1">
+            <i class="fas fa-tag text-info text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-info leading-none">{{ total_subcategorias }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Subcategorías</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- Tabla principal -->
+    <div class="flex-1 min-w-0">
+      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+
+        {% if servicios %}
+        <div class="overflow-x-auto">
+          <table class="table table-sm w-full [&_tbody_tr]:h-14 [&_tbody_td]:align-middle">
+            <thead>
+              <tr class="bg-primary text-primary-content text-xs uppercase tracking-wider font-bold">
+                <th class="py-3 w-28 pl-5 text-center">Cod.</th>
+                <th class="py-3">
+                  <a href="?sort_by=titulo&order={% if sort_by == 'titulo' and order == 'asc' %}desc{% else %}asc{% endif %}&per_page={{ per_page }}"
+                     class="flex items-center gap-1 hover:text-primary-content/80">
+                    Nombre
+                    {% if sort_by == 'titulo' %}<i class="fas fa-sort-{% if order == 'asc' %}up{% else %}down{% endif %} text-[10px]"></i>{% endif %}
+                  </a>
+                </th>
+                <th class="py-3 w-16 text-center">IMG</th>
+                <th class="py-3 w-24 text-center">Acceso</th>
+                <th class="py-3 w-20 text-center">
+                  <a href="?sort_by=usuario&order={% if sort_by == 'usuario' and order == 'asc' %}desc{% else %}asc{% endif %}&per_page={{ per_page }}"
+                     class="flex items-center justify-center gap-1 hover:text-primary-content/80">
+                    Usuario
+                    {% if sort_by == 'usuario' %}<i class="fas fa-sort-{% if order == 'asc' %}up{% else %}down{% endif %} text-[10px]"></i>{% endif %}
+                  </a>
+                </th>
+                <th class="py-3 pr-4 text-center w-28">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for servicio in servicios %}
+              <tr class="border-b border-base-200/70 last:border-0 hover:bg-base-200/30 transition-colors group">
+
+                <td class="py-3 pl-4 text-center">
+                  {% if servicio.subcategoria_codigo %}
+                    <span class="text-xs font-bold text-primary bg-primary/10 px-2.5 py-1 rounded font-mono whitespace-nowrap">
+                      {{ servicio.subcategoria_codigo }}
+                    </span>
+                  {% else %}
+                    <span class="text-xs text-base-content/25">—</span>
+                  {% endif %}
+                </td>
+
+                <td class="py-3">
+                  <a href="{% url 'servicios:ver_servicio' servicio.id %}" class="flex items-center gap-3 min-w-0">
+                    <div class="w-2 h-2 rounded-full bg-base-300 group-hover:bg-primary/40 transition-colors shrink-0"></div>
+                    <span class="font-semibold text-sm text-base-content hover:text-primary transition-colors line-clamp-2 wrap-break-words min-w-0">{{ servicio.titulo }}</span>
+                  </a>
+                </td>
+
+                <td class="py-3 text-center">
+                  {% if servicio.num_imagenes > 0 %}
+                    <span class="text-xs font-bold text-success bg-success/10 px-2 py-0.5 rounded-full font-mono">
+                      {{ servicio.num_imagenes }}
+                    </span>
+                  {% else %}
+                    <span class="text-xs text-base-content/25 font-mono">—</span>
+                  {% endif %}
+                </td>
+
+                <td class="py-3 text-center">
+                  {% if servicio.publico %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">
+                      <i class="fas fa-globe text-[10px]"></i>
+                      <span class="hidden sm:inline">Público</span>
+                    </span>
+                  {% else %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-base-200 text-base-content/35">
+                      <i class="fas fa-lock text-[10px]"></i>
+                      <span class="hidden sm:inline">Privado</span>
+                    </span>
+                  {% endif %}
+                </td>
+
+                <td class="py-3 text-center">
+                  {% if servicio.creado_por %}
+                    <div class="tooltip tooltip-left" data-tip="{{ servicio.creado_por.get_full_name|default:servicio.creado_por.username }}">
+                      <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto ring-2 ring-offset-1 ring-base-200">
+                        <span class="text-xs font-bold uppercase leading-none">
+                          {{ servicio.creado_por.first_name|default:servicio.creado_por.username|slice:":1" }}{{ servicio.creado_por.last_name|default:""|slice:":1" }}
+                        </span>
+                      </div>
+                    </div>
+                  {% else %}
+                    <div class="w-8 h-8 rounded-full bg-base-200 text-base-content/25 flex items-center justify-center mx-auto">
+                      <span class="text-xs leading-none">?</span>
+                    </div>
+                  {% endif %}
+                </td>
+
+                <td class="py-3 pr-3">
+                  <div class="flex items-center justify-center gap-0.5">
+                    <a href="{% url 'servicios:ver_servicio' servicio.id %}"
+                       class="w-7 h-7 rounded-md flex items-center justify-center text-info hover:bg-info/10 transition-colors" title="Ver detalle">
+                      <i class="fas fa-eye text-xs"></i>
+                    </a>
+                    {% if servicio.creado_por == request.user %}
+                    <a href="{% url 'servicios:editar_servicio' servicio.id %}"
+                       class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
+                      <i class="fas fa-edit text-xs"></i>
+                    </a>
+                    <button type="button"
+                            class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-servicio-btn"
+                            title="Eliminar"
+                            data-servicio-id="{{ servicio.id }}"
+                            data-servicio-titulo="{{ servicio.titulo|escape }}">
+                      <i class="fas fa-trash text-xs"></i>
+                    </button>
+                    {% endif %}
+                  </div>
+                </td>
+
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="px-4 py-3 border-t border-base-200 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary/70">
+            <span class="whitespace-nowrap">Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }}</span>
+            <form method="get" class="flex items-center gap-1">
+              <select name="per_page" class="select select-bordered select-sm text-base-content bg-base-100 font-medium" onchange="this.form.submit()">
+                {% for option in per_page_options %}
+                  <option value="{{ option }}" {% if per_page == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+              <span class="whitespace-nowrap">por página</span>
+              {% for key, value in request.GET.items %}
+                {% if key != 'per_page' and key != 'page' %}
+                  <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+              {% endfor %}
+            </form>
+          </div>
+          <div class="join">
+            {% if page_obj.has_previous %}
+              <a class="join-item btn btn-xs btn-secondary btn-outline" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+            {% else %}
+              <button class="join-item btn btn-xs btn-disabled"><i class="fas fa-chevron-left"></i></button>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <button class="join-item btn btn-xs btn-primary">{{ num }}</button>
+              {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a class="join-item btn btn-xs btn-secondary btn-outline" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ num }}">{{ num }}</a>
+              {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+              <a class="join-item btn btn-xs btn-secondary btn-outline" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.next_page_number }}">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            {% else %}
+              <button class="join-item btn btn-xs btn-disabled"><i class="fas fa-chevron-right"></i></button>
+            {% endif %}
+          </div>
+        </div>
+
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-20 text-base-content/40">
+          <i class="fas fa-cogs text-5xl mb-4"></i>
+          <p class="text-lg font-medium">No hay servicios disponibles</p>
+          <a href="{% url 'servicios:crear_servicio' %}" class="btn btn-primary btn-sm mt-4 gap-2">
+            <i class="fas fa-plus"></i> Crear primer servicio
+          </a>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% include 'servicios/modals/eliminar_servicio_modal.html' %}
+
+<!-- Modal visor catálogo -->
+<dialog id="modal-catalogo" class="modal">
+  <div class="modal-box w-11/12 max-w-lg max-h-[80vh] flex flex-col p-0 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
+      <h3 id="modal-catalogo-titulo" class="text-base font-bold text-base-content"></h3>
+      <button onclick="document.getElementById('modal-catalogo').close()" class="btn btn-ghost btn-sm btn-circle">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="modal-catalogo-body" class="overflow-y-auto flex-1 px-5 py-4 flex flex-col gap-1">
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>cerrar</button></form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script>
+  document.addEventListener('click', function(event) {
+    const button = event.target.closest('.eliminar-servicio-btn');
+    if (button) {
+      event.preventDefault();
+      if (window.openEliminarServicioModal) {
+        window.openEliminarServicioModal(button.dataset.servicioId, button.dataset.servicioTitulo);
+      }
+    }
+  });
+
+  const CATALOGO = {{ datos_catalogo|safe }};
+
+  function abrirVisor(tipo) {
+    const modal = document.getElementById('modal-catalogo');
+    const titulo = document.getElementById('modal-catalogo-titulo');
+    const body = document.getElementById('modal-catalogo-body');
+    body.innerHTML = '';
+
+    if (tipo === 'categorias') {
+      titulo.textContent = 'Categorías (' + CATALOGO.length + ')';
+      CATALOGO.forEach((cat, i) => {
+        const el = document.createElement('div');
+        el.className = 'flex items-center gap-2 py-1.5 border-b border-base-200 last:border-0';
+        el.innerHTML = `
+          <span class="text-xs font-mono text-base-content/40 w-5 text-right flex-shrink-0">${i + 1}</span>
+          <i class="fas fa-folder text-warning text-xs flex-shrink-0"></i>
+          <span class="text-sm font-medium text-base-content">${cat.nombre}</span>
+        `;
+        body.appendChild(el);
+      });
+    } else {
+      let total = 0;
+      CATALOGO.forEach(c => total += (c.subcategorias || []).length);
+      titulo.textContent = 'Subcategorías (' + total + ')';
+      CATALOGO.forEach(cat => {
+        const header = document.createElement('div');
+        header.className = 'text-[10px] font-bold text-secondary/50 uppercase tracking-widest pt-3 pb-1';
+        header.textContent = cat.nombre;
+        body.appendChild(header);
+        (cat.subcategorias || []).forEach(sub => {
+          const el = document.createElement('div');
+          el.className = 'flex items-center gap-2 py-1 pl-2';
+          el.innerHTML = `
+            <span class="text-xs font-mono text-info/70 w-16 flex-shrink-0">${sub.codigo}</span>
+            <span class="text-sm text-base-content">${sub.nombre}</span>
+          `;
+          body.appendChild(el);
+        });
+      });
+    }
+
+    modal.showModal();
+  }
+</script>
+{% endblock %}

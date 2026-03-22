@@ -1,0 +1,55 @@
+{
+  "nombre": "Servicios Laboratorio y Aseguramiento de Calidad",
+  "definicion": "Servicios analíticos, metrológicos y operativos realizados en laboratorio para el control de calidad, inocuidad y cumplimiento normativo de productos, procesos e insumos, incluyendo calibración de instrumentos, ejecución de ensayos físico-químicos y microbiológicos, mantenimiento de equipos analíticos, actividades vinculadas a sistemas de gestión de calidad e inocuidad, y servicios de control de plagas en oficinas y planta.",
+  "alcance": "Calibración de instrumentos de laboratorio (pH, conductividad, balanzas). Ensayos físico-químicos y microbiológicos sobre muestras de producto, agua, insumos o ambiente. Mantenimiento de equipos analíticos, ópticos y electrónicos. Control de plagas en oficinas y planta mediante desinfección, fumigación, colocación de trampas y control de vectores. Gastos operativos vinculados a sistemas de gestión de calidad e inocuidad.",
+  "subcategorias": [
+    {
+      "codigo": "LAB-01",
+      "nombre": "Calibración de Instrumentos de Laboratorio",
+      "unidad": "por instrumento",
+      "descripcion": "Calibración de densímetros, pHmetros, conductímetros, balanzas, termómetros, espectrofotómetro, colorímetro y otros equipos de medición utilizados en laboratorio.",
+      "frecuencia": "anual",
+      "intencion": "calibración"
+    },
+    {
+      "codigo": "LAB-02",
+      "nombre": "Análisis Físico-Químico",
+      "unidad": "por muestra / por parámetro",
+      "descripcion": "Ejecución de ensayos sobre muestras de producto, agua, insumos o ambiente; incluye parámetros como densidad, viscosidad, acidez, concentración, radionuclides, metabisulfito, color.",
+      "frecuencia": "bimensual",
+      "intencion": "análisis"
+    },
+    {
+      "codigo": "LAB-03",
+      "nombre": "Análisis Microbiológico",
+      "unidad": "por muestra / por tipo de análisis",
+      "descripcion": "Ejecución de ensayos sobre muestras de agua de pozo e insumos para la detección y cuantificación de microorganismos, incluyendo coliformes, hongos y levaduras.",
+      "frecuencia": "anual",
+      "intencion": "análisis"
+    },
+    {
+      "codigo": "LAB-04",
+      "nombre": "Mantenimiento de Equipos de Laboratorio",
+      "unidad": "por muestra / por tipo de ensayo",
+      "descripcion": "Revisión, ajuste, calibración y prueba funcional de instrumentos analíticos, ópticos y electrónicos utilizados en laboratorio.",
+      "frecuencia": "anual",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "LAB-05",
+      "nombre": "Servicios de Inocuidad",
+      "unidad": "por ítem / por mes",
+      "descripcion": "Servicios o actividades vinculadas al sistema de gestión de inocuidad alimentaria, incluyendo la implementación, seguimiento y control de prácticas asociadas.",
+      "frecuencia": "anual",
+      "intencion": "gestión"
+    },
+    {
+      "codigo": "LAB-06",
+      "nombre": "Control de Plagas",
+      "unidad": "por punto de control",
+      "descripcion": "Desinfección, fumigación, colocación de trampas y control de vectores en áreas administrativas y todos los sectores de planta industrial, de acuerdo a normativa de HACCP.",
+      "frecuencia": "mensual",
+      "intencion": "control"
+    }
+  ]
+}

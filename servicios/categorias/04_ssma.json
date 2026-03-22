@@ -1,0 +1,71 @@
+{
+  "nombre": "Servicios Ssma",
+  "definicion": "Servicios orientados a la gestión, control y mejora de las condiciones de seguridad industrial, salud ocupacional y medio ambiente, conforme a normativas legales vigentes y sistemas de gestión integrados. Incluyen actividades específicas como prevención y extinción de incendios, control de plagas en oficinas, CD y planta industrial, gestión de residuos bioinfecciosos e industriales, monitoreo ambiental (agua, ruido, gases), servicios de prevencionistas, consultoría SSMA, salud ocupacional y medio ambiente, así como cálculo estructural y alquiler de andamios, asegurando cumplimiento, mitigación de riesgos y sostenibilidad operativa.",
+  "alcance": "Prevención y extinción de incendios. Control de plagas en oficinas, CD y planta industrial. Gestión de residuos bioinfecciosos e industriales. Monitoreo ambiental (agua, ruido, gases). Servicios de prevencionistas, consultoría SSMA, salud ocupacional y medio ambiente. Cálculo estructural y alquiler de andamios.",
+  "subcategorias": [
+    {
+      "codigo": "SSMA-01",
+      "nombre": "Prevención y Extinción de Incendios",
+      "unidad": "por extintor / por equipo de la red",
+      "descripcion": "Inspección, mantenimiento y recarga de extintores, incluyendo verificación de operatividad y cumplimiento normativo. Inspección, mantenimiento y pruebas de la red contra incendios (hidrantes, sala de bombas, bombas Yoke), asegurando su correcto funcionamiento y disponibilidad ante emergencias.",
+      "frecuencia": "mensual",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "SSMA-02",
+      "nombre": "Tratamiento de Residuos Industriales",
+      "unidad": "por kg / por tipo de residuo",
+      "descripcion": "Gestión integral de lodos, insumos vencidos, ácidos, jarabes y productos contaminados y bioinfecciosos, considerando su manipulación, clasificación, almacenamiento y disposición conforme a normativas ambientales aplicables.",
+      "frecuencia": "mensual",
+      "intencion": "disposición"
+    },
+    {
+      "codigo": "SSMA-03",
+      "nombre": "Servicios de Prevencionistas SSMA",
+      "unidad": "por hora hombre / por jornada",
+      "descripcion": "Asistencia técnica en seguridad y medio ambiente mediante la presencia de prevencionistas SSMA, orientada a la supervisión de condiciones seguras, cumplimiento normativo y control de riesgos en operaciones.",
+      "frecuencia": "mensual",
+      "intencion": "supervisión"
+    },
+    {
+      "codigo": "SSMA-04",
+      "nombre": "Servicios de Gestión de Medio Ambiente",
+      "unidad": "por reporte / por mes",
+      "descripcion": "Gestión ambiental enfocada en el cumplimiento legal, elaboración de reportes y seguimiento de indicadores ambientales, incluyendo control documental, monitoreo de desempeño ambiental y verificación de cumplimiento de requisitos normativos.",
+      "frecuencia": "mensual",
+      "intencion": "gestión"
+    },
+    {
+      "codigo": "SSMA-05",
+      "nombre": "Monitoreo Ambiental (Agua, Ruido, Gases)",
+      "unidad": "por parámetro / por punto",
+      "descripcion": "Medición de parámetros ambientales según norma, incluyendo calidad de agua, emisiones, ruido, cantidad de iluminación y efluentes, mediante la toma de datos en campo y su análisis para verificar cumplimiento ambiental.",
+      "frecuencia": "anual",
+      "intencion": "monitoreo"
+    },
+    {
+      "codigo": "SSMA-06",
+      "nombre": "Servicio de Certificación de Equipos de Riesgo Crítico",
+      "unidad": "por equipo",
+      "descripcion": "Certificación periódica de equipos y componentes de riesgos críticos, incluyendo línea de vida, arnés, escaleras, andamios, equipos pesados, puentes grúa y tanques sometidos a presión, verificando su cumplimiento con estándares de seguridad y normativas aplicables.",
+      "frecuencia": "anual",
+      "intencion": "certificación"
+    },
+    {
+      "codigo": "SSMA-07",
+      "nombre": "Cálculo de Carga Estructural de Plataformas",
+      "unidad": "por plataforma / por área / por longitud",
+      "descripcion": "Evaluación técnica de resistencia estructural para plataformas, pasarelas y soportes, mediante análisis de carga estructural para determinar su capacidad y condiciones seguras de operación.",
+      "frecuencia": "por demanda",
+      "intencion": "análisis"
+    },
+    {
+      "codigo": "SSMA-08",
+      "nombre": "Servicio de Alquiler de Equipos de Seguridad",
+      "unidad": "por hora",
+      "descripcion": "Alquiler de andamios y estructura temporal, incluyendo montaje y desmontajes de andamios certificados u otros equipos de seguridad, utilizados en actividades como instalación luminarias e instalación de vallas publicitarias.",
+      "frecuencia": "por demanda",
+      "intencion": "alquiler"
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "nombre": "Servicios Eléctricos",
+  "definicion": "Mano de obra contratada destinada a la instalación, mantenimiento, diagnóstico y reparación de sistemas eléctricos industriales, incluyendo redes de fuerza, sistemas de iluminación y motores, bajo cumplimiento de normativas eléctricas vigentes. Este servicio integra actividades asociadas a mantenimiento predictivo, mantenimiento preventivo, mantenimiento correctivo, así como la instalación de infraestructura eléctrica industrial y menor, considerando equipos como tableros eléctricos, Variadores de frecuencia, banco de capacitores, UPS, Grupo electrógeno, Sistema pararrayos y sistemas de puesta a tierra.",
+  "alcance": "Comprende todas las actividades de mantenimiento eléctrico industrial: mantenimiento preventivo periódico, mantenimiento predictivo de equipos críticos, mantenimiento correctivo de todos los equipos industriales y sistemas eléctricos, ajuste y puesta a punto de los equipos industriales. Incluye además la provisión de mano de obra especializada en instalaciones eléctricas industriales, tales como armado de tableros eléctricos, instalación de Variadores de frecuencia, instalación de banco de capacitores, instalación de sistemas de puesta a tierra y pararrayos. También contempla mano de obra en instalaciones menores, incluyendo iluminación de oficinas, cambio de luminarias, tomas, puntos de conexión y electricidad en general.",
+  "subcategorias": [
+    {
+      "codigo": "SE-01",
+      "nombre": "Mantenimiento Predictivo – Termografía",
+      "unidad": "por tablero / por equipo",
+      "descripcion": "Detección de puntos calientes en sistemas eléctricos mediante técnicas de termografía. Ej: (motores, transformadores, tableros eléctricos, banco capacitores)",
+      "frecuencia": "semestral",
+      "intencion": "predictivo"
+    },
+    {
+      "codigo": "SE-02",
+      "nombre": "Mantenimiento Predictivo – Ultrasonido",
+      "unidad": "por punto de inspección",
+      "descripcion": "Identificación de descargas parciales y fallas dieléctricas mediante ultrasonido en sistemas eléctricos. Ej: (transformadores, banco de capacitores, líneas de media tensión)",
+      "frecuencia": "semestral",
+      "intencion": "predictivo"
+    },
+    {
+      "codigo": "SE-03",
+      "nombre": "Mantenimiento Preventivo – Equipos Industriales",
+      "unidad": "por equipo",
+      "descripcion": "Revisión periódica de maquinaria con componentes eléctricos para asegurar su funcionamiento. Ej: (Variadores de frecuencia, transformadores, líneas de media tensión, UPS, Grupo electrógeno, Sistema pararrayos)",
+      "frecuencia": "trimestral",
+      "intencion": "preventivo"
+    },
+    {
+      "codigo": "SE-04",
+      "nombre": "Mantenimiento Correctivo – Equipos Industriales",
+      "unidad": "por intervención",
+      "descripcion": "Reparación de fallas eléctricas en maquinaria industrial mediante intervención directa. Ej: (Cambio de componentes en tableros eléctricos de fuerza, Cambio de componentes en VLT, Cambio de componentes banco capacitores)",
+      "frecuencia": "por demanda",
+      "intencion": "correctivo"
+    },
+    {
+      "codigo": "SE-05",
+      "nombre": "Mantenimiento Preventivo – Sistemas Eléctricos",
+      "unidad": "por tablero / por sistema",
+      "descripcion": "Revisión periódica de sistemas eléctricos incluyendo medición de parámetros eléctricos para asegurar condiciones operativas. Ej: (Tableros eléctricos de fuerza, banco de capacitores, luminarias y letreros de seguridad, motores)",
+      "frecuencia": "trimestral",
+      "intencion": "preventivo"
+    },
+    {
+      "codigo": "SE-06",
+      "nombre": "Mano de Obra Técnica Eléctrica",
+      "unidad": "hora-hombre",
+      "descripcion": "Proveer personal técnico calificado para ejecutar tareas de mantenimiento, reparación, montaje y ajuste de sistemas eléctricos en planta industrial. (Apoyo en paradas semanales o anuales, mantto de tableros de fuerza, instalación de cableductos, cables de fuerza, iluminación)",
+      "frecuencia": "por demanda",
+      "intencion": "soporte técnico"
+    },
+    {
+      "codigo": "SE-07",
+      "nombre": "Instalaciones Eléctricas Industriales",
+      "unidad": "por metro lineal / por tablero / por sistema",
+      "descripcion": "Ejecución de canalización, cableado, montaje de tableros y acometidas eléctricas en entornos industriales. Ej: (Armado e instalación de tableros eléctricos de fuerza, Instalación de banco de capacitores, soplador de aire, puesta a tierra, pararrayos, tableros de control)",
+      "frecuencia": "por demanda",
+      "intencion": "instalación"
+    },
+    {
+      "codigo": "SE-08",
+      "nombre": "Instalaciones Eléctricas Menores",
+      "unidad": "por punto instalado",
+      "descripcion": "Ejecución de instalaciones eléctricas menores en infraestructura existente. Ej: (puntos de Iluminación, tomas, puntos de conexión, secador de mano, cámaras)",
+      "frecuencia": "por demanda",
+      "intencion": "instalación"
+    },
+    {
+      "codigo": "SE-09",
+      "nombre": "Rebobinado de Motores",
+      "unidad": "por grupo de motores distinta potencia",
+      "descripcion": "Reparación de motores eléctricos de distintas potencias mediante rebobinado y pruebas funcionales. Ej: Rebobinado por proveedores certificados para algunas marcas ABB, SIEMENS. Otras marcas por cualquier proveedor que cumpla pliego",
+      "frecuencia": "por demanda",
+      "intencion": "reparación"
+    },
+    {
+      "codigo": "SE-10",
+      "nombre": "Mantenimiento de Codificadores",
+      "unidad": "por tipo de codificador",
+      "descripcion": "Revisión y ajuste de codificadores industriales a chorro de tinta y láser para asegurar su correcto funcionamiento",
+      "frecuencia": "mensual",
+      "intencion": "mantenimiento"
+    },
+    {
+      "codigo": "SE-11",
+      "nombre": "Medición y Verificación de Puesta a Tierra y Pararrayos",
+      "unidad": "por punto de medición",
+      "descripcion": "Ejecución de pruebas de resistencia de tierra y continuidad de protección, así como inspección de pararrayos para verificar condiciones de seguridad eléctrica",
+      "frecuencia": "anual",
+      "intencion": "inspección"
+    }
+  ]
+}
