@@ -147,7 +147,7 @@ def lista_servicios_view(request):
     except (TypeError, ValueError):
         per_page = per_page_options[0]
 
-    servicios_qs = (
+    base_qs = (
         Servicio.objects.filter(activo=True)
         .filter(Q(publico=True) | Q(creado_por=request.user))
         .select_related('creado_por')
@@ -168,6 +168,33 @@ def lista_servicios_view(request):
         .annotate(usuario_sort_lower=Lower('usuario_sort'))
         .annotate(num_imagenes=Count('imagenes', distinct=True))
     )
+
+    # Separar completos (con contenido) de borradores (sin contenido)
+    borradores_qs = base_qs.filter(contenido='').order_by('-fecha_actualizacion')
+    servicios_qs = base_qs.exclude(contenido='')
+
+    # Determinar paso siguiente para cada borrador
+    _PASO_LABELS = {
+        2: 'Objetivo',
+        3: 'Alcance',
+        4: 'Secciones',
+        5: 'Consolidar',
+    }
+    borradores_ctx = []
+    for b in borradores_qs:
+        if b.secciones_generadas or b.secciones_editadas:
+            paso = 5
+        elif b.alcance_generado or b.alcance_editado:
+            paso = 4
+        elif b.objetivo:
+            paso = 3
+        else:
+            paso = 2
+        borradores_ctx.append({
+            'obj': b,
+            'resume_paso': paso,
+            'resume_label': _PASO_LABELS[paso],
+        })
 
     sort_field_map = {
         'titulo': 'titulo',
@@ -209,6 +236,7 @@ def lista_servicios_view(request):
         'total_categorias': total_categorias,
         'total_subcategorias': total_subcategorias,
         'datos_catalogo': datos_catalogo,
+        'borradores': borradores_ctx,
     })
 
 
@@ -955,6 +983,146 @@ def eliminar_servicio_view(request, servicio_id):
         return redirect('servicios:lista_servicios')
 
     return render(request, 'servicios/eliminar_servicio.html', {'servicio': servicio})
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_publico_view(request, servicio_id):
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if servicio.creado_por != request.user:
+        return JsonResponse({'error': 'Sin permisos.'}, status=403)
+    servicio.publico = not servicio.publico
+    servicio.save(update_fields=['publico'])
+    return JsonResponse({'publico': servicio.publico})
+
+
+@login_required
+def exportar_servicio_word_view(request, servicio_id):
+    from django.http import HttpResponse
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from bs4 import BeautifulSoup
+    import io
+
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not (servicio.publico or servicio.creado_por == request.user):
+        messages.error(request, 'Sin permisos para exportar este servicio.')
+        return redirect('servicios:ver_servicio', servicio_id=servicio_id)
+
+    doc = Document()
+    style = doc.styles['Normal']
+    style.font.name = 'Arial'
+    style.font.size = Pt(11)
+
+    # — Cabecera —
+    if servicio.subcategoria_codigo:
+        p = doc.add_paragraph()
+        run = p.add_run(servicio.subcategoria_codigo)
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(0x1d, 0x4e, 0xd8)
+        run.bold = True
+
+    h = doc.add_heading(servicio.titulo, level=1)
+    h.runs[0].font.color.rgb = RGBColor(0x1e, 0x29, 0x3b)
+
+    meta_parts = []
+    if servicio.categoria_nombre:
+        meta_parts.append(servicio.categoria_nombre)
+    if servicio.subcategoria_nombre:
+        meta_parts.append(servicio.subcategoria_nombre)
+    if servicio.solicitante:
+        meta_parts.append(servicio.solicitante)
+    if meta_parts:
+        p = doc.add_paragraph(' › '.join(meta_parts))
+        p.runs[0].font.size = Pt(9)
+        p.runs[0].font.color.rgb = RGBColor(0x64, 0x74, 0x8b)
+
+    doc.add_paragraph()  # separador
+
+    # — Contenido —
+    if servicio.contenido and servicio.contenido.strip():
+        contenido_html = markdown(servicio.contenido, extensions=['extra'])
+        soup = BeautifulSoup(contenido_html, 'html.parser')
+
+        def add_run_formatted(para, node):
+            if not hasattr(node, 'name') or node.name is None:
+                txt = str(node)
+                if txt:
+                    para.add_run(txt)
+                return
+            tag = node.name.lower()
+            if tag in ('strong', 'b'):
+                for child in node.children:
+                    run = para.add_run(child.get_text() if hasattr(child, 'get_text') else str(child))
+                    run.bold = True
+            elif tag in ('em', 'i'):
+                for child in node.children:
+                    run = para.add_run(child.get_text() if hasattr(child, 'get_text') else str(child))
+                    run.italic = True
+            else:
+                for child in node.children:
+                    add_run_formatted(para, child)
+
+        def process_elem(elem):
+            if not hasattr(elem, 'name') or elem.name is None:
+                return
+            tag = elem.name.lower()
+            if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
+                level = int(tag[1])
+                h = doc.add_heading(level=min(level, 4))
+                for child in elem.children:
+                    add_run_formatted(h, child)
+            elif tag == 'p':
+                para = doc.add_paragraph()
+                for child in elem.children:
+                    add_run_formatted(para, child)
+            elif tag in ('ul', 'ol'):
+                for li in elem.find_all('li', recursive=False):
+                    style_name = 'List Bullet' if tag == 'ul' else 'List Number'
+                    try:
+                        para = doc.add_paragraph(style=style_name)
+                    except Exception:
+                        para = doc.add_paragraph()
+                    for child in li.children:
+                        add_run_formatted(para, child)
+            elif tag == 'table':
+                rows = elem.find_all('tr')
+                if not rows:
+                    return
+                max_cols = max(len(r.find_all(['td', 'th'])) for r in rows)
+                if max_cols == 0:
+                    return
+                tbl = doc.add_table(rows=len(rows), cols=max_cols)
+                tbl.style = 'Table Grid'
+                for r_idx, row in enumerate(rows):
+                    cells = row.find_all(['td', 'th'])
+                    for c_idx, cell in enumerate(cells):
+                        if c_idx < max_cols:
+                            wc = tbl.rows[r_idx].cells[c_idx]
+                            wc.text = ''
+                            para = wc.paragraphs[0]
+                            is_header = cell.name == 'th'
+                            for child in cell.children:
+                                add_run_formatted(para, child)
+                            if is_header:
+                                for run in para.runs:
+                                    run.bold = True
+
+        for elem in soup.children:
+            process_elem(elem)
+
+    # — Respuesta —
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    filename = f'{slugify(servicio.titulo) or "servicio"}.docx'
+    response = HttpResponse(
+        buffer,
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required

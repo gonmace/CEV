@@ -913,4 +913,8 @@
 </script>
 <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
 <script src="https://uicdn.toast.com/editor/latest/i18n/es-es.js"></script>
+<script>
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+</script>
 {% endblock %}

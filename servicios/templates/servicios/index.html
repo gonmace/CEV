@@ -48,19 +48,21 @@
           <span class="text-2xl font-bold text-primary leading-none">{{ page_obj.paginator.count }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Servicios</span>
         </div>
-        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
-          <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mb-1">
-            <i class="fas fa-users text-success text-sm"></i>
-          </div>
-          <span class="text-2xl font-bold text-success leading-none">{{ total_usuarios }}</span>
-          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Usuarios</span>
-        </div>
-        <button onclick="abrirVisor('categorias')"
-                class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1 text-left hover:border-warning/40 hover:bg-warning/5 transition-colors cursor-pointer">
+        {% if borradores %}
+        <div class="rounded-xl bg-base-100 border border-warning/30 shadow-sm p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center mb-1">
-            <i class="fas fa-folder text-warning text-sm"></i>
+            <i class="fas fa-clock text-warning text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-warning leading-none">{{ total_categorias }}</span>
+          <span class="text-2xl font-bold text-warning leading-none">{{ borradores|length }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Borradores</span>
+        </div>
+        {% endif %}
+        <button onclick="abrirVisor('categorias')"
+                class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1 text-left hover:border-accent/40 hover:bg-accent/5 transition-colors cursor-pointer">
+          <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center mb-1">
+            <i class="fas fa-folder text-accent text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-accent leading-none">{{ total_categorias }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Categorías</span>
         </button>
         <button onclick="abrirVisor('subcategorias')"
@@ -71,6 +73,13 @@
           <span class="text-2xl font-bold text-info leading-none">{{ total_subcategorias }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Subcategorías</span>
         </button>
+        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mb-1">
+            <i class="fas fa-users text-success text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-success leading-none">{{ total_usuarios }}</span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Usuarios</span>
+        </div>
       </div>
 
     </aside>
@@ -172,10 +181,6 @@
                       <i class="fas fa-eye text-xs"></i>
                     </a>
                     {% if servicio.creado_por == request.user %}
-                    <a href="{% url 'servicios:editar_servicio' servicio.id %}"
-                       class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors" title="Editar">
-                      <i class="fas fa-edit text-xs"></i>
-                    </a>
                     <button type="button"
                             class="w-7 h-7 rounded-md flex items-center justify-center text-error hover:bg-error/10 transition-colors eliminar-servicio-btn"
                             title="Eliminar"
@@ -237,16 +242,92 @@
         </div>
 
         {% else %}
-        <div class="flex flex-col items-center justify-center py-20 text-base-content/40">
+        <div class="flex flex-col items-center justify-center py-16 text-base-content/40">
           <i class="fas fa-cogs text-5xl mb-4"></i>
+          {% if borradores %}
+          <p class="text-lg font-medium">Sin servicios completos aún</p>
+          <p class="text-sm mt-1 text-base-content/30">Completa los borradores pendientes para que aparezcan aquí.</p>
+          {% else %}
           <p class="text-lg font-medium">No hay servicios disponibles</p>
           <a href="{% url 'servicios:crear_servicio' %}" class="btn btn-primary btn-sm mt-4 gap-2">
             <i class="fas fa-plus"></i> Crear primer servicio
           </a>
+          {% endif %}
         </div>
         {% endif %}
 
       </div>
+
+      {% if borradores %}
+      <!-- ── Panel de borradores pendientes ─────────────────────────────────── -->
+      <div class="rounded-xl bg-base-100 border border-warning/30 shadow-sm overflow-hidden mt-4">
+        <div class="px-4 pt-4 pb-4">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-1 h-5 bg-warning rounded-full"></div>
+            <span class="text-sm font-semibold text-base-content/70 uppercase tracking-widest">Borradores pendientes</span>
+            <div class="flex-1 h-px bg-base-200"></div>
+            <span class="badge badge-warning badge-sm">{{ borradores|length }}</span>
+          </div>
+          <div class="flex flex-col gap-2">
+            {% for b in borradores %}
+            <div id="borrador-servicio-{{ b.obj.id }}"
+                 class="bg-base-100 border border-warning/30 rounded-xl shadow-sm overflow-hidden">
+              <div class="flex items-stretch">
+                <div class="w-1 bg-warning shrink-0"></div>
+                <div class="flex-1 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 min-w-0">
+                  <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-sm text-base-content truncate leading-tight">{{ b.obj.titulo }}</p>
+                    <p class="text-xs text-base-content/50 mt-0.5">
+                      {% if b.obj.subcategoria_codigo %}
+                        <span class="font-mono text-primary/70">{{ b.obj.subcategoria_codigo }}</span>
+                        <span class="mx-1">·</span>
+                      {% endif %}
+                      <i class="fas fa-clock mr-1"></i>{{ b.obj.fecha_actualizacion|date:"d/m/Y H:i" }}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    {% if b.resume_paso == 2 %}
+                      {% url 'servicios:paso2_objetivo' b.obj.id as resume_url %}
+                    {% elif b.resume_paso == 3 %}
+                      {% url 'servicios:paso3_alcance' b.obj.id as resume_url %}
+                    {% elif b.resume_paso == 4 %}
+                      {% url 'servicios:paso4_secciones' b.obj.id as resume_url %}
+                    {% else %}
+                      {% url 'servicios:paso5_consolidar' b.obj.id as resume_url %}
+                    {% endif %}
+                    <a href="{{ resume_url }}"
+                       class="btn btn-xs gap-1.5 font-semibold
+                              bg-warning/15 text-warning-content border border-warning/50
+                              hover:bg-warning hover:border-warning hover:text-white
+                              transition-all duration-150 whitespace-nowrap shadow-sm">
+                      <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-warning/40 text-[10px] font-bold leading-none shrink-0">{{ b.resume_paso }}</span>
+                      {{ b.resume_label }}
+                      <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
+                    </a>
+                  </div>
+                </div>
+                {% if b.obj.creado_por == request.user %}
+                <div class="flex items-center px-3 border-l border-base-200 shrink-0">
+                  <button type="button"
+                          class="w-7 h-7 flex items-center justify-center rounded-lg
+                                 text-base-content/30 hover:text-error hover:bg-error/10
+                                 transition-colors duration-150 eliminar-servicio-btn"
+                          data-servicio-id="{{ b.obj.id }}"
+                          data-servicio-titulo="{{ b.obj.titulo|escape }}"
+                          title="Eliminar borrador">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                  </button>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      <!-- ── Fin panel borradores ───────────────────────────────────────────── -->
+
     </div>
 
   </div>

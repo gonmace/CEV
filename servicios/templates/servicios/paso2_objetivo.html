@@ -220,5 +220,8 @@
 
   // Arrancar al cargar la página
   document.addEventListener('DOMContentLoaded', () => llamarWebhook());
+
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', () => history.pushState(null, '', location.href));
 </script>
 {% endblock %}
