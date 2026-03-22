@@ -4,6 +4,73 @@
 {% block css %}
   {% tailwind_css %}
   <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+  <style>
+    /* ── Documento ─────────────────────────────────────────────────────────── */
+    .doc-wrap {
+      border-radius: 1rem;
+      box-shadow: 0 4px 24px -4px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
+
+    /* Cabecera */
+    .doc-header {
+      border-bottom: 2px solid oklch(var(--p));
+      padding: 1.75rem 2.5rem 1.25rem;
+    }
+    .doc-header .doc-code  { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: oklch(var(--p)); }
+    .doc-header .doc-title { font-size: 1.4rem; font-weight: 800; line-height: 1.3; margin: .3rem 0 .55rem; color: #1e293b; }
+    .doc-header .doc-meta  { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; font-size: .78rem; color: #64748b; }
+    .doc-header .doc-sep   { color: #cbd5e1; }
+
+    /* Cuerpo */
+    .doc-body {
+      background: oklch(var(--b1));
+      padding: 2rem 2.5rem 2.5rem;
+      counter-reset: seccion subseccion;
+    }
+
+    /* Numeración automática */
+    .doc-body :is(h2) { counter-reset: subseccion; }
+    .doc-body :is(h2)::before { counter-increment: seccion; content: counter(seccion) ".  "; }
+    .doc-body :is(h3)::before { counter-increment: subseccion; content: counter(seccion) "." counter(subseccion) "  "; }
+
+    /* Headings */
+    .doc-body :is(h2) { font-size: .95rem; font-weight: 700; color: #1d4ed8; margin-top: 2rem; margin-bottom: .5rem; }
+    .doc-body :is(h2):first-child { margin-top: 0; }
+    .doc-body :is(h3) { font-size: .88rem; font-weight: 700; color: #1d4ed8; margin-top: 1.25rem; margin-bottom: .35rem; }
+    .doc-body :is(h4) { font-size: .84rem; font-weight: 600; color: oklch(var(--bc)); margin-top: .9rem; margin-bottom: .25rem; }
+    .doc-body :is(h5, h6) { font-size: .84rem; font-weight: 600; color: oklch(var(--bc) / .7); margin-top: .7rem; margin-bottom: .15rem; }
+
+    /* Texto */
+    .doc-body :is(p) { font-size: .84rem; color: oklch(var(--bc) / .8); line-height: 1.7; margin-bottom: .45rem; text-align: justify; }
+    .doc-body :is(ul, ol) { padding-left: 1.4rem; margin-bottom: .6rem; }
+    .doc-body :is(li) { font-size: .84rem; color: oklch(var(--bc) / .8); margin-bottom: .2rem; line-height: 1.6; }
+    .doc-body :is(strong) { color: oklch(var(--bc)); font-weight: 600; }
+
+    /* Tablas */
+    .doc-body :is(table) {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      font-size: .79rem; margin: 1rem 0 1.25rem;
+      border: 1px solid #dbeafe; border-radius: .5rem; overflow: hidden;
+    }
+    .doc-body :is(thead) { background: #eff6ff; }
+    .doc-body :is(th) {
+      color: #1d4ed8; font-weight: 700; font-size: .75rem;
+      padding: .55rem .85rem; text-align: left;
+      letter-spacing: .04em; text-transform: uppercase;
+      border-bottom: 2px solid #bfdbfe;
+    }
+    .doc-body :is(th:not(:last-child)) { border-right: 2px solid #bfdbfe; }
+    .doc-body :is(td) {
+      padding: .45rem .85rem; vertical-align: top;
+      color: oklch(var(--bc) / .8); line-height: 1.5;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .doc-body :is(td:not(:last-child)) { border-right: 2px solid #e2e8f0; }
+    .doc-body :is(tbody tr:last-child td) { border-bottom: none; }
+    .doc-body :is(tbody tr:hover td) { background: #f8fafc; }
+  </style>
 {% endblock %}
 
 {% block title %}{{ servicio.titulo }}{% endblock %}
@@ -29,48 +96,69 @@
   <!-- Columna principal -->
   <div class="w-full lg:flex-1 flex flex-col gap-3">
 
-    <!-- Contenido -->
-    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
-      <div class="flex items-center justify-between px-5 py-3.5 border-b border-secondary/10">
-        <div class="flex items-center gap-2">
-          <span class="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-            <i class="fas fa-file-alt text-primary text-xs"></i>
-          </span>
-          <span class="text-sm font-semibold text-base-content">Contenido</span>
+    <!-- Documento -->
+    <div class="doc-wrap bg-base-100">
+
+      <!-- Cabecera -->
+      <div class="doc-header flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          {% if servicio.subcategoria_codigo %}
+          <div class="doc-code">{{ servicio.subcategoria_codigo }}</div>
+          {% endif %}
+          <div class="doc-title">{{ servicio.titulo }}</div>
+          <div class="doc-meta">
+            {% if servicio.categoria_nombre %}
+            <span>{{ servicio.categoria_nombre }}</span>
+            {% endif %}
+            {% if servicio.subcategoria_nombre %}
+            <span class="doc-sep">›</span>
+            <span>{{ servicio.subcategoria_nombre }}</span>
+            {% endif %}
+            {% if servicio.solicitante %}
+            <span class="doc-sep">·</span>
+            <span>{{ servicio.solicitante }}</span>
+            {% endif %}
+          </div>
         </div>
         {% if es_propietario %}
-        <a href="{% url 'servicios:editar_servicio' servicio.id %}"
-           class="flex items-center gap-1 text-xs font-semibold text-warning hover:bg-warning/10 px-3 py-1.5 rounded-lg transition-colors">
-          <i class="fas fa-edit text-xs"></i> Editar
-        </a>
+        <div class="flex items-center gap-2 shrink-0 pt-1" id="acciones-doc">
+          <button id="btn-editar" type="button"
+                  class="flex items-center gap-1.5 text-xs font-semibold text-warning hover:bg-warning/10 px-3 py-1.5 rounded-lg transition-colors">
+            <i class="fas fa-edit text-xs"></i> Editar
+          </button>
+        </div>
+        <div class="hidden items-center gap-2 shrink-0 pt-1" id="acciones-editor">
+          <button id="btn-cancelar" type="button"
+                  class="flex items-center gap-1.5 text-xs font-semibold text-base-content/50 hover:bg-base-200 px-3 py-1.5 rounded-lg transition-colors">
+            Cancelar
+          </button>
+          <button id="btn-guardar" type="button"
+                  class="flex items-center gap-1.5 text-xs font-semibold text-success hover:bg-success/10 px-3 py-1.5 rounded-lg transition-colors">
+            <i class="fas fa-save text-xs"></i> Guardar
+          </button>
+        </div>
         {% endif %}
       </div>
 
-      {% if servicio.contenido %}
-      <div class="px-6 py-5 prose prose-sm max-w-none
-                  prose-headings:text-base-content prose-headings:font-bold
-                  prose-p:text-base-content/80 prose-p:leading-relaxed
-                  prose-strong:text-base-content prose-strong:font-semibold
-                  prose-ul:text-base-content/80 prose-ol:text-base-content/80
-                  prose-li:my-0.5 prose-a:text-primary
-                  prose-table:w-full prose-td:border prose-td:border-base-300 prose-td:px-3 prose-td:py-2
-                  prose-th:border prose-th:border-base-300 prose-th:bg-base-200 prose-th:px-3 prose-th:py-2">
-        {{ preview_html }}
-      </div>
-      {% else %}
-      <div class="flex flex-col items-center justify-center py-14 gap-3">
-        <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
-          <i class="fas fa-file-alt text-xl text-base-content/25"></i>
+      <!-- Vista del documento -->
+      <div class="doc-body pt-0" id="doc-content">
+        {% if servicio.contenido %}
+          {{ preview_html }}
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-14 gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center">
+            <i class="fas fa-file-alt text-xl text-base-content/25"></i>
+          </div>
+          <p class="text-sm font-medium text-base-content/40">Sin contenido registrado</p>
         </div>
-        <p class="text-sm font-medium text-base-content/40">Sin contenido registrado</p>
-        {% if es_propietario %}
-          <a href="{% url 'servicios:editar_servicio' servicio.id %}"
-             class="flex items-center gap-1.5 text-xs font-semibold text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors">
-            <i class="fas fa-edit text-xs"></i> Agregar contenido
-          </a>
         {% endif %}
       </div>
-      {% endif %}
+
+      <!-- Editor (oculto inicialmente) -->
+      <div id="doc-editor-wrap" class="hidden p-6">
+        <div id="editor-contenido"></div>
+      </div>
+
     </div>
 
     <!-- Imágenes -->
@@ -287,8 +375,80 @@
 {% endblock %}
 
 {% block js %}
+<script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
 <script>
-  // Dispatch eventos de botones
+  const GUARDAR_URL  = "{% url 'servicios:guardar_contenido' servicio.id %}";
+  const CSRF_TOKEN   = "{{ csrf_token }}";
+  const CONTENIDO_MD = {{ contenido_md_json|safe }};
+
+  // ── Inline editor ────────────────────────────────────────────────────────
+  {% if es_propietario %}
+  let editor = null;
+
+  function initEditor() {
+    if (editor) { editor.setMarkdown(CONTENIDO_MD); return; }
+    editor = new toastui.Editor({
+      el: document.getElementById('editor-contenido'),
+      height: '600px',
+      initialEditType: 'wysiwyg',
+      previewStyle: 'tab',
+      usageStatistics: false,
+      language: 'es-ES',
+      toolbarItems: [
+        ['heading', 'bold', 'italic', 'strike'],
+        ['hr', 'quote'],
+        ['ul', 'ol'],
+        ['table', 'link'],
+        ['scrollSync']
+      ],
+      initialValue: CONTENIDO_MD
+    });
+  }
+
+  document.getElementById('btn-editar').addEventListener('click', function () {
+    initEditor();
+    document.getElementById('doc-content').classList.add('hidden');
+    document.getElementById('doc-editor-wrap').classList.remove('hidden');
+    document.getElementById('acciones-doc').classList.add('hidden');
+    document.getElementById('acciones-editor').classList.remove('hidden');
+    document.getElementById('acciones-editor').classList.add('flex');
+  });
+
+  document.getElementById('btn-cancelar').addEventListener('click', function () {
+    document.getElementById('doc-editor-wrap').classList.add('hidden');
+    document.getElementById('doc-content').classList.remove('hidden');
+    document.getElementById('acciones-editor').classList.add('hidden');
+    document.getElementById('acciones-editor').classList.remove('flex');
+    document.getElementById('acciones-doc').classList.remove('hidden');
+  });
+
+  document.getElementById('btn-guardar').addEventListener('click', async function () {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Guardando...';
+    try {
+      const r = await fetch(GUARDAR_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+        body: JSON.stringify({ contenido: editor.getMarkdown() })
+      });
+      const data = await r.json();
+      if (data.ok) {
+        if (window.flashy) flashy.success('Documento guardado.');
+        location.reload();
+      } else {
+        if (window.flashy) flashy.error('Error al guardar.');
+      }
+    } catch (e) {
+      if (window.flashy) flashy.error('Error de conexión.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save text-xs"></i> Guardar';
+    }
+  });
+  {% endif %}
+
+  // ── Dispatch eventos de botones ──────────────────────────────────────────
   document.addEventListener('click', function(e) {
     const btnImg = e.target.closest('.gestionar-imagenes-btn');
     if (btnImg && window.openGestionarImagenesServicioModal) {
@@ -309,8 +469,8 @@
     }
   });
 
+  // ── Cantidad editable ────────────────────────────────────────────────────
   {% if es_propietario %}
-  // Cantidad editable
   function getCookie(name) {
     let v = null;
     if (document.cookie) document.cookie.split(';').forEach(c => {

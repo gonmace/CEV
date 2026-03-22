@@ -1,0 +1,169 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+  <style>
+    /* ── Documento ─────────────────────────────────────────────────────────── */
+    .doc-wrap {
+      border-radius: 1rem;
+      box-shadow: 0 4px 24px -4px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
+
+    /* Cabecera */
+    .doc-header {
+      border-bottom: 2px solid oklch(var(--p));
+      padding: 1.75rem 2.5rem 1.25rem;
+    }
+    .doc-header .doc-code  { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: oklch(var(--p)); }
+    .doc-header .doc-title { font-size: 1.4rem; font-weight: 800; line-height: 1.3; margin: .3rem 0 .55rem; color: #1e293b; }
+    .doc-header .doc-meta  { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; font-size: .78rem; color: #64748b; }
+    .doc-header .doc-sep   { color: #cbd5e1; }
+
+    /* Cuerpo */
+    .doc-body {
+      background: oklch(var(--b1));
+      padding: 2rem 2.5rem 2.5rem;
+      counter-reset: seccion subseccion;
+    }
+
+    /* Numeración automática */
+    .doc-body :is(h2) { counter-reset: subseccion; }
+    .doc-body :is(h2)::before { counter-increment: seccion; content: counter(seccion) ".  "; }
+    .doc-body :is(h3)::before { counter-increment: subseccion; content: counter(seccion) "." counter(subseccion) "  "; }
+
+    /* Headings */
+    .doc-body :is(h2) { font-size: .95rem; font-weight: 700; color: #1d4ed8; margin-top: 2rem; margin-bottom: .5rem; }
+    .doc-body :is(h2):first-child { margin-top: 0; }
+    .doc-body :is(h3) { font-size: .88rem; font-weight: 700; color: #1d4ed8; margin-top: 1.25rem; margin-bottom: .35rem; }
+    .doc-body :is(h4) { font-size: .84rem; font-weight: 600; color: oklch(var(--bc)); margin-top: .9rem; margin-bottom: .25rem; }
+    .doc-body :is(h5, h6) { font-size: .84rem; font-weight: 600; color: oklch(var(--bc) / .7); margin-top: .7rem; margin-bottom: .15rem; }
+
+    /* Texto */
+    .doc-body :is(p) { font-size: .84rem; color: oklch(var(--bc) / .8); line-height: 1.7; margin-bottom: .45rem; text-align: justify; }
+    .doc-body :is(ul, ol) { padding-left: 1.4rem; margin-bottom: .6rem; }
+    .doc-body :is(li) { font-size: .84rem; color: oklch(var(--bc) / .8); margin-bottom: .2rem; line-height: 1.6; }
+    .doc-body :is(strong) { color: oklch(var(--bc)); font-weight: 600; }
+
+    /* Tablas */
+    .doc-body :is(table) {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      font-size: .79rem; margin: 1rem 0 1.25rem;
+      border: 1px solid #dbeafe; border-radius: .5rem; overflow: hidden;
+    }
+    .doc-body :is(thead) { background: #eff6ff; }
+    .doc-body :is(th) {
+      color: #1d4ed8; font-weight: 700; font-size: .75rem;
+      padding: .55rem .85rem; text-align: left;
+      letter-spacing: .04em; text-transform: uppercase;
+      border-bottom: 2px solid #bfdbfe;
+    }
+    .doc-body :is(th:not(:last-child)) { border-right: 1px solid #dbeafe; }
+    .doc-body :is(td) {
+      padding: .45rem .85rem; vertical-align: top;
+      color: oklch(var(--bc) / .8); line-height: 1.5;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .doc-body :is(td:not(:last-child)) { border-right: 2px solid #e2e8f0; }
+    .doc-body :is(th:not(:last-child)) { border-right: 2px solid #bfdbfe; }
+    .doc-body :is(tbody tr:last-child td) { border-bottom: none; }
+    .doc-body :is(tbody tr:hover td) { background: #f8fafc; }
+
+    /* Barra de acciones fija */
+    .action-bar {
+      position: sticky;
+      bottom: 0;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid #e2e8f0;
+      padding: .85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      border-radius: 0 0 1rem 1rem;
+    }
+  </style>
+{% endblock %}
+
+{% block title %}Documento Final — {{ servicio.titulo }}{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:lista_servicios' %}" class="hover:text-primary transition-colors">Servicios</a>
+</li>
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="text-base-content/70">Nuevo Servicio</span>
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Documento Final</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-100 py-6 px-4">
+  <div class="max-w-3xl mx-auto space-y-4">
+
+    <!-- Indicador de paso -->
+    <div class="flex items-center gap-3">
+      <div class="badge badge-primary badge-lg w-8 h-8 rounded-full flex items-center justify-center text-white font-bold shrink-0">5</div>
+      <span class="text-sm font-semibold text-base-content/60">Revisión y guardado del documento</span>
+    </div>
+
+    <!-- Documento -->
+    <div class="doc-wrap">
+
+      <!-- Cabecera -->
+      <div class="doc-header">
+        {% if servicio.subcategoria_codigo %}
+        <div class="doc-code">{{ servicio.subcategoria_codigo }}</div>
+        {% endif %}
+        <div class="doc-title">{{ servicio.titulo }}</div>
+        <div class="doc-meta">
+          {% if servicio.categoria_nombre %}
+          <span>{{ servicio.categoria_nombre }}</span>
+          {% endif %}
+          {% if servicio.subcategoria_nombre %}
+          <span class="doc-sep">›</span>
+          <span>{{ servicio.subcategoria_nombre }}</span>
+          {% endif %}
+          {% if servicio.solicitante %}
+          <span class="doc-sep">·</span>
+          <span>{{ servicio.solicitante }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Cuerpo del documento -->
+      <div class="doc-body pt-0">
+        {{ preview_html }}
+      </div>
+
+    </div>
+
+    <!-- Barra de acciones -->
+    <div class="action-bar rounded-xl">
+      <a href="{% url 'servicios:paso4_secciones' servicio.id %}"
+         class="btn btn-ghost btn-sm gap-2">
+        <i class="fas fa-arrow-left"></i> Volver a secciones
+      </a>
+      <form method="post" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="contenido" value="{{ contenido_md|escape }}">
+        <button type="submit" class="btn btn-success gap-2">
+          <i class="fas fa-check"></i> Guardar documento
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

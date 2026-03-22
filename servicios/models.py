@@ -66,6 +66,8 @@ class Servicio(models.Model):
     objetivo = models.TextField(blank=True, verbose_name="Objetivo")
     alcance_generado = models.TextField(blank=True, verbose_name="Alcance generado por IA")
     alcance_editado = models.TextField(blank=True, verbose_name="Alcance editado por usuario")
+    secciones_generadas = models.TextField(blank=True, verbose_name="Secciones complementarias generadas por IA")
+    secciones_editadas = models.TextField(blank=True, verbose_name="Secciones complementarias editadas por usuario")
     solicitante = models.CharField(max_length=200, verbose_name="Solicitante", blank=True)
     contenido = models.TextField(blank=True)
     archivo = models.FileField(upload_to=servicio_upload_path, blank=True, null=True)

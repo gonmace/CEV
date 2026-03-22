@@ -82,6 +82,7 @@ def extraer_texto_ocr(pdf_bytes_io):
 N8N_WEBHOOK_SER_COHERENCIA_URL = 'https://n8n.magoreal.com/webhook/ser-coherencia'
 N8N_WEBHOOK_SER_OBJETIVO_URL = 'https://n8n.magoreal.com/webhook/ser-objetivo'
 N8N_WEBHOOK_SER_ALCANCE_URL = 'https://n8n.magoreal.com/webhook/ser-alcance'
+N8N_WEBHOOK_SER_SECCIONES_URL = 'https://n8n.magoreal.com/webhook/ser-secciones'
 N8N_WEBHOOK_SER_CLASIFICAR_URL = 'https://n8n.magoreal.com/webhook/ser-clasificar-alcance'
 N8N_WEBHOOK_SER_EQUIPOS_EXTRACTOR_URL = 'https://n8n.magoreal.com/webhook/extractor-servicio'
 N8N_WEBHOOK_SER_EQUIPOS_AJUSTAR_URL   = 'https://n8n.magoreal.com/webhook/ajustar-servicio'
@@ -333,7 +334,7 @@ def paso3_alcance_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
 
     if request.method == 'POST':
-        alcance_raw = request.POST.get('alcance', '').strip()
+        alcance_raw = request.POST.get('alcance', '').strip().replace('\x00', '')
         tiene_header = '## alcance' in alcance_raw.lower()
         tiene_tabla = '|' in alcance_raw
         if alcance_raw and (not tiene_header or not tiene_tabla):
@@ -342,10 +343,87 @@ def paso3_alcance_view(request, servicio_id):
             servicio.alcance_generado = alcance_raw
         servicio.alcance_editado = alcance_raw
         servicio.save(update_fields=['alcance_generado', 'alcance_editado'])
+        return redirect('servicios:paso4_secciones', servicio_id=servicio.id)
+
+    return render(request, 'servicios/paso3_alcance.html', {'servicio': servicio})
+
+
+@login_required
+def paso4_secciones_view(request, servicio_id):
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+
+    if request.method == 'POST':
+        secciones_raw = request.POST.get('secciones', '').strip().replace('\x00', '')
+        if secciones_raw:
+            if not servicio.secciones_generadas:
+                servicio.secciones_generadas = secciones_raw
+            servicio.secciones_editadas = secciones_raw
+            servicio.save(update_fields=['secciones_generadas', 'secciones_editadas'])
+        return redirect('servicios:paso5_consolidar', servicio_id=servicio.id)
+
+    return render(request, 'servicios/paso4_secciones.html', {'servicio': servicio})
+
+
+@login_required
+def paso5_consolidar_view(request, servicio_id):
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+
+    if request.method == 'POST':
+        contenido_raw = request.POST.get('contenido', '').strip().replace('\x00', '')
+        servicio.contenido = contenido_raw
+        servicio.save(update_fields=['contenido'])
         messages.success(request, f'Servicio "{servicio.titulo}" creado exitosamente.')
         return redirect('servicios:ver_servicio', servicio_id=servicio.id)
 
-    return render(request, 'servicios/paso3_alcance.html', {'servicio': servicio})
+    # Construir contenido consolidado
+    partes = []
+    if servicio.objetivo:
+        partes.append(f"## Objetivo\n\n{servicio.objetivo}")
+    alcance = servicio.alcance_editado or servicio.alcance_generado
+    if alcance:
+        # Los ## internos del alcance (excepto el título principal) se bajan a ###
+        lineas_alc, primera_h2 = [], True
+        for l in alcance.splitlines():
+            if l.startswith('## '):
+                if primera_h2:
+                    primera_h2 = False
+                    lineas_alc.append(l)
+                else:
+                    lineas_alc.append('### ' + l[3:])
+            else:
+                lineas_alc.append(l)
+        partes.append('\n'.join(lineas_alc))
+    secciones = servicio.secciones_editadas or servicio.secciones_generadas
+    if secciones:
+        partes.append(secciones)
+    contenido_md = servicio.contenido or '\n\n'.join(partes)
+
+    # Aplicar Title Case a encabezados ##
+    _conjunciones = {'y', 'e', 'o', 'u', 'a', 'de', 'del', 'el', 'la', 'los', 'las',
+                     'un', 'una', 'en', 'con', 'por', 'para', 'que', 'si', 'al', 'su', 'sus'}
+
+    def _title_case(texto):
+        palabras = texto.split()
+        return ' '.join(
+            p[0].upper() + p[1:].lower() if (i == 0 or p.lower() not in _conjunciones) else p.lower()
+            for i, p in enumerate(palabras)
+        )
+
+    lineas = []
+    for linea in contenido_md.splitlines():
+        if linea.startswith('## '):
+            lineas.append('## ' + _title_case(linea[3:]))
+        else:
+            lineas.append(linea)
+    contenido_md = '\n'.join(lineas)
+
+    preview_html = mark_safe(markdown(contenido_md, extensions=['extra']))
+
+    return render(request, 'servicios/paso5_consolidar.html', {
+        'servicio': servicio,
+        'contenido_md': contenido_md,
+        'preview_html': preview_html,
+    })
 
 
 @login_required
@@ -692,10 +770,93 @@ def generar_alcance_ajax(request, servicio_id):
             data = data[0] if data else {}
         # desempaquetar campo 'output' si existe
         result = data.get('output', data) if isinstance(data, dict) else {}
+        # Guardar alcance inmediatamente en DB cuando n8n lo genera
+        if result.get('tipo') == 'alcance' and result.get('alcance'):
+            if not servicio.alcance_generado:
+                servicio.alcance_generado = result['alcance'].replace('\x00', '')
+                servicio.save(update_fields=['alcance_generado'])
         return JsonResponse(result)
     except Exception as e:
         logger.exception(f"Error webhook alcance: {e}")
         return JsonResponse({'error': 'No se pudo conectar con el generador de alcance.'}, status=503)
+
+
+@login_required
+@require_http_methods(['POST'])
+def generar_secciones_ajax(request, servicio_id):
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        body = {}
+
+    estructura = body.get('estructura', '').strip()
+    if not estructura:
+        catalogo = CatalogoServicios.get_activo()
+        intencion_raw = ''
+        if catalogo:
+            for cat in catalogo.datos:
+                for sub in cat.get('subcategorias', []):
+                    if sub['codigo'] == servicio.subcategoria_codigo:
+                        intencion_raw = sub.get('intencion', '')
+                        break
+        intenciones = [i.strip() for i in intencion_raw.split(',') if i.strip()]
+        try:
+            resp_clas = requests.post(
+                N8N_WEBHOOK_SER_CLASIFICAR_URL,
+                json={
+                    'titulo': servicio.titulo,
+                    'descripcion': servicio.descripcion,
+                    'objetivo': servicio.objetivo,
+                    'subcategoria_nombre': servicio.subcategoria_nombre,
+                    'intenciones': intenciones,
+                },
+                timeout=30,
+            )
+            if resp_clas.ok and resp_clas.text.strip():
+                data_clas = resp_clas.json()
+                if isinstance(data_clas, list):
+                    data_clas = data_clas[0] if data_clas else {}
+                result_clas = data_clas.get('output', data_clas) if isinstance(data_clas, dict) else {}
+                estructura = result_clas.get('estructura', '')
+        except Exception as e:
+            logger.warning(f"Clasificador secciones falló: {e}")
+
+    payload = {
+        'titulo': servicio.titulo,
+        'descripcion': servicio.descripcion,
+        'objetivo': servicio.objetivo,
+        'categoria_nombre': servicio.categoria_nombre,
+        'subcategoria_nombre': servicio.subcategoria_nombre,
+        'estructura': estructura,
+        'modalidad': body.get('modalidad', 'EVENTUAL'),
+        'equipos': body.get('equipos', servicio.equipos or []),
+        'alcance_generado': body.get('alcance_generado', servicio.alcance_generado or ''),
+        'historial': body.get('historial', []),
+        'contexto_web': body.get('contexto_web', ''),
+    }
+    try:
+        resp = requests.post(
+            N8N_WEBHOOK_SER_SECCIONES_URL,
+            json=payload,
+            timeout=120,
+        )
+        resp.raise_for_status()
+        if not resp.text.strip():
+            return JsonResponse({'error': 'El generador no respondió. Intenta de nuevo.'}, status=503)
+        data = resp.json()
+        if isinstance(data, list):
+            data = data[0] if data else {}
+        result = data.get('output', data) if isinstance(data, dict) else {}
+        # Guardar secciones inmediatamente en DB cuando n8n las genera
+        if result.get('tipo') == 'secciones' and result.get('secciones'):
+            if not servicio.secciones_generadas:
+                servicio.secciones_generadas = result['secciones'].replace('\x00', '')
+                servicio.save(update_fields=['secciones_generadas'])
+        return JsonResponse(result)
+    except Exception as e:
+        logger.exception(f"Error webhook secciones: {e}")
+        return JsonResponse({'error': 'No se pudo conectar con el generador de secciones.'}, status=503)
 
 
 @login_required
@@ -709,13 +870,15 @@ def ver_servicio_view(request, servicio_id):
         return redirect('servicios:lista_servicios')
 
     es_propietario = servicio.creado_por == request.user
-    preview_html = mark_safe(markdown(servicio.contenido or '', extensions=['extra']))
+    contenido_md = servicio.contenido or ''
+    preview_html = mark_safe(markdown(contenido_md, extensions=['extra']))
     tiene_cantidad = bool(servicio.cantidad and servicio.cantidad.strip())
 
     return render(request, 'servicios/ver_servicio.html', {
         'servicio': servicio,
         'es_propietario': es_propietario,
         'preview_html': preview_html,
+        'contenido_md_json': json.dumps(contenido_md),
         'tiene_cantidad': tiene_cantidad,
     })
 
@@ -747,6 +910,19 @@ def editar_servicio_view(request, servicio_id):
         'servicio': servicio,
         'categorias_json': _categorias_json(),
     })
+
+
+@login_required
+@require_http_methods(['POST'])
+def guardar_contenido_ajax(request, servicio_id):
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if servicio.creado_por != request.user:
+        return JsonResponse({'error': 'Sin permiso'}, status=403)
+    body = json.loads(request.body)
+    contenido = body.get('contenido', '').strip().replace('\x00', '')
+    servicio.contenido = contenido
+    servicio.save(update_fields=['contenido'])
+    return JsonResponse({'ok': True})
 
 
 @login_required

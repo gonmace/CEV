@@ -1,0 +1,210 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+{% endblock %}
+
+{% block title %}Secciones del Servicio{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:lista_servicios' %}" class="hover:text-primary transition-colors">Servicios</a>
+</li>
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="text-base-content/70">Nuevo Servicio</span>
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Secciones</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+  <div class="w-full max-w-4xl">
+  <div class="card w-full bg-base-100 shadow-xl">
+    <div class="card-body">
+
+      <div class="mb-6">
+        <h2 class="card-title text-2xl mb-2">
+          <div class="flex items-center gap-4">
+            <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg">
+              4
+            </div>
+            <span class="text-primary">Secciones Complementarias</span>
+          </div>
+        </h2>
+        <p class="text-sm text-base-content/60 ml-14">{{ servicio.titulo }}</p>
+      </div>
+
+      <!-- ── Spinner inicial ──────────────────────────────────────────────── -->
+      <div id="bloque-spinner" class="flex flex-col items-center justify-center py-12 gap-4">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+        <p class="text-sm text-base-content/50">Generando secciones complementarias...</p>
+      </div>
+
+      <!-- ── Pregunta del AI ──────────────────────────────────────────────── -->
+      <div id="bloque-pregunta" class="hidden space-y-4">
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
+          <i class="fas fa-robot text-warning mt-0.5 shrink-0"></i>
+          <p id="texto-pregunta" class="text-sm text-base-content font-medium"></p>
+        </div>
+        <div class="form-control">
+          <textarea id="input-respuesta" rows="3"
+            class="textarea textarea-bordered w-full text-sm"
+            placeholder="Escribe tu respuesta aquí..."></textarea>
+        </div>
+        <div class="flex justify-end">
+          <button id="btn-responder" type="button" class="btn btn-primary btn-sm gap-2" onclick="responder()">
+            <span class="normal-text flex items-center gap-2">
+              <i class="fas fa-paper-plane"></i> Responder
+            </span>
+            <span class="loading loading-spinner loading-sm hidden"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Error ────────────────────────────────────────────────────────── -->
+      <div id="bloque-error" class="hidden">
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-error/10 border border-error/30">
+          <i class="fas fa-triangle-exclamation text-error mt-0.5 shrink-0"></i>
+          <div>
+            <p class="text-sm font-semibold text-base-content">No se pudo generar las secciones</p>
+            <p id="error-texto" class="text-xs text-base-content/60 mt-1"></p>
+          </div>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button type="button" class="btn btn-ghost btn-sm gap-2" onclick="generarSecciones()">
+            <i class="fas fa-rotate-right"></i> Reintentar
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Resultado ────────────────────────────────────────────────────── -->
+      <div id="bloque-resultado" class="hidden space-y-4">
+        <form method="post" id="form-guardar">
+          {% csrf_token %}
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Secciones complementarias</span>
+              <span class="label-text-alt text-base-content/40 text-xs">Condiciones, normas, personal, entregables...</span>
+            </label>
+            <textarea name="secciones" id="id_secciones" class="hidden"></textarea>
+            <div id="editor-secciones" class="border border-base-300 rounded-lg"></div>
+          </div>
+
+          <div class="flex justify-between pt-4">
+            <a href="{% url 'servicios:paso3_alcance' servicio.id %}"
+               class="btn btn-ghost btn-sm gap-2">
+              <i class="fas fa-arrow-left"></i> Volver al alcance
+            </a>
+            <button type="submit" id="btn-guardar" class="btn btn-primary gap-2">
+              <i class="fas fa-save"></i> Guardar y finalizar
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+<script>
+  const GENERAR_SECCIONES_URL = "{% url 'servicios:generar_secciones_ajax' servicio.id %}";
+  const CSRF_TOKEN            = "{{ csrf_token }}";
+
+  let historial     = [];
+  let editorSecciones = null;
+
+  function mostrar(id) {
+    ['bloque-spinner', 'bloque-pregunta', 'bloque-error', 'bloque-resultado']
+      .forEach(b => {
+        const el = document.getElementById(b);
+        if (el) el.classList.toggle('hidden', b !== id);
+      });
+  }
+
+  async function generarSecciones() {
+    mostrar('bloque-spinner');
+    try {
+      const resp = await fetch(GENERAR_SECCIONES_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN},
+        body: JSON.stringify({ historial })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.tipo === 'pregunta') {
+        document.getElementById('texto-pregunta').textContent = data.pregunta;
+        document.getElementById('input-respuesta').value = '';
+        mostrar('bloque-pregunta');
+      } else {
+        initEditor(data.secciones || '');
+        mostrar('bloque-resultado');
+      }
+    } catch (e) {
+      document.getElementById('error-texto').textContent = e.message || 'Error desconocido.';
+      mostrar('bloque-error');
+    }
+  }
+
+  async function responder() {
+    const respuesta = document.getElementById('input-respuesta').value.trim();
+    if (!respuesta) return;
+    historial.push({
+      pregunta: document.getElementById('texto-pregunta').textContent,
+      respuesta
+    });
+    const btn = document.getElementById('btn-responder');
+    btn.querySelector('.normal-text').classList.add('hidden');
+    btn.querySelector('.loading').classList.remove('hidden');
+    btn.disabled = true;
+    await generarSecciones();
+    btn.querySelector('.normal-text').classList.remove('hidden');
+    btn.querySelector('.loading').classList.add('hidden');
+    btn.disabled = false;
+  }
+
+  function initEditor(contenido) {
+    if (editorSecciones) {
+      editorSecciones.setMarkdown(contenido || '');
+      return;
+    }
+    editorSecciones = new toastui.Editor({
+      el: document.getElementById('editor-secciones'),
+      height: '600px',
+      initialEditType: 'wysiwyg',
+      previewStyle: 'tab',
+      usageStatistics: false,
+      language: 'es-ES',
+      toolbarItems: [
+        ['heading', 'bold', 'italic', 'strike'],
+        ['hr', 'quote'],
+        ['ul', 'ol'],
+        ['table', 'link'],
+        ['scrollSync']
+      ],
+      initialValue: contenido || ''
+    });
+    document.getElementById('form-guardar').addEventListener('submit', function () {
+      document.getElementById('id_secciones').value = editorSecciones.getMarkdown();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => generarSecciones());
+</script>
+{% endblock %}

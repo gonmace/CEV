@@ -225,9 +225,10 @@
             <textarea name="alcance" id="id_alcance" class="hidden"></textarea>
             <div id="editor-alcance" class="border border-base-300 rounded-lg"></div>
           </div>
+
           <div class="flex justify-end pt-4">
-            <button type="submit" class="btn btn-primary gap-2">
-              <i class="fas fa-save"></i> Guardar y continuar
+            <button type="submit" id="btn-guardar-final" class="btn btn-primary gap-2">
+              <i class="fas fa-arrow-right"></i> Guardar alcance y continuar
             </button>
           </div>
         </form>
@@ -322,10 +323,10 @@
 
 {% block js %}
 <script>
-  const CLASIFICAR_URL     = "{% url 'servicios:clasificar_alcance_ajax' servicio.id %}";
-  const EXTRAER_EQUIPO_URL = "{% url 'servicios:extraer_equipo_ajax' servicio.id %}";
-  const GENERAR_URL        = "{% url 'servicios:generar_alcance_ajax' servicio.id %}";
-  const CSRF_TOKEN         = "{{ csrf_token }}";
+  const CLASIFICAR_URL          = "{% url 'servicios:clasificar_alcance_ajax' servicio.id %}";
+  const EXTRAER_EQUIPO_URL      = "{% url 'servicios:extraer_equipo_ajax' servicio.id %}";
+  const GENERAR_URL             = "{% url 'servicios:generar_alcance_ajax' servicio.id %}";
+  const CSRF_TOKEN              = "{{ csrf_token }}";
 
   let estructuraDetectada  = '';
   let modalidadDetectada   = '';
@@ -793,7 +794,7 @@
         document.getElementById('input-respuesta').value = '';
         mostrarBloque('bloque-pregunta');
       } else {
-        mostrarBloque('bloque-objetivo');
+          mostrarBloque('bloque-objetivo');
         initEditorAlcance(data.alcance || '');
       }
     } catch (e) {
