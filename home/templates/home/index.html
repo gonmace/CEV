@@ -55,12 +55,12 @@
     }
 
     /* ── Dark ───────────────────────────────── */
-    [data-theme="constructor-dark"] .home-bg {
+    [data-theme="cev-dark"] .home-bg {
       background:
         radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,59,48,0.07) 0%, transparent 70%),
         #2e2e32;
     }
-    [data-theme="constructor-dark"] .glass-card {
+    [data-theme="cev-dark"] .glass-card {
       background: color-mix(in srgb, #3a3a3e 90%, transparent);
       border: 1px solid rgba(255,255,255,0.07);
       box-shadow:
@@ -68,22 +68,22 @@
         0 20px 60px rgba(0,0,0,0.25),
         0 4px 16px rgba(0,0,0,0.18);
     }
-    [data-theme="constructor-dark"] .glass-card:hover {
+    [data-theme="cev-dark"] .glass-card:hover {
       box-shadow:
         0 1px 0 rgba(255,255,255,0.07) inset,
         0 28px 72px rgba(0,0,0,0.32),
         0 6px 20px rgba(0,0,0,0.22);
     }
-    [data-theme="constructor-dark"] .topbar {
+    [data-theme="cev-dark"] .topbar {
       background: color-mix(in srgb, #3a3a3e 88%, transparent);
       border-bottom: 1px solid rgba(255,255,255,0.06);
     }
-    [data-theme="constructor-dark"] .avatar-pill {
+    [data-theme="cev-dark"] .avatar-pill {
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.10);
       box-shadow: 0 1px 4px rgba(0,0,0,0.30);
     }
-    [data-theme="constructor-dark"] .avatar-pill span.text-base-content\/70 {
+    [data-theme="cev-dark"] .avatar-pill span.text-base-content\/70 {
       color: rgba(245,245,247,0.65);
     }
   </style>
@@ -226,7 +226,7 @@
 {% block extra_scripts %}
 <script>
   (function(){
-    var LIGHT = 'constructor', DARK = 'constructor-dark';
+    var LIGHT = 'cev', DARK = 'cev-dark';
     var toggle = document.getElementById('theme-toggle-home');
     var current = localStorage.getItem('cev-theme') || LIGHT;
 
