@@ -38,7 +38,7 @@ services:
     container_name: ${PROJECT_NAME}_n8n
     restart: always
     ports:
-      - "5679:5678"
+      - "5680:5678"
     environment:
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
