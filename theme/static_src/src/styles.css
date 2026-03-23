@@ -16,7 +16,7 @@
 /* ── Light theme ─────────────────────────────────────────────────────────── */
 @plugin "daisyui/theme" {
   name: "cev";
-  default: false;
+  default: true;
   prefersdark: false;
   color-scheme: light;
   --color-base-100: oklch(100% 0 0);
