@@ -26,7 +26,7 @@ echo "━━━ Desplegando: ${PROJECT_NAME} (${DOMAIN}) ━━━"
 
 # ── 1. Actualizar código ───────────────────────────────────────────────────────
 echo "▶ Actualizando código..."
-git pull
+git pull origin main
 
 # ── 2. Generar archivo nginx con nombre del proyecto ──────────────────────────
 echo "▶ Generando ${NGINX_TEMPLATE}..."
