@@ -21,7 +21,7 @@ echo "━━━ Desplegando: ${PROJECT_NAME} (${DOMAIN}) ━━━"
 
 # ── 1. Actualizar código ───────────────────────────────────────────────────────
 echo "▶ Actualizando código..."
-git pull
+git pull origin main
 
 # ── 2. Reconstruir y reiniciar contenedores ────────────────────────────────────
 echo "▶ Reconstruyendo contenedores Docker..."
