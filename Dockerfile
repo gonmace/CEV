@@ -30,7 +30,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./ ./
 
 # Copiar el CSS compilado desde el stage anterior
-COPY --from=css-builder /app/theme/static/css/dist/ ./theme/static/css/dist/
+COPY --from=css-builder /app/static/css/dist/ ./static/css/dist/
 
 RUN python manage.py collectstatic --noinput
 
