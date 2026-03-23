@@ -22,9 +22,9 @@
     <meta name="twitter:title" content="{% block twitter_title %}{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}{% endblock %}">
 
-    {% load static tailwind_tags %}
+    {% load static %}
     <link rel="icon" type="image/png" href="{% static 'img/logo-gdar.png' %}">
-    {% tailwind_css %}
+    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
 <body>

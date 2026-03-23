@@ -1,4 +1,4 @@
-{% load static tailwind_tags %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="es" data-theme="cev" class="bg-base-300">
 <script>
@@ -16,7 +16,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
 
-    {% tailwind_css %}
+    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
 
     {% block css %}
     {% endblock %}

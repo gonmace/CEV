@@ -1,12 +1,11 @@
 # ── Stage 1: compilar CSS con Node ────────────────────────────────────────────
 FROM node:22-slim AS css-builder
 
+# Copiar todo el proyecto para que Tailwind pueda escanear los templates
+COPY . /app/
+
 WORKDIR /app/theme/static_src
-
-COPY theme/static_src/package.json ./
 RUN npm install
-
-COPY theme/static_src/ ./
 RUN npm run build
 
 # ── Stage 2: imagen Python de producción ──────────────────────────────────────
