@@ -31,6 +31,7 @@ theme/static_src/node_modules/
 
 # CSS compilado (se genera automáticamente)
 theme/static/css/dist/
+!static/css/dist/styles.css
 
 # IDE
 .vscode/
