@@ -22,6 +22,7 @@ echo 'PostgreSQL está listo.'
 
 echo 'Recopilando archivos estáticos...'
 python manage.py collectstatic --noinput
+chmod -R o+rX /app/staticfiles
 
 echo 'Ejecutando migraciones...'
 python manage.py migrate
