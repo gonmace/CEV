@@ -32,6 +32,4 @@ COPY ./ ./
 # Copiar el CSS compilado desde el stage anterior
 COPY --from=css-builder /app/static/css/dist/ ./static/css/dist/
 
-RUN DEBUG=False SECRET_KEY=build python manage.py collectstatic --noinput
-
 CMD ["sh", "entrypoint.sh"]

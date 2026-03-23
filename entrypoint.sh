@@ -20,6 +20,9 @@ except Exception:
 done
 echo 'PostgreSQL está listo.'
 
+echo 'Recopilando archivos estáticos...'
+python manage.py collectstatic --noinput
+
 echo 'Ejecutando migraciones...'
 python manage.py migrate
 
