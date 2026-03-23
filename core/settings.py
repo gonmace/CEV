@@ -50,10 +50,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+INSTALLED_APPS += ['tailwind', 'theme']
+TAILWIND_APP_NAME = 'theme'
+
 if DEBUG:
-    INSTALLED_APPS += ['tailwind', 'theme', 'django_browser_reload']
+    INSTALLED_APPS += ['django_browser_reload']
     MIDDLEWARE += ['django_browser_reload.middleware.BrowserReloadMiddleware']
-    TAILWIND_APP_NAME = 'theme'
     INTERNAL_IPS = ['127.0.0.1', '::1']
     NPM_BIN_PATH = r'C:\Program Files\nodejs\npm.cmd'
 
