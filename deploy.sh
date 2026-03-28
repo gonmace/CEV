@@ -23,7 +23,12 @@ echo "━━━ Desplegando: ${PROJECT_NAME} (${DOMAIN}) ━━━"
 echo "▶ Actualizando código..."
 git pull origin main
 
-# ── 2. Reconstruir y reiniciar contenedores ────────────────────────────────────
+# ── 2. Permisos del volumen n8n (corre como UID 1000 = node) ──────────────────
+echo "▶ Ajustando permisos de n8n..."
+mkdir -p n8n
+chown -R 1000:1000 n8n
+
+# ── 3. Reconstruir y reiniciar contenedores ────────────────────────────────────
 echo "▶ Reconstruyendo contenedores Docker..."
 docker compose down
 docker compose up -d --build
