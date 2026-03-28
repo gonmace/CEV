@@ -1,5 +1,5 @@
 FROM alpine:3.22 AS python-builder
-RUN apk add --no-cache python3-minimal
+RUN apk add --no-cache python3
 
 FROM n8nio/n8n:latest
 USER root
