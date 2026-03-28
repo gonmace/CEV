@@ -14,6 +14,7 @@ import json
 import re
 import requests
 import logging
+from django.conf import settings
 from markdown import markdown
 from .models import Servicio, ServicioImagen, CatalogoServicios
 from .forms import ServicioForm
@@ -79,14 +80,15 @@ def extraer_texto_ocr(pdf_bytes_io):
 
     return '\n'.join(resultado).strip()[:8000]
 
-N8N_WEBHOOK_SER_COHERENCIA_URL = 'https://n8n.magoreal.com/webhook/ser-coherencia'
-N8N_WEBHOOK_SER_OBJETIVO_URL = 'https://n8n.magoreal.com/webhook/ser-objetivo'
-N8N_WEBHOOK_SER_ALCANCE_URL = 'https://n8n.magoreal.com/webhook/ser-alcance'
-N8N_WEBHOOK_SER_SECCIONES_URL = 'https://n8n.magoreal.com/webhook/ser-secciones'
-N8N_WEBHOOK_SER_CLASIFICAR_URL = 'https://n8n.magoreal.com/webhook/ser-clasificar-alcance'
-N8N_WEBHOOK_SER_EQUIPOS_EXTRACTOR_URL = 'https://n8n.magoreal.com/webhook/extractor-servicio'
-N8N_WEBHOOK_SER_EQUIPOS_AJUSTAR_URL   = 'https://n8n.magoreal.com/webhook/ajustar-servicio'
-N8N_WEBHOOK_SER_PDF_EXTRACTOR_URL = 'https://n8n.magoreal.com/webhook/pdf-vision'
+_n8n = lambda path: f"{settings.N8N_BASE_URL}/webhook/{path}"
+N8N_WEBHOOK_SER_COHERENCIA_URL        = _n8n('ser-coherencia')
+N8N_WEBHOOK_SER_OBJETIVO_URL          = _n8n('ser-objetivo')
+N8N_WEBHOOK_SER_ALCANCE_URL           = _n8n('ser-alcance')
+N8N_WEBHOOK_SER_SECCIONES_URL         = _n8n('ser-secciones')
+N8N_WEBHOOK_SER_CLASIFICAR_URL        = _n8n('ser-clasificar-alcance')
+N8N_WEBHOOK_SER_EQUIPOS_EXTRACTOR_URL = _n8n('extractor-servicio')
+N8N_WEBHOOK_SER_EQUIPOS_AJUSTAR_URL   = _n8n('ajustar-servicio')
+N8N_WEBHOOK_SER_PDF_EXTRACTOR_URL     = _n8n('pdf-vision')
 
 
 def _categorias_json():

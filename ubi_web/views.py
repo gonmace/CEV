@@ -17,7 +17,7 @@ from .forms import UbicacionForm, UbicacionContenidoForm
 
 logger = logging.getLogger(__name__)
 
-N8N_WEBHOOK_UBICACION_URL = 'https://n8n.magoreal.com/webhook/ubicacion'
+N8N_WEBHOOK_UBICACION_URL = f"{settings.N8N_BASE_URL}/webhook/ubicacion"
 
 
 

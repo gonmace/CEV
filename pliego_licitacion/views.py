@@ -5,6 +5,7 @@ import logging
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from .forms import EspecificacionTecnicaForm
@@ -37,11 +38,12 @@ def llamar_webhook(url, payload, timeout=120):
     return response.json()
 
 
-N8N_WEBHOOK_COHERENCIA_URL = 'https://n8n.magoreal.com/webhook/coherencia'
-N8N_WEBHOOK_PARAMETROS_URL = 'https://n8n.magoreal.com/webhook/parametros'
-N8N_WEBHOOK_TITULO_URL = 'https://n8n.magoreal.com/webhook/titulo'
-N8N_WEBHOOK_ADICIONALES_URL = 'https://n8n.magoreal.com/webhook/adicionales'
-N8N_WEBHOOK_FINAL_URL = 'https://n8n.magoreal.com/webhook/final'
+_n8n = lambda path: f"{settings.N8N_BASE_URL}/webhook/{path}"
+N8N_WEBHOOK_COHERENCIA_URL = _n8n('coherencia')
+N8N_WEBHOOK_PARAMETROS_URL = _n8n('parametros')
+N8N_WEBHOOK_TITULO_URL = _n8n('titulo')
+N8N_WEBHOOK_ADICIONALES_URL = _n8n('adicionales')
+N8N_WEBHOOK_FINAL_URL = _n8n('final')
 
 
 # ── Vista principal ────────────────────────────────────────────────────────────
