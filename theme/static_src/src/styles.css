@@ -333,6 +333,14 @@
   [data-theme="cev-dark"] .avatar-c-8 { background-color: color-mix(in srgb, #3b82f6 25%, #2c2c2e); color: #93c5fd; }
   [data-theme="cev-dark"] .avatar-c-9 { background-color: color-mix(in srgb, #ea580c 25%, #2c2c2e); color: #fdba74; }
 
+  /* Bordes entre filas del componente .table (eliminados en DaisyUI v5) */
+  .table tbody tr {
+    border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  }
+  .table tbody tr:last-child {
+    border-bottom: none;
+  }
+
   /* Icono de imagen sin imágenes - efecto relieve */
   .gestionar-imagenes-btn i.text-base-content\/20 {
     color: var(--color-base-content);
@@ -438,4 +446,21 @@
     border-top-color: color-mix(in srgb, var(--color-base-300) 80%, transparent);
   }
   /* ─────────────────────────────────────────────────────────────────────────── */
+}
+
+/* ── Compatibilidad DaisyUI v4 → v5 ─────────────────────────────────────────
+   Las clases -bordered fueron eliminadas en v5. Se redefinen aquí fuera de
+   cualquier @layer para tener prioridad sobre los estilos de DaisyUI.
+   ─────────────────────────────────────────────────────────────────────────── */
+.input-bordered,
+.textarea-bordered,
+.select-bordered {
+  border: 1px solid color-mix(in oklab, var(--color-base-content) 20%, transparent);
+}
+.input-bordered:focus,
+.input-bordered:focus-within,
+.textarea-bordered:focus,
+.select-bordered:focus {
+  border-color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+  outline: none;
 }
