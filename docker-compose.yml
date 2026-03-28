@@ -38,7 +38,7 @@ services:
     build:
       context: .
       dockerfile: docker/n8n.Dockerfile
-    image: ${PROJECT_NAME}_n8n:latest
+    image: cev_n8n:latest
     container_name: ${PROJECT_NAME}_n8n
     restart: always
     ports:
