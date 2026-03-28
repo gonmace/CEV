@@ -55,6 +55,7 @@ services:
       N8N_EDITOR_BASE_URL: https://${DOMAIN}/n8n/
       WEBHOOK_URL: https://${DOMAIN}/n8n/
       N8N_IMPORT_ACTIVE: "true"
+      N8N_TRUST_PROXY: "true"
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/home/node/.n8n/workflows-import:ro
