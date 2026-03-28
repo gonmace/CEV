@@ -35,7 +35,10 @@ services:
       - app_network
 
   n8n:
-    image: n8nio/n8n:latest
+    build:
+      context: .
+      dockerfile: docker/n8n.Dockerfile
+    image: ${PROJECT_NAME}_n8n:latest
     container_name: ${PROJECT_NAME}_n8n
     restart: always
     ports:
