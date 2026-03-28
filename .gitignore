@@ -45,6 +45,7 @@ Thumbs.db
 
 # Docker
 *.pid
+db/
 
 # Nginx generado por deploy.sh (usa nombre del proyecto)
 *.conf
