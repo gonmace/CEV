@@ -25,8 +25,8 @@ git pull origin main
 
 # ── 2. Permisos del volumen n8n (corre como UID 1000 = node) ──────────────────
 echo "▶ Ajustando permisos de n8n..."
-mkdir -p n8n
-sudo chown -R 1000:1000 n8n
+mkdir -p volumes/n8n
+sudo chown -R 1000:1000 volumes/n8n
 
 # ── 3. Reconstruir y reiniciar contenedores ────────────────────────────────────
 echo "▶ Reconstruyendo contenedores Docker..."
