@@ -52,16 +52,16 @@ services:
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: ${TIME_ZONE:-America/Santiago}
-      N8N_HOST: ${DOMAIN}
+      N8N_HOST: ${N8N_DOMAIN}
       N8N_PORT: 5678
       N8N_PROTOCOL: https
-      N8N_PATH: /n8n/
-      N8N_EDITOR_BASE_URL: https://${DOMAIN}/n8n/
-      WEBHOOK_URL: https://${DOMAIN}/n8n/
+      N8N_EDITOR_BASE_URL: https://${N8N_DOMAIN}/
+      WEBHOOK_URL: https://${N8N_DOMAIN}/
       N8N_IMPORT_ACTIVE: "true"
       N8N_TRUST_PROXY: "true"
       N8N_PROXY_HOPS: "1"
       N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_LOG_LEVEL: warn
       OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: "false"
     volumes:
       - ./volumes/n8n:/home/node/.n8n

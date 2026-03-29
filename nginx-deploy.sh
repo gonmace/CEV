@@ -16,6 +16,7 @@ PROJECT_NAME=${PROJECT_NAME:?La variable PROJECT_NAME no está definida en .env}
 APP_PORT=${APP_PORT:-8000}
 DOMAIN=${DOMAIN:?La variable DOMAIN no está definida en .env}
 PROJECT_DIR=$(pwd)
+N8N_DOMAIN=${N8N_DOMAIN:?La variable N8N_DOMAIN no está definida en .env}
 
 NGINX_TEMPLATE="${PROJECT_NAME}.conf"
 NGINX_AVAILABLE="/etc/nginx/sites-available/${PROJECT_NAME}.conf"
@@ -25,6 +26,7 @@ echo "▶ Generando ${NGINX_TEMPLATE}..."
 sed -e "s|{{DOMAIN}}|${DOMAIN}|g" \
     -e "s|{{APP_PORT}}|${APP_PORT}|g" \
     -e "s|{{PROJECT_DIR}}|${PROJECT_DIR}|g" \
+    -e "s|{{N8N_DOMAIN}}|${N8N_DOMAIN}|g" \
     nginx.conf > "${NGINX_TEMPLATE}"
 
 echo "▶ Instalando config en nginx..."

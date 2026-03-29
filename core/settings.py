@@ -15,7 +15,7 @@ ADMIN_URL = config('ADMIN_URL', default='admin/')
 SITE_LOGO_URL = config('SITE_LOGO_URL', default='')
 
 # n8n webhooks
-N8N_BASE_URL = config('N8N_BASE_URL', default='https://cev.magoreal.com/n8n')
+N8N_BASE_URL = config('N8N_BASE_URL', default='https://cev-n8n.magoreal.com')
 
 # Application definition
 
