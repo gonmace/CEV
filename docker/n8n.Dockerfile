@@ -1,4 +1,10 @@
+FROM alpine:3.22 AS python-builder
+RUN apk add --no-cache python3 py3-pip
+
 FROM n8nio/n8n:latest
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip python3-venv && rm -rf /var/lib/apt/lists/*
+COPY --from=python-builder /usr/bin/python3.12    /usr/bin/python3
+COPY --from=python-builder /usr/lib/python3.12    /usr/lib/python3.12
+COPY --from=python-builder /usr/lib/libpython3.12.so.1.0 /usr/lib/libpython3.12.so.1.0
+RUN ln -sf /usr/lib/libpython3.12.so.1.0 /usr/lib/libpython3.12.so
 USER node
