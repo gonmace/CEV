@@ -50,7 +50,10 @@ services:
     networks:
       - app_network
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/healthz || exit 1"]
+      # La imagen final (python:3.12-slim, sin wget/curl para minimizar superficie
+      # de ataque tras el hardening no-root) no trae wget — se usa el propio
+      # intérprete de Python, que siempre está disponible.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 5

@@ -101,7 +101,8 @@ echo ""
 echo "▶ Verificando que Django responde..."
 HEALTH_OK=""
 for i in $(seq 1 15); do
-    if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz" >/dev/null 2>&1; then
+    # Host: localhost porque ALLOWED_HOSTS no incluye 127.0.0.1 (Django respondería 400).
+    if curl -fsS -H "Host: localhost" "http://127.0.0.1:${APP_PORT}/healthz" >/dev/null 2>&1; then
         HEALTH_OK=1
         break
     fi
