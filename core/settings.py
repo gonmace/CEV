@@ -236,6 +236,10 @@ CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
+    # El healthcheck de Docker le pega en HTTP plano directo al contenedor (TLS lo
+    # termina nginx por delante); sin esto, SECURE_SSL_REDIRECT lo manda a HTTPS y el
+    # contenedor no sabe hablar TLS — timeout eterno y el contenedor queda "unhealthy".
+    SECURE_REDIRECT_EXEMPT = [r'^healthz$']
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     # Solo añade `preload` a la cabecera Strict-Transport-Security; NO envía el dominio
