@@ -1,0 +1,148 @@
+{% extends 'base_pliego.html' %}
+{% block title %}Mi equipo{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span>Mi equipo</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 glass-bg">
+<div class="max-w-5xl mx-auto px-4 py-8">
+<div class="mb-6 fade-up">
+  <span class="glass-eyebrow-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold text-primary tracking-wide uppercase mb-3">
+    <i class="fas fa-users text-[9px]"></i> {{ empresa.nombre }}
+  </span>
+  <h1 class="text-2xl font-black tracking-tight">Mi equipo</h1>
+  <p class="text-sm text-base-content/50">
+    Agrega gente, dales rol de Administrador si corresponde y reparte el tope de
+    créditos de cada uno sobre la bolsa compartida.
+  </p>
+</div>
+
+<!-- Resumen -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 fade-up" style="animation-delay: 60ms">
+  <div class="glass-card p-4">
+    <div class="text-2xl font-black leading-none text-center {% if not empresa.hay_cupo %}text-error{% endif %}">
+      {{ empresa.usuarios_activos }}/{{ empresa.max_usuarios }}
+    </div>
+    <div class="text-[11px] text-base-content/50 mt-1">Usuarios activos / contratados</div>
+  </div>
+  {% for c in creditos_empresa %}
+  <div class="glass-card p-4">
+    <div class="text-2xl font-black leading-none text-center {% if c.saldo == 0 %}text-warning{% else %}text-info{% endif %}">{{ c.saldo }}</div>
+    <div class="text-[11px] text-base-content/50 mt-1">Créditos de {{ c.label }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="grid grid-cols-1 gap-5">
+
+  <!-- Agregar usuario -->
+  <section class="glass-card p-5 fade-up" style="animation-delay: 120ms">
+    <div class="flex items-start gap-3 mb-1">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-primary to-primary/65 text-primary-content text-xs shadow-sm">
+        <i class="fas fa-user-plus"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold">Agregar usuario</h2>
+        <p class="text-xs text-base-content/50">
+          Solo correos de tu dominio (@{{ empresa.dominio }}). Se le manda un enlace para
+          activar la cuenta; el rol se puede cambiar después desde la tabla de abajo.
+        </p>
+      </div>
+    </div>
+    <form method="post" class="flex flex-col sm:flex-row gap-2 mt-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="invite">
+      <div class="flex-1">{{ invite_form.email }}</div>
+      <div class="w-full sm:w-48">{{ invite_form.role }}</div>
+      <button class="btn btn-success btn-sm">Enviar invitación</button>
+    </form>
+  </section>
+
+  <!-- Miembros -->
+  <section class="glass-card p-5 overflow-x-auto fade-up" style="animation-delay: 180ms">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-info to-info/65 text-info-content text-xs shadow-sm">
+        <i class="fas fa-users"></i>
+      </div>
+      <h2 class="text-sm font-bold">Miembros del equipo</h2>
+    </div>
+    <table class="table table-sm w-full">
+      <thead>
+        <tr>
+          <th class="text-left">Cuenta</th>
+          <th class="text-left">Rol</th>
+          {% for key, label in modulos %}
+            <th class="text-center" title="Tope de créditos de {{ label }}">{{ label }}</th>
+          {% endfor %}
+          <th class="text-left">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in miembros %}
+          <tr>
+            <td class="text-sm">
+              {% if u.get_full_name %}<span class="font-medium">{{ u.get_full_name }}</span> <span class="text-xs text-base-content/50">{{ u.email }}</span>{% else %}{{ u.email|default:u.username }}{% endif %}
+            </td>
+            <td>
+              {% if u.pk == request.user.pk %}
+                {# No te podés cambiar el rol a vos mismo: ver accounts.views.mi_equipo. #}
+                <span class="badge badge-outline badge-sm {% if u.profile.role == 'ADMINISTRADOR' %}badge-warning{% else %}badge-ghost{% endif %}">
+                  {{ u.profile.get_role_display }}
+                </span>
+              {% else %}
+                <form method="post" class="inline" data-confirm="¿{% if u.profile.role == 'ADMINISTRADOR' %}Quitarle el rol de Administrador a{% else %}Convertir en Administrador a{% endif %} {{ u.email|default:u.username }}?">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="toggle_role">
+                  <input type="hidden" name="id" value="{{ u.pk }}">
+                  <button class="badge badge-outline badge-sm {% if u.profile.role == 'ADMINISTRADOR' %}badge-warning{% else %}badge-ghost{% endif %}"
+                          title="Clic para {% if u.profile.role == 'ADMINISTRADOR' %}bajar a Usuario{% else %}subir a Administrador{% endif %}">
+                    {{ u.profile.get_role_display }}
+                  </button>
+                </form>
+              {% endif %}
+            </td>
+            {% for c in u.creditos %}
+              <td class="text-center">
+                <form method="post" class="inline-flex items-center gap-0.5" data-ajax>
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="set_tope">
+                  <input type="hidden" name="id" value="{{ u.pk }}">
+                  <input type="hidden" name="modulo" value="{{ c.key }}">
+                  <span class="text-[10px] leading-none {% if c.tope and c.consumido >= c.tope %}text-error font-semibold{% else %}text-base-content/40{% endif %}"
+                        title="Créditos consumidos por esta cuenta · saldo de la bolsa: {{ c.saldo }}">{{ c.consumido }}/</span>
+                  <input type="number" name="tope" min="0" max="{{ c.saldo }}" value="{{ c.tope|default_if_none:'' }}" placeholder="∞"
+                         class="input input-bordered input-xs w-12 text-center px-1" data-auto-submit
+                         title="Tope de créditos que puede consumir de la bolsa compartida (máximo: {{ c.saldo }}) — vacío = sin tope propio">
+                </form>
+              </td>
+            {% endfor %}
+            <td>
+              {% if u.is_active %}
+                <span class="badge badge-success badge-outline badge-sm">activo</span>
+              {% elif not u.has_usable_password %}
+                <span class="badge badge-warning badge-outline badge-sm" title="Todavía no activó su cuenta">invitado</span>
+              {% else %}
+                <span class="badge badge-ghost badge-sm">inactivo</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="{{ modulos|length|add:3 }}" class="text-center text-base-content/40 py-4">Todavía no hay nadie en el equipo.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+</div>
+</div>
+</div>
+{% endblock %}
+
+{% block js %}
+{% include 'accounts/partials/_admin_scripts.html' %}
+{% endblock %}

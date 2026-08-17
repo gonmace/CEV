@@ -1,0 +1,415 @@
+{% extends 'base_pliego.html' %}
+{% load accounts_tags %}
+{% block title %}Cuentas{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span>Cuentas</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="mb-5">
+  <h1 class="text-2xl font-black tracking-tight">Cuentas</h1>
+  <p class="text-sm text-base-content/50">Gestiona quién puede registrarse, a qué accede y con cuántos créditos.</p>
+</div>
+
+<!-- Resumen: lo que se quiere saber al entrar, sin tener que contar filas a mano. -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+  <div class="bg-base-100 rounded-2xl border border-base-300 p-4">
+    <div class="text-2xl font-black leading-none text-center">{{ resumen.empresas_activas }}</div>
+    <div class="text-[11px] text-base-content/50 mt-1">Empresas activas</div>
+  </div>
+  <div class="bg-base-100 rounded-2xl border border-base-300 p-4">
+    <div class="text-2xl font-black leading-none text-center text-success">{{ resumen.cuentas_activas }}</div>
+    <div class="text-[11px] text-base-content/50 mt-1">Cuentas activas</div>
+  </div>
+  <div class="bg-base-100 rounded-2xl border border-base-300 p-4">
+    {# Invitadas que nunca activaron: son las candidatas a un reenvío de invitación. #}
+    <div class="text-2xl font-black leading-none text-center {% if resumen.pendientes %}text-warning{% else %}text-base-content/30{% endif %}">{{ resumen.pendientes }}</div>
+    <div class="text-[11px] text-base-content/50 mt-1">Sin activar</div>
+  </div>
+  <div class="bg-base-100 rounded-2xl border border-base-300 p-4">
+    <div class="flex items-baseline gap-2 flex-wrap">
+      {% for c in resumen.creditos %}
+        <span class="text-lg font-black leading-none text-info">{{ c.total }}</span>
+        <span class="text-[10px] text-base-content/40 mr-1">{{ c.label }}</span>
+      {% endfor %}
+    </div>
+    <div class="text-[11px] text-base-content/50 mt-1">Créditos en circulación</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+  <!-- Empresas -->
+  <section class="bg-base-100 rounded-2xl border border-base-300 p-5 lg:col-span-2">
+    <h2 class="text-sm font-bold mb-1">Empresas</h2>
+    <p class="text-xs text-base-content/50 mb-3">
+      Quien se dé de alta con un correo del dominio entra como miembro de la empresa: ocupa
+      una plaza de su cupo y consume de su bolsa de créditos compartida. Las cuentas sin
+      empresa son personales.
+    </p>
+    <form method="post" class="flex flex-col sm:flex-row gap-2 mb-4">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_empresa">
+      <div class="flex-1">{{ empresa_form.nombre }}</div>
+      <div class="flex-1">{{ empresa_form.dominio }}</div>
+      <div class="w-full sm:w-28">{{ empresa_form.max_usuarios }}</div>
+      <button class="btn btn-success btn-sm">Habilitar</button>
+    </form>
+
+    <div class="space-y-2">
+      {% for e in empresas %}
+        {% comment %}
+          Una empresa inactiva no es un detalle menor: su gente no puede entrar. Por eso la
+          fila entera se marca en rojo (borde + fondo) y el badge va en error, en vez de
+          quedar en gris y pasar desapercibida.
+        {% endcomment %}
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-3 py-2.5 border
+                    {% if e.is_active %}border-base-200{% else %}border-error/40 bg-error/5{% endif %}">
+          <div class="min-w-[12rem] flex-1">
+            <div class="text-sm font-medium flex items-center gap-2">
+              {{ e.nombre }}
+              {% if not e.is_active %}
+                <span class="badge badge-error badge-sm gap-1" title="Sus usuarios no pueden entrar">
+                  <i class="fas fa-ban text-[10px]"></i> inactiva
+                </span>
+              {% endif %}
+            </div>
+            <div class="font-mono text-xs text-base-content/50">{{ e.dominio }}</div>
+          </div>
+
+          {# Cupo: en rojo cuando está lleno, que es cuando dejan de admitirse altas. #}
+          <span class="badge badge-outline badge-sm {% if not e.hay_cupo %}badge-error{% endif %}"
+                title="Usuarios activos / contratados{% if not e.hay_cupo %} — sin plazas libres: no se admiten más altas{% endif %}">
+            <i class="fas fa-users text-[10px] mr-1"></i>{{ e.usuarios_activos }}/{{ e.max_usuarios }}
+          </span>
+
+          {% for c in e.creditos_por_modulo %}
+            <span class="badge badge-outline badge-sm {% if c.saldo == 0 %}badge-warning{% else %}badge-info{% endif %}"
+                  title="Créditos de {{ c.label }} disponibles{% if c.saldo == 0 %} — sin saldo: no pueden generar{% endif %}">
+              {{ c.label }}: {{ c.saldo }}
+            </span>
+          {% endfor %}
+
+          <div class="flex items-center gap-1 ml-auto">
+            <button class="btn btn-ghost btn-xs btn-edit" title="Editar cupo y créditos"
+                    onclick="document.getElementById('empresa-{{ e.pk }}').showModal()">
+              <i class="fas fa-pen"></i>
+            </button>
+            <form method="post" class="inline">{% csrf_token %}
+              <input type="hidden" name="action" value="toggle_empresa">
+              <input type="hidden" name="id" value="{{ e.pk }}">
+              <button class="btn btn-ghost btn-xs {% if e.is_active %}text-success{% else %}text-error{% endif %}"
+                      title="{% if e.is_active %}Activa — clic para desactivar{% else %}Inactiva — clic para activar{% endif %}">
+                <i class="fas {% if e.is_active %}fa-toggle-on{% else %}fa-toggle-off{% endif %}"></i>
+              </button>
+            </form>
+            <form method="post" class="inline" data-confirm="¿Eliminar la empresa {{ e.nombre }}?">{% csrf_token %}
+              <input type="hidden" name="action" value="delete_empresa">
+              <input type="hidden" name="id" value="{{ e.pk }}">
+              <button class="btn btn-ghost btn-xs text-error hover:bg-error/10" title="Eliminar"><i class="fas fa-trash"></i></button>
+            </form>
+          </div>
+        </div>
+
+        {# Editor: cupo y saldo de cada módulo en un solo formulario. #}
+        <dialog id="empresa-{{ e.pk }}" class="modal">
+          <div class="modal-box max-w-md">
+            <h3 class="font-bold text-lg">{{ e.nombre }}</h3>
+            <p class="font-mono text-xs text-base-content/50 mb-4">{{ e.dominio }}</p>
+
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="editar_empresa">
+              <input type="hidden" name="id" value="{{ e.pk }}">
+
+              <label class="flex flex-col gap-1 mb-3">
+                <span class="text-sm font-medium">Nombre</span>
+                <input type="text" name="nombre" value="{{ e.nombre }}" class="input input-bordered input-sm w-full">
+              </label>
+
+              <label class="flex flex-col gap-1 mb-3">
+                <span class="text-sm font-medium">Dominio</span>
+                <input type="text" name="dominio" value="{{ e.dominio }}" class="input input-bordered input-sm w-full font-mono">
+                <span class="text-xs text-base-content/50">
+                  Decide qué correos entran como miembros. Cambiarlo no desvincula a las
+                  {{ e.usuarios_activos }} cuenta(s) que ya pertenecen a la empresa.
+                </span>
+              </label>
+
+              <label class="flex flex-col gap-1 mb-3">
+                <span class="text-sm font-medium">Usuarios contratados</span>
+                <input type="number" name="max_usuarios" min="{{ e.usuarios_activos }}" value="{{ e.max_usuarios }}"
+                       class="input input-bordered input-sm w-full">
+                <span class="text-xs text-base-content/50">
+                  Ahora hay {{ e.usuarios_activos }} activas. No se puede bajar por debajo de ese número.
+                </span>
+              </label>
+
+              <div class="divider my-2 text-xs">Créditos disponibles</div>
+              {% for c in e.creditos_por_modulo %}
+                <label class="flex flex-col gap-1 mb-3">
+                  <span class="text-sm font-medium">{{ c.label }}</span>
+                  <input type="number" name="creditos_{{ c.key }}" min="0" value="{{ c.saldo }}"
+                         class="input input-bordered input-sm w-full">
+                </label>
+              {% endfor %}
+              <p class="text-xs text-base-content/50 mb-4">
+                Es el saldo que queda disponible, no lo que se suma: escribe el total que debe tener.
+              </p>
+
+              <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm"
+                        onclick="document.getElementById('empresa-{{ e.pk }}').close()">Cancelar</button>
+                <button class="btn btn-success btn-sm">Guardar</button>
+              </div>
+            </form>
+          </div>
+          <form method="dialog" class="modal-backdrop"><button>cerrar</button></form>
+        </dialog>
+      {% empty %}
+        <p class="text-sm text-base-content/40">Sin empresas habilitadas.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Cuentas registradas -->
+  <section class="bg-base-100 rounded-2xl border border-base-300 p-5 lg:col-span-2 overflow-x-auto">
+    <h2 class="text-sm font-bold mb-3">Cuentas registradas</h2>
+    <table class="table table-sm w-full">
+      <thead>
+        <tr>
+          <th class="text-left">Cuenta</th>
+          <th class="text-left">Empresa</th>
+          <th class="text-left">Rol</th>
+          {% for key, label in modulos %}
+            <th class="text-center" title="Acceso al módulo {{ label }}">{{ label }}</th>
+          {% endfor %}
+          <th class="text-left">Estado</th>
+          <th class="text-left">Último acceso</th>
+          <th class="text-right">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td class="text-sm">
+              {% if u.get_full_name %}<span class="font-medium">{{ u.get_full_name }}</span> <span class="text-xs text-base-content/50">{{ u.email }}</span>{% else %}{{ u.email|default:u.username }}{% endif %}
+              {% if u.is_superuser %}<span class="badge badge-xs badge-outline badge-primary">superuser</span>{% endif %}
+            </td>
+            <td>
+              {% comment %}
+                Cada empresa tiene su propio color (mismas clases avatar-c-N que los avatares
+                de usuario, hasheadas por su ID), para distinguirlas de un vistazo cuando hay
+                varias. Sin badge = cuenta personal, que es el otro modelo de negocio.
+              {% endcomment %}
+              {% if u.profile.empresa %}
+                <span class="badge badge-sm {{ u.profile.empresa|empresa_color }}"
+                      title="Consume de la bolsa compartida de {{ u.profile.empresa.nombre }}">{{ u.profile.empresa.nombre }}</span>
+              {% else %}
+                <span class="badge badge-outline badge-sm badge-ghost opacity-60"
+                      title="Cuenta personal: créditos propios, sin equipo">Personal</span>
+              {% endif %}
+            </td>
+            <td>
+              {% comment %}
+                Ámbar (warning) = Administrador: ve y edita los datos de todas las cuentas.
+                Neutro = Usuario, que solo ve lo suyo. El color marca quién tiene más poder.
+              {% endcomment %}
+              {% if u.profile.role == 'ADMINISTRADOR' %}
+                <span class="badge badge-outline badge-sm badge-warning"
+                      title="Ve y edita los datos de todos los usuarios">Administrador</span>
+              {% else %}
+                <span class="badge badge-outline badge-sm badge-ghost"
+                      title="Solo ve sus propios datos">Usuario</span>
+              {% endif %}
+            </td>
+            {% comment %}
+              Mismo patrón que la columna Estado: el input.toggle va suelto, sin envolverlo en
+              un .tooltip — ese wrapper le rompe el renderizado al toggle. La pista va en title.
+            {% endcomment %}
+            {% for m in u.modulos %}
+              <td class="text-center">
+                {% if m.locked %}
+                  <input type="checkbox" class="toggle toggle-success toggle-sm" checked disabled
+                         title="El superuser entra a todos los módulos"
+                         aria-label="{{ m.label }}">
+                {% else %}
+                  <form method="post" class="inline" data-ajax>{% csrf_token %}
+                    <input type="hidden" name="action" value="toggle_module">
+                    <input type="hidden" name="id" value="{{ u.pk }}">
+                    <input type="hidden" name="capability" value="{{ m.key }}">
+                    <input type="checkbox" class="toggle toggle-success toggle-sm" data-auto-submit
+                           {% if m.enabled %}checked{% endif %}
+                           title="{% if m.is_override %}Ajuste propio de esta cuenta{% else %}Hereda del rol{% endif %}"
+                           aria-label="Acceso al módulo {{ m.label }}">
+                    {# Se muestra al togglear sin recargar: el JS le quita el 'hidden'. #}
+                    <span class="badge badge-xs badge-warning badge-outline ml-1 {% if not m.is_override %}hidden{% endif %}"
+                          data-override-badge>propio</span>
+                  </form>
+                {% endif %}
+
+                {% if m.locked %}
+                  {% comment %}
+                    El superuser no consume créditos (bypass administrativo, ver
+                    accounts.creditos._es_ilimitado): es la única cuenta que puede quedar
+                    así — para el resto, dejar el tope vacío no es "ilimitado", sigue
+                    acotado por el saldo real de su bolsa.
+                  {% endcomment %}
+                  <div class="text-[10px] mt-0.5 leading-none text-base-content/30" title="El superuser no consume créditos: acceso ilimitado">
+                    <i class="fas fa-infinity"></i>
+                  </div>
+                {% elif m.enabled %}
+                  {% comment %}
+                    Tope editable ahí mismo: cambiar el número y salir del campo lo guarda
+                    solo (mismo patrón data-auto-submit de los toggles), sin ir a la ficha de
+                    la cuenta. Vacío = sin tope propio (usa toda la bolsa compartida).
+                  {% endcomment %}
+                  <form method="post" class="inline-flex items-center gap-0.5 mt-0.5" data-ajax>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="set_tope">
+                    <input type="hidden" name="id" value="{{ u.pk }}">
+                    <input type="hidden" name="modulo" value="{{ m.key }}">
+                    <span class="text-[10px] leading-none {% if m.tope and m.consumido >= m.tope %}text-error font-semibold{% else %}text-base-content/40{% endif %}"
+                          title="Créditos consumidos por esta cuenta · saldo disponible: {{ m.saldo }}">{{ m.consumido }}/</span>
+                    <input type="number" name="tope" min="0" max="{{ m.saldo }}" value="{{ m.tope|default_if_none:'' }}" placeholder="∞"
+                           class="input input-bordered input-xs w-12 text-center px-1" data-auto-submit
+                           title="Tope de créditos que puede consumir de la bolsa compartida (máximo: {{ m.saldo }}) — vacío = sin tope propio">
+                  </form>
+                {% endif %}
+              </td>
+            {% endfor %}
+            <td>
+              {% if u.is_superuser or u.pk == request.user.pk %}
+                <input type="checkbox" class="toggle toggle-success toggle-sm" disabled
+                       {% if u.is_active %}checked{% endif %}
+                       title="No puedes cambiar este estado" aria-label="Estado">
+              {% elif not u.is_active and not u.has_usable_password %}
+                <input type="checkbox" class="toggle toggle-success toggle-sm" disabled
+                       title="Todavía no activó su cuenta — usa «Reenviar invitación»" aria-label="Estado">
+              {% else %}
+                <form method="post" class="inline" data-ajax>{% csrf_token %}
+                  <input type="hidden" name="action" value="toggle_user">
+                  <input type="hidden" name="id" value="{{ u.pk }}">
+                  <input type="checkbox" class="toggle toggle-success toggle-sm" data-auto-submit
+                         data-label-on="Activo — clic para desactivar" data-label-off="Inactivo — clic para activar"
+                         {% if u.is_active %}checked{% endif %}
+                         title="{% if u.is_active %}Activo — clic para desactivar{% else %}Inactivo — clic para activar{% endif %}"
+                         aria-label="Estado">
+                </form>
+              {% endif %}
+            </td>
+            <td class="text-sm text-base-content/60">{{ u.last_login|date:"d/m/Y H:i"|default:"Nunca" }}</td>
+            <td class="text-right">
+              <div class="inline-flex items-center gap-2 justify-end">
+              <a href="{% url 'accounts:user_edit' u.pk %}" class="btn btn-ghost btn-xs text-warning hover:bg-warning/10" title="Editar" aria-label="Editar">
+                <i class="fas fa-pen text-xs"></i>
+              </a>
+              {% if u.is_superuser or u.pk == request.user.pk %}
+                <span class="text-xs text-base-content/30">—</span>
+              {% else %}
+                {% if not u.is_active and not u.has_usable_password %}
+                  <form method="post" class="inline" data-ajax>{% csrf_token %}
+                    <input type="hidden" name="action" value="resend_invite">
+                    <input type="hidden" name="id" value="{{ u.pk }}">
+                    <button class="btn btn-success btn-xs" title="Reenviar invitación" aria-label="Reenviar invitación">
+                      <i class="fas fa-paper-plane text-xs"></i>
+                    </button>
+                  </form>
+                {% endif %}
+                <form method="post" class="inline" data-confirm="¿Eliminar la cuenta de {{ u.email|default:u.username }}? Esta acción no se puede deshacer.">{% csrf_token %}
+                  <input type="hidden" name="action" value="delete_user">
+                  <input type="hidden" name="id" value="{{ u.pk }}">
+                  <button class="btn btn-ghost btn-xs text-error hover:bg-error/10" title="Eliminar cuenta" aria-label="Eliminar cuenta">
+                    <i class="fas fa-trash text-xs"></i>
+                  </button>
+                </form>
+              {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          {# 5 columnas fijas + una por módulo #}
+          <tr><td colspan="{{ modulos|length|add:6 }}" class="text-center text-base-content/40 py-4">Sin usuarios todavía.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include 'accounts/partials/_pagination.html' with page_obj=users %}
+  </section>
+
+  <!-- Invitar -->
+  <section class="bg-base-100 rounded-2xl border border-base-300 p-5">
+    <h2 class="text-sm font-bold mb-3">Invitar a alguien</h2>
+    <p class="text-xs text-base-content/50 mb-3">Habilita el correo y le envía el enlace de activación directamente.</p>
+    <form method="post" class="flex flex-col sm:flex-row gap-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="invite">
+      <div class="flex-1">{{ invite_form.email }}</div>
+      <div class="w-full sm:w-48">{{ invite_form.role }}</div>
+      <button class="btn btn-success btn-sm">Enviar invitación</button>
+    </form>
+  </section>
+
+  <!-- Correos permitidos -->
+  <section class="bg-base-100 rounded-2xl border border-base-300 p-5">
+    <h2 class="text-sm font-bold mb-3">Correos permitidos (excepciones)</h2>
+    <p class="text-xs text-base-content/50 mb-3">
+      También sirve para fijarle un rol a una persona por su correo antes de que se dé de
+      alta (por ejemplo, dejarla como Administrador aunque su dominio ya esté permitido) — el
+      rol del correo tiene prioridad sobre el del dominio.
+    </p>
+    <form method="post" class="flex flex-col sm:flex-row gap-2 mb-4">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_email">
+      <div class="flex-1">{{ email_form.email }}</div>
+      <div class="w-full sm:w-40">{{ email_form.default_role }}</div>
+      <button class="btn btn-success btn-sm">Agregar</button>
+    </form>
+    <div class="space-y-2">
+      {% for e in emails %}
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-2 border-b border-base-200 last:border-0">
+          <span class="text-sm flex-1 min-w-[10rem] break-words {% if not e.is_active %}line-through opacity-40{% endif %}">{{ e.email }}</span>
+          <div class="flex items-center gap-1.5 ml-auto">
+            <form method="post" class="inline-flex items-center gap-1 shrink-0">{% csrf_token %}
+              <input type="hidden" name="action" value="set_email_role">
+              <input type="hidden" name="id" value="{{ e.pk }}">
+              <select name="default_role" class="select select-xs select-bordered">
+                <option value="">— sin rol —</option>
+                {% for value, label in role_choices %}
+                  <option value="{{ value }}"{% if e.default_role == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-success btn-xs">Guardar</button>
+            </form>
+            <form method="post" class="inline">{% csrf_token %}
+              <input type="hidden" name="action" value="toggle_email">
+              <input type="hidden" name="id" value="{{ e.pk }}">
+              <button class="badge badge-sm {% if e.is_active %}badge-success badge-outline{% else %}badge-ghost{% endif %}">{% if e.is_active %}activo{% else %}inactivo{% endif %}</button>
+            </form>
+            <form method="post" class="inline" data-confirm="¿Eliminar el correo {{ e.email }}?">{% csrf_token %}
+              <input type="hidden" name="action" value="delete_email">
+              <input type="hidden" name="id" value="{{ e.pk }}">
+              <button class="btn btn-ghost btn-xs text-error hover:bg-error/10">✕</button>
+            </form>
+          </div>
+        </div>
+      {% empty %}
+        <p class="text-sm text-base-content/40">Sin correos cargados.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+</div>
+{% endblock %}
+
+{% block js %}
+{% include 'accounts/partials/_admin_scripts.html' %}
+{% endblock %}
+
+<!-- probe: btn-warning -->
+

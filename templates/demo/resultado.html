@@ -1,0 +1,44 @@
+{% extends 'base_pliego.html' %}
+{% load static %}
+
+{% block title %}{{ especificacion.titulo }} — Demo{% endblock %}
+{% block breadcrumbs_bar %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-base-100 py-8 px-4">
+  <div class="max-w-3xl mx-auto space-y-6">
+
+    <!-- Encabezado -->
+    <div class="flex items-center gap-3">
+      <div class="badge badge-success badge-lg w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0">
+        <i class="fas fa-check text-xs"></i>
+      </div>
+      <span class="text-sm font-semibold text-base-content/60">Especificación Técnica Generada (Demo)</span>
+    </div>
+
+    <!-- Documento -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title text-xl text-primary mb-4">{{ especificacion.titulo }}</h2>
+        <div class="divider mt-0"></div>
+        <article class="prose max-w-none">
+          {{ resultado_html|safe }}
+        </article>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex justify-between items-center">
+      <a href="{% url 'demo:landing' %}" class="btn btn-outline btn-success rounded-full gap-2">
+        <i class="fas fa-redo"></i>
+        Generar otra
+      </a>
+      <a href="{% url 'home' %}" class="btn btn-ghost rounded-full gap-2">
+        <i class="fas fa-home"></i>
+        Ir al inicio
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

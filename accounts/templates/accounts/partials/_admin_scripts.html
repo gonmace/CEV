@@ -1,0 +1,102 @@
+{# Modal de confirmación + handlers para data-confirm / data-ajax / data-auto-submit #}
+<dialog id="confirm-modal" class="modal">
+  <div class="modal-box max-w-sm">
+    <p id="confirm-modal-message" class="py-2 text-sm"></p>
+    <div class="modal-action">
+      <form method="dialog"><button class="btn btn-ghost btn-sm">Cancelar</button></form>
+      <button id="confirm-modal-ok" class="btn btn-error btn-sm">Confirmar</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>cerrar</button></form>
+</dialog>
+
+<script>
+(function () {
+  // Checkboxes con data-auto-submit (ej. toggles de estado): al cambiar, envían su form.
+  function syncToggleLabel(el) {
+    if (el.dataset.labelOn && el.dataset.labelOff) {
+      el.title = el.checked ? el.dataset.labelOn : el.dataset.labelOff;
+    }
+  }
+
+  document.addEventListener('change', function (ev) {
+    var el = ev.target;
+    if (!el.matches('[data-auto-submit]')) return;
+    syncToggleLabel(el);
+    var form = el.closest('form');
+    if (form) { if (form.requestSubmit) form.requestSubmit(); else form.submit(); }
+  });
+
+  // Formularios con data-confirm: modal propio en vez del confirm() nativo del navegador.
+  var confirmModal = document.getElementById('confirm-modal');
+  var confirmMsg = document.getElementById('confirm-modal-message');
+  var confirmOkBtn = document.getElementById('confirm-modal-ok');
+  var pendingForm = null;
+
+  if (confirmOkBtn) {
+    confirmOkBtn.addEventListener('click', function () {
+      confirmModal.close();
+      var form = pendingForm;
+      pendingForm = null;
+      if (form) {
+        form.removeAttribute('data-confirm');
+        if (form.requestSubmit) form.requestSubmit(); else form.submit();
+      }
+    });
+  }
+
+  document.addEventListener('submit', function (ev) {
+    var form = ev.target;
+    if (!form.matches('[data-confirm]')) return;
+    if (!confirmModal) return; // sin modal en el DOM: no bloquear el envío
+    ev.preventDefault();
+    confirmMsg.textContent = form.getAttribute('data-confirm');
+    pendingForm = form;
+    confirmModal.showModal();
+  });
+
+  // Formularios con data-ajax: se envían por fetch (sin recargar la página) y el
+  // resultado se muestra como toast con el mismo mensaje que devolvería Django.
+  function revertToggle(form) {
+    var el = form.querySelector('[data-auto-submit]');
+    if (!el) return;
+    el.checked = !el.checked;
+    syncToggleLabel(el);
+  }
+
+  document.addEventListener('submit', function (ev) {
+    var form = ev.target;
+    if (!form.matches('[data-ajax]')) return;
+    ev.preventDefault();
+    // El FormData se arma ANTES de deshabilitar: un campo disabled queda fuera del
+    // POST, y acá el propio input editable puede ser el elemento [data-auto-submit].
+    var body = new FormData(form);
+    var btn = form.querySelector('button, [data-auto-submit]');
+    if (btn) btn.disabled = true;
+    fetch(form.getAttribute('action') || window.location.href, {
+      method: 'POST',
+      body: body,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.tag === 'error') {
+          revertToggle(form);
+        } else {
+          // Toggle de módulo aplicado: pasa a ser un ajuste propio de la cuenta, ya no
+          // hereda del rol. Se refleja sin recargar la tabla.
+          var badge = form.querySelector('[data-override-badge]');
+          if (badge) badge.classList.remove('hidden');
+        }
+        if (!window.flashy || !data.message) return;
+        var type = data.tag === 'debug' ? 'info' : (data.tag || 'info');
+        window.flashy(data.message, { type: type });
+      })
+      .catch(function () {
+        revertToggle(form);
+        if (window.flashy) window.flashy.error('No se pudo completar la acción.');
+      })
+      .finally(function () { if (btn) btn.disabled = false; });
+  });
+})();
+</script>

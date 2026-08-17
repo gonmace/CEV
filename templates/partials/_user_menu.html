@@ -1,0 +1,72 @@
+{% comment %}
+  Menú de usuario (avatar + desplegable). Se usa en las dos bases: base_pliego.html (barra
+  roja de los módulos) y base.html / home (barra clara), por eso el color del avatar se pasa
+  como parámetro:
+
+      {% include 'partials/_user_menu.html' with avatar_class="bg-primary-content/15 text-primary-content" %}
+
+  El modal de impersonación NO va acá: vive en _impersonate.html, fuera del dropdown, porque
+  al abrir un desplegable dentro del menú, DaisyUI lo cierra al perder el foco.
+{% endcomment %}
+{% if request.user.is_authenticated %}
+<div class="dropdown dropdown-end">
+    <div tabindex="0" role="button" class="cursor-pointer flex flex-col items-center gap-0.5">
+        {% with request.user.first_name|default:request.user.username as first_name %}
+          {% with request.user.last_name as last_name %}
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-full font-semibold uppercase text-sm ring-2 ring-base-100/70 {{ avatar_class|default:'bg-primary text-primary-content' }}">
+              {{ first_name|slice:':1' }}{{ last_name|default:''|slice:':1' }}
+            </span>
+          {% endwith %}
+        {% endwith %}
+        {% comment %}Solo Administrador se marca acá — es la excepción que conviene ver
+        de un vistazo sin abrir el desplegable; Usuario es el default, no aporta nada.{% endcomment %}
+        {% if nav_role == 'ADMINISTRADOR' %}
+        <span class="badge badge-warning badge-xs text-warning-content font-bold uppercase tracking-wide leading-none whitespace-nowrap px-1.5 ring-1 ring-base-100/70">Admin</span>
+        {% endif %}
+    </div>
+    <ul tabindex="0" class="dropdown-content menu bg-base-100 text-base-content rounded-box z-50 mt-2 w-64 p-2 shadow-lg border border-base-300">
+        <li class="menu-title">
+            <div class="flex flex-col gap-0.5">
+                <span class="text-sm font-semibold text-base-content">{{ request.user.get_full_name|default:request.user.username }}</span>
+                <span class="text-xs font-normal">{{ request.user.email }}{% if nav_role_label %} · {{ nav_role_label }}{% endif %}</span>
+                {% if nav_empresa %}
+                <span class="text-xs font-normal text-info flex items-center gap-1">
+                    <i class="fas fa-building text-[10px]"></i> {{ nav_empresa.nombre }}
+                </span>
+                {% endif %}
+            </div>
+        </li>
+        <li><a href="{% url 'accounts:configuracion' %}"><i class="fas fa-gear w-4"></i> Configuración</a></li>
+        {% comment %}
+          Cuentas (superuser, gestión global) y Mi equipo (Administrador de una empresa,
+          acotado a la suya) son cosas distintas. Un superuser que además pertenece a una
+          empresa ve las dos: no son excluyentes.
+        {% endcomment %}
+        {% if nav_can_accounts %}
+        <li><a href="{% url 'accounts:access_admin' %}"><i class="fas fa-users-gear w-4"></i> Cuentas</a></li>
+        {% endif %}
+        {% if nav_can_mi_equipo %}
+        <li><a href="{% url 'accounts:mi_equipo' %}"><i class="fas fa-people-group w-4"></i> Mi equipo</a></li>
+        {% endif %}
+        {% if nav_is_superuser %}
+        <li><a href="{% url 'accounts:roles_board' %}"><i class="fas fa-user-shield w-4"></i> Roles y permisos</a></li>
+        <li><a href="{% url 'accounts:email_config' %}"><i class="fas fa-envelope w-4"></i> Correo</a></li>
+        {% endif %}
+        {% if impersonate_available %}
+        <li class="mt-1 border-t border-base-200 pt-1">
+            <button type="button" onclick="document.getElementById('modal-impersonar').showModal()">
+                <i class="fas fa-user-secret w-4"></i> Ver la app como…
+            </button>
+        </li>
+        {% endif %}
+        <li class="mt-1 border-t border-base-200 pt-1">
+            <form action="{% url 'logout' %}" method="post" class="p-0 hover:bg-transparent">
+                {% csrf_token %}
+                <button type="submit" class="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg hover:bg-base-200 text-left">
+                    <i class="fas fa-sign-out-alt w-4"></i> Cerrar sesión
+                </button>
+            </form>
+        </li>
+    </ul>
+</div>
+{% endif %}

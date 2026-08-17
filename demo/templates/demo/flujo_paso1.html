@@ -1,0 +1,215 @@
+{% extends 'demo/base_demo.html' %}
+{% load static %}
+
+{% block title %}Datos Iniciales — Demo{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+  <div class="w-full max-w-2xl">
+
+    <div class="card w-full bg-base-200 shadow-xl rounded-2xl overflow-hidden border border-base-300">
+
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-primary to-primary/70 px-6 py-4 text-primary-content">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold shrink-0">1</div>
+          <div>
+            <p class="font-semibold text-base leading-tight">Datos de la Actividad</p>
+            <p class="text-primary-content/70 text-xs mt-0.5">Complete los datos para generar la especificación técnica</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6 space-y-5">
+
+        <!-- Alerta de incoherencia -->
+        <div id="razon-alert" class="hidden flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
+          <i class="fas fa-exclamation-triangle text-warning mt-0.5 shrink-0"></i>
+          <div>
+            <p class="text-sm font-semibold text-base-content">Observación:</p>
+            <p id="razon-text" class="text-sm text-base-content/70 mt-1"></p>
+          </div>
+        </div>
+
+        <form id="datos-generales-form" class="space-y-5">
+
+          <!-- Actividad + Unidad -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-base-content/60 uppercase tracking-wide flex items-center gap-1.5" for="titulo">
+                <i class="fa-regular fa-file-lines text-primary text-[10px]"></i>
+                Actividad <span class="text-error">*</span>
+              </label>
+              <input type="text" name="titulo" id="titulo"
+                class="input input-bordered w-full focus:border-primary focus:outline-none transition-colors bg-base-100"
+                placeholder="Nombre de la actividad" required>
+              <p class="text-xs text-error hidden" id="titulo-error-label"><span id="titulo-error"></span></p>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-base-content/60 uppercase tracking-wide flex items-center gap-1.5" for="unidad_medida">
+                <i class="fas fa-ruler text-primary text-[10px]"></i>
+                Unidad de medida <span class="text-error">*</span>
+              </label>
+              <input type="text" name="unidad_medida" id="unidad_medida"
+                class="input input-bordered w-full focus:border-primary focus:outline-none transition-colors bg-base-100"
+                placeholder="Ej: glb, pz, m²" maxlength="10" required>
+              <p class="text-xs text-base-content/40">Máximo 10 caracteres</p>
+              <p class="text-xs text-error hidden" id="unidad-medida-error-label"><span id="unidad-medida-error"></span></p>
+            </div>
+          </div>
+
+          <!-- Tipo de Servicio -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-base-content/60 uppercase tracking-wide flex items-center gap-1.5" for="tipo_servicio">
+              <i class="fas fa-cogs text-primary text-[10px]"></i>
+              Tipo de Servicio <span class="text-error">*</span>
+            </label>
+            <select name="tipo_servicio" id="tipo_servicio"
+              class="select select-bordered w-full focus:border-primary focus:outline-none transition-colors bg-base-100" required>
+              <option value="">Seleccione un tipo de servicio</option>
+              <option value="Mecánico">Mecánico</option>
+              <option value="Eléctrico">Eléctrico</option>
+              <option value="Instrumentación">Instrumentación</option>
+              <option value="SSMA (Seguridad, Salud y Medio Ambiente)">SSMA (Seguridad, Salud y Medio Ambiente)</option>
+              <option value="Infraestructura / Obras Civiles">Infraestructura / Obras Civiles (OOCC)</option>
+              <option value="Mantenimiento de Vehículos">Mantenimiento de Vehículos</option>
+              <option value="Laboratorio y Aseguramiento de la Calidad">Laboratorio y Aseguramiento de la Calidad</option>
+              <option value="Logística y Distribución">Logística y Distribución</option>
+            </select>
+            <p class="text-xs text-error hidden" id="tipo-servicio-error-label"><span id="tipo-servicio-error"></span></p>
+          </div>
+
+          <!-- Descripción -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-base-content/60 uppercase tracking-wide flex items-center gap-1.5" for="descripcion">
+              <i class="fas fa-align-left text-primary text-[10px]"></i>
+              Descripción <span class="text-error">*</span>
+            </label>
+            <textarea name="descripcion" id="descripcion"
+              class="textarea textarea-bordered w-full focus:border-primary focus:outline-none transition-colors min-h-24 bg-base-100"
+              placeholder="Descripción detallada de la actividad..." required></textarea>
+            <p class="text-xs text-error hidden" id="descripcion-error-label"><span id="descripcion-error"></span></p>
+          </div>
+
+          <!-- Botón -->
+          <div class="flex justify-end pt-4 border-t border-base-300">
+            <button type="button" id="btn-continuar-datos"
+              class="btn btn-success rounded-full gap-2 px-8 shadow-sm">
+              <span class="normal-text flex items-center gap-2">
+                Continuar
+                <i class="fas fa-arrow-right text-sm"></i>
+              </span>
+              <span class="loading loading-spinner loading-sm hidden"></span>
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+
+const URL_COHERENCIA        = "{% url 'pliego_licitacion:coherencia' %}";
+const URL_PARAMETROS_MATERIAL = "{% url 'pliego_licitacion:parametros_material' %}";
+const URL_PARAMETROS_BASE   = "/demo/flujo/parametros/";
+
+function getCookie(name) {
+  for (let c of document.cookie.split(';')) {
+    c = c.trim();
+    if (c.startsWith(name + '=')) return decodeURIComponent(c.substring(name.length + 1));
+  }
+  return null;
+}
+
+function mostrarError(campo, msg) {
+  const el = document.getElementById(campo + '-error');
+  const lb = document.getElementById(campo + '-error-label');
+  if (el) el.textContent = msg;
+  if (lb) lb.classList.remove('hidden');
+}
+
+function ocultarErrores() {
+  ['titulo', 'descripcion', 'tipo-servicio', 'unidad-medida'].forEach(c => {
+    const lb = document.getElementById(c + '-error-label');
+    if (lb) lb.classList.add('hidden');
+  });
+}
+
+document.getElementById('btn-continuar-datos').addEventListener('click', async function () {
+  const btn = this;
+  const normalText    = btn.querySelector('.normal-text');
+  const loadingSpinner= btn.querySelector('.loading-spinner');
+  ocultarErrores();
+
+  const titulo       = document.getElementById('titulo').value.trim();
+  const descripcion  = document.getElementById('descripcion').value.trim();
+  const tipoServicio = document.getElementById('tipo_servicio').value.trim();
+  const unidadMedida = document.getElementById('unidad_medida').value.trim();
+
+  if (!titulo)       { mostrarError('titulo', 'El título es requerido'); return; }
+  if (!descripcion)  { mostrarError('descripcion', 'La descripción es requerida'); return; }
+  if (!tipoServicio) { mostrarError('tipo-servicio', 'El tipo de servicio es requerido'); return; }
+  if (!unidadMedida) { mostrarError('unidad-medida', 'La unidad de medida es requerida'); return; }
+
+  normalText.classList.add('hidden');
+  loadingSpinner.classList.remove('hidden');
+  btn.disabled = true;
+
+  try {
+    showSpinner('Analizando coherencia...');
+
+    const resp = await fetch(URL_COHERENCIA, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ titulo, descripcion, tipo_servicio: tipoServicio, unidad_medida: unidadMedida }),
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) throw new Error(data.error || `Error HTTP ${resp.status}`);
+
+    if (data.coherente === false) {
+      hideSpinner();
+      const alert = document.getElementById('razon-alert');
+      const text  = document.getElementById('razon-text');
+      if (text) text.innerHTML = (data.razon || '').replace(/\n/g, '<br>');
+      if (alert) alert.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const especId = data.especificacion_id;
+
+    // Prefetch parámetros de material para que paso2 los tenga en cache
+    showSpinner('Analizando parámetros de materiales...');
+    const subResp = await fetch(URL_PARAMETROS_MATERIAL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ especificacion_id: especId }),
+    });
+    const subData = await subResp.json();
+    if (!subResp.ok || !subData.success) throw new Error(subData.error || 'Error al obtener parámetros');
+
+    if (subData.response_data) {
+      sessionStorage.setItem('parametros_step1_data', JSON.stringify(subData.response_data));
+    }
+
+    window.location.href = URL_PARAMETROS_BASE + especId + '/';
+
+  } catch (e) {
+    hideSpinner();
+    flashy.error('Error: ' + (e.message || 'Error desconocido'));
+  } finally {
+    normalText.classList.remove('hidden');
+    loadingSpinner.classList.add('hidden');
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

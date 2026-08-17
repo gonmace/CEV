@@ -1,0 +1,21 @@
+{% comment %}
+  Empresa a la que pertenece la cuenta, siempre visible en la barra superior.
+
+  Una cuenta personal NO muestra nada: no pertenece a ninguna empresa, así que un badge
+  vacío o un "Personal" solo sería ruido. La regla vive acá, en un único sitio, para que las
+  dos barras (módulos y home) no puedan contradecirse.
+
+  Se puede pasar `badge_class` para adaptarlo al fondo de cada barra:
+    {% include 'partials/_empresa_badge.html' with badge_class="..." %}
+{% endcomment %}
+{% if nav_empresa %}
+{% if nav_logo %}
+<img src="{{ nav_logo.url }}" alt="Logo de {{ nav_empresa.nombre }}"
+     class="h-9 w-auto max-w-[7rem] object-contain rounded bg-white/90 px-1 py-0.5 ring-2 ring-base-100/70 flex-shrink-0">
+{% endif %}
+<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium
+             {{ badge_class|default:'bg-primary-content/15 text-primary-content' }}"
+      title="Perteneces a {{ nav_empresa.nombre }}: compartes su bolsa de créditos y su cupo de usuarios">
+    {{ nav_empresa.nombre }}
+</span>
+{% endif %}
