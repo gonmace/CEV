@@ -352,7 +352,12 @@ LOGGING = {
     },
     'loggers': {
         'django.request': {
-            'handlers': ['mail_admins'],
+            # 'mail_admins' solo: ADMINS sigue en el placeholder admin@example.com y
+            # send_mail usa fail_silently=True, así que un 500 en prod no dejaba rastro
+            # en ningún lado (ni docker logs ni correo). 'console' asegura que el
+            # traceback llegue a stderr, que gunicorn (--error-logfile -) vuelca a
+            # docker logs.
+            'handlers': ['mail_admins', 'console'],
             'level': 'ERROR',
             'propagate': True,
         },
