@@ -1,6 +1,6 @@
 Django>=5.1
 whitenoise>=6.8
-django-tailwind>=3.8
+django-tailwind>=4.0
 django-crispy-forms>=2.3
 crispy-tailwind>=1.0
 pillow>=11.0
@@ -9,6 +9,10 @@ psycopg2-binary>=2.9
 gunicorn>=23.0
 django-axes>=7.0
 django-csp>=3.8
+django-allauth>=65.0
+django-redis>=5.4
+redis>=5.2
+PyJWT>=2.8
 
 # pliego_licitacion / proyectos
 beautifulsoup4>=4.12

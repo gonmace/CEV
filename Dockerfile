@@ -18,7 +18,6 @@ ENV DJANGO_SETTINGS_MODULE=core.settings
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    netcat-openbsd \
     libpq-dev \
     gcc \
     && rm -rf /var/lib/apt/lists/*

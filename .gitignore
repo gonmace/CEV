@@ -25,6 +25,11 @@ cache/
 venv/
 env/
 
+# Secretos (nunca versionar)
+client_secret*.json
+*.pem
+*.key
+
 # Node
 node_modules/
 theme/static_src/node_modules/
@@ -42,16 +47,28 @@ theme/static/css/dist/
 # OS
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
 
 # Docker
 *.pid
 db/
 volumes/
 
-# Nginx generado por deploy.sh (usa nombre del proyecto)
+# n8n: workflows se versionan, credenciales nunca
+n8n/credentials/
+
+# Nginx generado por deploy.sh (usa nombre del proyecto) — las plantillas sí se versionan
 *.conf
 !nginx.conf
-.env
-.venv/
+!nginx-n8n.conf
+!nginx-n8n-mcp.conf
+
+# Claude Code
 .claude/
-.vscode/
+.mcp.json
+
+# Documentos de auditoría interna (no publicar en el repo)
+AUDITORIA.md
+
+# Scripts/datos de prueba: nunca deben llegar a producción
+junk/

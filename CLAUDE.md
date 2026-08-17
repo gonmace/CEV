@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Constructor_EV (CEV)** — Django 5.1+ application for construction project management with AI-powered technical specification generation. All UI, models, and code are in **Spanish**.
 
+**Language register: neutral Latin American Spanish (tuteo), never Argentine/Rioplatense voseo.** Use "tú/subes/tienes/necesitas", not "vos/subís/tenés/necesitás". This applies to all user-facing text — templates, form labels/help_text/placeholders, flash messages, validation errors — not to code comments or docstrings.
+
 ## Architecture
 
 ### Apps
