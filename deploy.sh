@@ -42,11 +42,20 @@ if ! bash check-ports.sh; then
 fi
 echo ""
 
-# ── 3. Actualizar código ───────────────────────────────────────────────────────
-echo "▶ Actualizando código..."
-git pull origin main
+# ── 3. Backup antes de tocar nada ──────────────────────────────────────────────
+echo "▶ Backup previo al despliegue..."
+bash docker/backup.sh || echo "  ! El backup falló — revisa antes de continuar. Se sigue de todos modos."
+echo ""
 
-# ── 4. Construir lista de profiles ────────────────────────────────────────────
+# ── 4. Actualizar código ───────────────────────────────────────────────────────
+# La rama actual del checkout, no "main" fijo: si el VPS tiene otra rama desplegada
+# (ver `git branch --show-current`), esto la respeta en vez de traer código distinto
+# al que se probó.
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "▶ Actualizando código (rama: ${CURRENT_BRANCH})..."
+git pull origin "${CURRENT_BRANCH}"
+
+# ── 5. Construir lista de profiles ────────────────────────────────────────────
 PROFILES=""
 
 if [ "${POSTGRES_MODE}" = "container" ]; then
@@ -73,10 +82,33 @@ else
     echo "  n8n: deshabilitado (N8N_DOMAIN no definido)"
 fi
 
-# ── 5. Reconstruir y reiniciar contenedores ────────────────────────────────────
+# El contenedor django corre como UID 1000 (appuser, ver Dockerfile) — estos bind
+# mounts los escribe collectstatic/las subidas de usuario, así que necesitan el mismo
+# dueño o el contenedor no puede escribir en ellos.
+mkdir -p staticfiles media
+sudo chown -R 1000:1000 staticfiles media
+
+# ── 6. Reconstruir y reiniciar contenedores ────────────────────────────────────
 echo ""
 echo "▶ Reconstruyendo contenedores Docker..."
 docker compose ${PROFILES} up -d --build
+
+# ── 7. Verificar que el sitio responde ─────────────────────────────────────────
+echo ""
+echo "▶ Verificando que Django responde..."
+HEALTH_OK=""
+for i in $(seq 1 15); do
+    if curl -fsS "http://127.0.0.1:${APP_PORT}/healthz" >/dev/null 2>&1; then
+        HEALTH_OK=1
+        break
+    fi
+    sleep 2
+done
+
+if [ -z "${HEALTH_OK}" ]; then
+    echo "  ! /healthz no respondió tras 30s. Revisa: docker compose logs django"
+    exit 1
+fi
 
 echo ""
 echo "✓ Despliegue completado → https://${DOMAIN}"

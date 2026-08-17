@@ -1,6 +1,8 @@
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.contrib.auth import logout
 from django.shortcuts import redirect
+from django.views.decorators.http import require_POST
 
 from accounts.creditos import consumido_por, disponible
 
@@ -23,9 +25,20 @@ def index(request):
     return render(request, 'home/index.html', context)
 
 
+@require_POST
 def logout_view(request):
+    # Todos los templates ya lo llaman por un <form method="post">; exigirlo acá cierra
+    # el logout-CSRF (forzar la sesión de otro con un <img src="/logout/">).
     is_demo = request.session.get('demo_mode', False)
     logout(request)
     if is_demo:
         return redirect('/demo/')
     return redirect('accounts:login')
+
+
+def healthz(request):
+    """Sondeo de salud para el healthcheck de Docker/nginx: sin auth, sin BD, sin
+    caché — solo confirma que el proceso Django responde. Deliberadamente no verifica
+    Postgres/Redis: un healthcheck que depende de ellos puede tumbar el contenedor por
+    un problema de infraestructura ajeno a la app."""
+    return HttpResponse('ok', content_type='text/plain')

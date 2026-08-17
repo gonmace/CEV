@@ -110,6 +110,9 @@ db-reset:
 deploy:
 	bash deploy.sh
 
+backup:
+	bash docker/backup.sh
+
 nginx:
 	bash nginx-deploy.sh
 
@@ -124,4 +127,4 @@ down:
 
 .PHONY: setup dev-up dev-down dev-logs dev-check n8n-export n8n-import n8n-update install dev run tailwind \
         migrate migrations shell superuser collect db-shell db-reset \
-        deploy nginx check-ports logs down
+        deploy backup nginx check-ports logs down

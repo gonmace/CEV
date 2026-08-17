@@ -53,6 +53,7 @@ Thumbs.db
 *.pid
 db/
 volumes/
+backups/
 
 # n8n: workflows se versionan, credenciales nunca
 n8n/credentials/
