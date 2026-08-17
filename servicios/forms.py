@@ -31,7 +31,7 @@ class ServicioForm(forms.ModelForm):
                 'placeholder': 'Ingrese el nombre del servicio',
             }),
             'publico': forms.CheckboxInput(attrs={
-                'class': 'toggle toggle-primary',
+                'class': 'toggle toggle-success',
             }),
         }
         labels = {
@@ -39,9 +39,9 @@ class ServicioForm(forms.ModelForm):
             'publico': 'Público',
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
-        catalogo = CatalogoServicios.get_activo()
+        catalogo = CatalogoServicios.get_activo(empresa)
         datos = catalogo.datos if catalogo else []
 
         cat_choices = [('', '— Selecciona una categoría —')]

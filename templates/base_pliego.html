@@ -8,7 +8,7 @@
 <head>
     <title>Principal</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <link rel="icon" type="image/png" href="{% static 'img/logo-gdar.png' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -16,24 +16,20 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
 
-    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}?v={{ css_version }}">
 
     {% block css %}
     {% endblock %}
 </head>
 
-<body class="{% block body_class %}{% endblock %} min-h-screen ">
+<body class="{% block body_class %}{% endblock %} min-h-screen flex flex-col {% if request.resolver_match.app_name == 'servicios' %}module-servicios{% endif %}">
 
-    <div class="bg-primary text-white shadow z-50 overflow-visible relative">
+    {% include 'partials/_impersonate.html' %}
+
+    <div class="bg-gradient-to-br from-primary to-primary/65 text-white shadow z-50 overflow-visible relative">
         <div class="max-w-7xl mx-auto px-4 py-2 grid grid-cols-[auto_1fr_auto] items-center gap-4 relative">
             <div class="flex items-center space-x-4">
-                <a href="/" class="bg-white rounded p-0.5 flex items-center justify-center">
-                    {% if site_logo_url %}
-                    <img src="{{ site_logo_url }}" alt="Logo" class="h-8 object-contain">
-                    {% else %}
-                    <img src="{% static 'img/logo-gdar.png' %}" alt="GDAR Logo" class="h-8 object-contain">
-                    {% endif %}
-                </a>
+                {% include 'partials/_empresa_badge.html' %}
             </div>
             <div class="flex items-center justify-center">
                 <span class="text-lg font-semibold tracking-wide uppercase">
@@ -56,28 +52,15 @@
                   </svg>
                 </label>
 
+                {% include 'partials/_user_menu.html' with avatar_class="bg-primary-content/15 text-primary-content" %}
                 {% if request.user.is_authenticated %}
-                <div class="inline-flex items-center gap-2">
-                    {% with request.user.first_name|default:request.user.username as first_name %}
-                      {% with request.user.last_name as last_name %}
-                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary-content/15 text-primary-content font-semibold uppercase text-sm">
-                          {{ first_name|slice:':1' }}{{ last_name|default:''|slice:':1' }}
-                        </span>
-                      {% endwith %}
-                    {% endwith %}
-                </div>
                 <form action="{% url 'logout' %}" method="post" class="m-0">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-ghost text-primary-content/70 hover:text-primary-content">
+                    <button type="submit" class="btn btn-sm btn-ghost text-primary-content/70 hover:text-primary-content" title="Cerrar sesión">
                         <i class="fas fa-sign-out-alt"></i>
                     </button>
                 </form>
                 {% endif %}
-                <div class="relative h-0 w-[70px] self-start overflow-visible shrink-0">
-                    <div class="absolute top-0 w-[70px] h-[70px] rounded-full bg-white flex items-center justify-center p-2 shadow-lg ring-4 ring-primary">
-                        <img src="{% static 'img/logo-embol.png' %}" alt="Embol Logo" class="h-full w-full object-contain">
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -122,10 +105,12 @@
         </div>
     </div>
 
-    <div id="content">
+    <div id="content" class="flex-1 flex flex-col">
         {% block content %}
         {% endblock %}
     </div>
+
+    {% include 'partials/_footer.html' %}
 
     {% if messages %}
     <script id="django-messages-data" type="application/json">
@@ -241,16 +226,24 @@
             if (el) { el.classList.add('hidden'); el.style.display = ''; }
         };
 
-        // 8 pasos, total 148 s → ángulos acumulados en sentido horario desde 0°
+        // 10 pasos, total ~141 s → ángulos acumulados en sentido horario desde 0°.
+        // `startSpinnerStep` usa el primer match cuyo texto aparece en el rótulo
+        // (label.includes(match)), en el orden de este array: los matches específicos
+        // ("guardando título", "guardando actividades" — guardados en BD, casi
+        // instantáneos) van ANTES que sus versiones genéricas ("título",
+        // "actividades adicionales" — llamadas a IA), o el genérico se los comería y el
+        // arco quedaría animando 12-43s para algo que ya terminó.
         const _SPINNER_STEPS = [
-            { match: 'parámetros técnicos',   startAngle:   0,     endAngle:  19.46, duration:  8 },
-            { match: 'materiales',             startAngle:  19.46,  endAngle:  58.38, duration: 16 },
-            { match: 'ejecuci',                startAngle:  58.38,  endAngle: 133.78, duration: 31 },
-            { match: 'normas',                 startAngle: 133.78,  endAngle: 153.24, duration:  8 },
-            { match: 'criterios',              startAngle: 153.24,  endAngle: 197.03, duration: 18 },
-            { match: 'título',                 startAngle: 197.03,  endAngle: 199.46, duration:  1 },
-            { match: 'guardando actividades',  startAngle: 199.46,  endAngle: 255.41, duration: 23 },
-            { match: 'generando especificaci', startAngle: 255.41,  endAngle: 360,    duration: 43 },
+            { match: 'parámetros técnicos',    startAngle:   0,      endAngle:  20.43, duration:  8 },
+            { match: 'materiales',              startAngle:  20.43,  endAngle:  61.28, duration: 16 },
+            { match: 'ejecuci',                 startAngle:  61.28,  endAngle: 140.43, duration: 31 },
+            { match: 'normas',                  startAngle: 140.43,  endAngle: 160.85, duration:  8 },
+            { match: 'criterios',               startAngle: 160.85,  endAngle: 206.81, duration: 18 },
+            { match: 'guardando título',        startAngle: 206.81,  endAngle: 209.36, duration:  1 },
+            { match: 'título',                  startAngle: 209.36,  endAngle: 217.02, duration:  3 },
+            { match: 'guardando actividades',   startAngle: 217.02,  endAngle: 219.57, duration:  1 },
+            { match: 'actividades adicionales', startAngle: 219.57,  endAngle: 250.21, duration: 12 },
+            { match: 'generando especificaci',  startAngle: 250.21,  endAngle: 360,    duration: 43 },
         ];
 
         let _dotRaf = null;

@@ -1,0 +1,13 @@
+Hola{% if user.first_name %} {{ user.first_name }}{% endif %},
+
+Te habilitamos el acceso a CEV, la plataforma de Constructor_EV para gestionar
+proyectos y generar especificaciones técnicas.
+
+Para activar tu cuenta y crear tu contraseña, ingresá a este enlace:
+
+{{ link }}
+
+Si no esperabas este correo, podés ignorarlo sin problema.
+
+Saludos,
+El equipo de CEV — Constructor de Especificaciones

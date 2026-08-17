@@ -11,6 +11,7 @@ import requests
 import re
 import logging
 from PIL import Image
+from accounts.permissions import puede_editar, puede_ver
 from proyectos.models import Proyecto
 from .models import Ubicacion, UbicacionImagen
 from .forms import UbicacionForm, UbicacionContenidoForm
@@ -277,7 +278,10 @@ def enviar_a_n8n_ubicacion(ubicacion_instance, google_maps_api_key=None, indicac
             N8N_WEBHOOK_UBICACION_URL,
             json=payload,
             headers={
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                # Header Auth del lado de n8n (ver core/settings.py): sin token, el
+                # webhook queda abierto a cualquiera que conozca la URL.
+                **({settings.N8N_WEBHOOK_TOKEN_HEADER: settings.N8N_WEBHOOK_TOKEN} if settings.N8N_WEBHOOK_TOKEN else {}),
             },
             timeout=60  # Timeout de 60 segundos
         )
@@ -384,7 +388,7 @@ def crear_ubicacion_view(request, proyecto_id):
     """
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
     
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         messages.error(request, 'Solo puedes crear ubicaciones en tus propios proyectos.')
         return redirect('proyectos:proyecto_detalle', proyecto.id)
     
@@ -438,7 +442,7 @@ def editar_ubicacion_view(request, ubicacion_id):
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, proyecto__activo=True)
     proyecto = ubicacion.proyecto
     
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         messages.error(request, 'Solo puedes editar ubicaciones de tus proyectos.')
         return redirect('proyectos:proyecto_detalle', proyecto.id)
     
@@ -466,7 +470,7 @@ def editar_contenido_ubicacion_view(request, ubicacion_id):
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, proyecto__activo=True)
     proyecto = ubicacion.proyecto
 
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         messages.error(request, 'Solo puedes editar el contenido de ubicaciones de tus proyectos.')
         return redirect('proyectos:proyecto_detalle', proyecto.id)
 
@@ -494,7 +498,7 @@ def eliminar_ubicacion_view(request, ubicacion_id):
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, proyecto__activo=True)
     proyecto = ubicacion.proyecto
     
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.content_type == 'application/json':
             return JsonResponse({'error': 'Solo puedes eliminar ubicaciones de tus proyectos.'}, status=403)
         messages.error(request, 'Solo puedes eliminar ubicaciones de tus proyectos.')
@@ -532,7 +536,7 @@ def obtener_imagenes_ubicacion_view(request, ubicacion_id):
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, proyecto__activo=True)
     
     # Verificar permisos
-    if not (ubicacion.proyecto.publico or ubicacion.proyecto.creado_por == request.user):
+    if not puede_ver(request.user, ubicacion.proyecto):
         return JsonResponse({'error': 'No tienes permisos para ver las imágenes de esta ubicación.'}, status=403)
     
     imagenes = ubicacion.imagenes.all()
@@ -557,8 +561,8 @@ def subir_imagenes_ubicacion_view(request, ubicacion_id):
     """
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, proyecto__activo=True)
     
-    # Verificar que el usuario es propietario del proyecto
-    if ubicacion.proyecto.creado_por != request.user:
+    # Verificar que el usuario puede editar el proyecto
+    if not puede_editar(request.user, ubicacion.proyecto):
         return JsonResponse({'error': 'Solo puedes agregar imágenes a ubicaciones de tus proyectos.'}, status=403)
     
     imagenes_subidas = request.FILES.getlist('imagenes')
@@ -605,8 +609,8 @@ def eliminar_imagen_ubicacion_view(request, imagen_id):
     imagen = get_object_or_404(UbicacionImagen, id=imagen_id)
     ubicacion = imagen.ubicacion
     
-    # Verificar que el usuario es propietario del proyecto
-    if ubicacion.proyecto.creado_por != request.user:
+    # Verificar que el usuario puede editar el proyecto
+    if not puede_editar(request.user, ubicacion.proyecto):
         return JsonResponse({'error': 'Solo puedes eliminar imágenes de ubicaciones de tus proyectos.'}, status=403)
     
     # Eliminar el archivo físico
@@ -630,8 +634,8 @@ def actualizar_descripcion_imagen_ubicacion_view(request, imagen_id):
     imagen = get_object_or_404(UbicacionImagen, id=imagen_id)
     ubicacion = imagen.ubicacion
     
-    # Verificar que el usuario es propietario del proyecto
-    if ubicacion.proyecto.creado_por != request.user:
+    # Verificar que el usuario puede editar el proyecto
+    if not puede_editar(request.user, ubicacion.proyecto):
         return JsonResponse({'error': 'Solo puedes editar descripciones de imágenes de tus proyectos.'}, status=403)
     
     try:
@@ -660,7 +664,7 @@ def descargar_pdf_ubicacion_view(request, ubicacion_id):
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, proyecto__activo=True)
     
     # Verificar permisos
-    if not (ubicacion.proyecto.publico or ubicacion.proyecto.creado_por == request.user):
+    if not puede_ver(request.user, ubicacion.proyecto):
         messages.error(request, 'No tienes permisos para descargar el PDF de esta ubicación.')
         return redirect('proyectos:proyecto_detalle', ubicacion.proyecto.id)
     

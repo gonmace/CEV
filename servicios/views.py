@@ -1,14 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import Value, CharField, Count
 from django.db.models.functions import Coalesce, Concat, NullIf, Trim, Lower
-from django.db.models import Q
 from django.core.files.base import ContentFile
 from django.utils.text import slugify
 from django.utils import timezone
 from django.utils.safestring import mark_safe
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_http_methods
 import json
 import re
@@ -16,6 +16,17 @@ import requests
 import logging
 from django.conf import settings
 from markdown import markdown
+from accounts.creditos import SinCreditos, anotar_creditos, consumir, disponible, equipo_de, puede_consumir
+from accounts.marca import (
+    aplicar_colores, con_logo, insertar_logo, logo_de, marca_de, placeholders_de,
+    plantilla_de, reemplazar_placeholders, tipo_contrato_label,
+)
+from accounts.permissions import filtrar_visibles, get_user_empresa, is_company_admin, puede_editar, puede_ver
+from core.sanitize import sanitizar_html
+from core.http_safe import URLNoPermitida, get_seguro
+
+# Generar las secciones de un servicio es el entregable: cuesta 1 crédito de este módulo.
+MODULO_SERVICIOS = 'servicios.access'
 from .models import Servicio, ServicioImagen, CatalogoServicios
 from .forms import ServicioForm
 
@@ -80,6 +91,14 @@ def extraer_texto_ocr(pdf_bytes_io):
 
     return '\n'.join(resultado).strip()[:8000]
 
+# Header Auth de los webhooks de n8n (ver core/settings.py): sin esto, cualquiera que
+# conociera la URL podía disparar los workflows y quemar créditos de OpenAI sin pasar
+# por el sistema de créditos de la app.
+N8N_HEADERS = (
+    {settings.N8N_WEBHOOK_TOKEN_HEADER: settings.N8N_WEBHOOK_TOKEN}
+    if settings.N8N_WEBHOOK_TOKEN else {}
+)
+
 _n8n = lambda path: f"{settings.N8N_BASE_URL}/webhook/{path}"
 N8N_WEBHOOK_SER_COHERENCIA_URL        = _n8n('ser-coherencia')
 N8N_WEBHOOK_SER_OBJETIVO_URL          = _n8n('ser-objetivo')
@@ -91,11 +110,14 @@ N8N_WEBHOOK_SER_EQUIPOS_AJUSTAR_URL   = _n8n('ajustar-servicio')
 N8N_WEBHOOK_SER_PDF_EXTRACTOR_URL     = _n8n('pdf-vision')
 
 
-def _categorias_json():
-    """Devuelve el catálogo como JSON para cascada categoria→subcategoria en el template."""
-    catalogo = CatalogoServicios.get_activo()
+def _categorias_json(empresa=None):
+    """Catálogo para la cascada categoria→subcategoria del template, como objeto Python
+    (no como cadena ya serializada: el template lo vuelca con `|json_script`, que
+    escapa `</script>` y compañía; `json.dumps` + `|safe` no lo hacía).
+    `empresa=None` trae el catálogo global (cuentas personales o empresas sin uno propio)."""
+    catalogo = CatalogoServicios.get_activo(empresa)
     datos = catalogo.datos if catalogo else []
-    result = [
+    return [
         {
             'id': cat['nombre'],
             'nombre': cat['nombre'],
@@ -113,18 +135,144 @@ def _categorias_json():
         }
         for cat in datos
     ]
-    return json.dumps(result)
 
 
-def _lookup_catalogo(subcategoria_codigo):
+def _lookup_catalogo(subcategoria_codigo, empresa=None):
     """Devuelve (categoria_nombre, subcategoria_nombre) dado un código de subcategoría."""
-    catalogo = CatalogoServicios.get_activo()
+    catalogo = CatalogoServicios.get_activo(empresa)
     if catalogo:
         for cat in catalogo.datos:
             for sub in cat.get('subcategorias', []):
                 if sub['codigo'] == subcategoria_codigo:
                     return cat['nombre'], sub['nombre']
     return '', ''
+
+
+def _company_admin_required(view):
+    """Mismo criterio que accounts.views._company_admin_required: 403 al autenticado sin
+    permiso, redirect a login al anónimo. Se duplica acá (en vez de importar) para no
+    acoplar servicios a la vista concreta de accounts; ambos usan is_company_admin."""
+    from functools import wraps
+    from django.contrib.auth.views import redirect_to_login
+    from django.core.exceptions import PermissionDenied
+    from django.urls import reverse
+
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if is_company_admin(request.user):
+            return view(request, *args, **kwargs)
+        if request.user.is_authenticated:
+            raise PermissionDenied
+        return redirect_to_login(request.get_full_path(), reverse('accounts:login'))
+    return wrapped
+
+
+def _validar_datos_catalogo(datos):
+    """Normaliza y valida el JSON de un catálogo antes de guardarlo. Devuelve
+    (datos_normalizados, error) — error es None si es válido. Reglas: debe quedar al
+    menos una categoría con al menos una subcategoría con código y nombre; los códigos
+    de subcategoría deben ser únicos (son la clave que usan ServicioForm/_lookup_catalogo).
+
+    Preserva cualquier campo extra que ya traiga cada categoría/subcategoría (además de
+    los que edita el formulario visual — unidad/descripcion/intencion/frecuencia — el
+    catálogo global histórico usa también definicion/alcance a nivel de subcategoría,
+    leídos por `_categorias_json`) en vez de reconstruir un set fijo de claves: así
+    "Restaurar por defecto" no pierde datos que el editor visual no expone."""
+    if not isinstance(datos, list):
+        return None, 'El catálogo debe ser una lista de categorías.'
+
+    normalizado = []
+    codigos_vistos = set()
+    for cat in datos:
+        if not isinstance(cat, dict):
+            continue
+        nombre_cat = (cat.get('nombre') or '').strip()
+        if not nombre_cat:
+            continue
+        subs = []
+        for sub in cat.get('subcategorias', []):
+            if not isinstance(sub, dict):
+                continue
+            codigo = (sub.get('codigo') or '').strip()
+            nombre_sub = (sub.get('nombre') or '').strip()
+            if not codigo or not nombre_sub:
+                continue
+            if codigo in codigos_vistos:
+                return None, f'El código de subcategoría "{codigo}" está repetido.'
+            codigos_vistos.add(codigo)
+            sub_normalizada = dict(sub)
+            sub_normalizada['codigo'] = codigo
+            sub_normalizada['nombre'] = nombre_sub
+            subs.append(sub_normalizada)
+        if not subs:
+            continue
+        cat_normalizada = dict(cat)
+        cat_normalizada['nombre'] = nombre_cat
+        cat_normalizada['subcategorias'] = subs
+        normalizado.append(cat_normalizada)
+
+    if not normalizado:
+        return None, 'El catálogo no puede quedar vacío: agrega al menos una categoría con una subcategoría.'
+    return normalizado, None
+
+
+@login_required
+@_company_admin_required
+def editar_catalogo_view(request):
+    """Permite al Administrador de una empresa editar SU catálogo de categorías y
+    subcategorías (aislado del resto). Si la empresa todavía no tiene uno propio, se
+    parte de una copia del catálogo global como valor por defecto (no se persiste hasta
+    guardar)."""
+    import copy
+
+    empresa = get_user_empresa(request.user)
+    catalogo = CatalogoServicios.objects.filter(empresa=empresa).first()
+    catalogo_global = CatalogoServicios.get_activo(None)
+
+    if request.method == 'POST':
+        if request.POST.get('accion') == 'restaurar':
+            datos = copy.deepcopy(catalogo_global.datos) if catalogo_global else []
+        else:
+            try:
+                datos = json.loads(request.POST.get('datos_json', '[]'))
+            except (TypeError, ValueError):
+                messages.error(request, 'El catálogo enviado no es un JSON válido.')
+                return redirect('servicios:editar_catalogo')
+
+        datos_validados, error = _validar_datos_catalogo(datos)
+        if error:
+            messages.error(request, error)
+            return redirect('servicios:editar_catalogo')
+
+        if catalogo is None:
+            catalogo = CatalogoServicios.objects.create(
+                empresa=empresa,
+                nombre=f'Catálogo de {empresa.nombre}',
+                activo=True,
+                datos=datos_validados,
+            )
+        else:
+            catalogo.datos = datos_validados
+            catalogo.activo = True
+            catalogo.save(update_fields=['datos', 'activo'])
+
+        if request.POST.get('accion') == 'restaurar':
+            messages.success(request, 'Catálogo restaurado a los valores por defecto.')
+        else:
+            messages.success(request, 'Catálogo actualizado correctamente.')
+        return redirect('servicios:editar_catalogo')
+
+    datos_actuales = catalogo.datos if catalogo else (
+        copy.deepcopy(catalogo_global.datos) if catalogo_global else []
+    )
+
+    return render(request, 'servicios/editar_catalogo.html', {
+        # Objeto Python, no una cadena ya serializada: el template lo vuelca con
+        # `|json_script` (escapa `</script>` etc.), no con `|safe` sobre un
+        # `json.dumps` manual — ahí `json.dumps` no escapa `</script>`.
+        'datos_json': datos_actuales,
+        'tiene_catalogo_propio': catalogo is not None,
+    })
 
 
 @login_required
@@ -150,8 +298,7 @@ def lista_servicios_view(request):
         per_page = per_page_options[0]
 
     base_qs = (
-        Servicio.objects.filter(activo=True)
-        .filter(Q(publico=True) | Q(creado_por=request.user))
+        filtrar_visibles(Servicio.objects.filter(activo=True), request.user)
         .select_related('creado_por')
         .annotate(
             usuario_full_name=Trim(Concat(
@@ -218,13 +365,28 @@ def lista_servicios_view(request):
         query_params.pop('page')
     base_query = query_params.urlencode()
 
-    from django.contrib.auth.models import User as AuthUser
-    total_usuarios = AuthUser.objects.filter(is_active=True).count()
-
-    catalogo = CatalogoServicios.get_activo()
+    catalogo = CatalogoServicios.get_activo(get_user_empresa(request.user))
     datos_catalogo = catalogo.datos if catalogo else []
     total_categorias = len(datos_catalogo)
     total_subcategorias = sum(len(c.get('subcategorias', [])) for c in datos_catalogo)
+
+    # Consumido/tope/saldo de cada compañero de equipo en ESTE módulo — solo para quien
+    # administra la empresa (mismo gate que accounts:mi_equipo, donde se edita el tope).
+    # Cuenta personal o sin ese rol: None, así la tarjeta no se pinta.
+    equipo_creditos = None
+    empresa = get_user_empresa(request.user)
+    es_admin_empresa = bool(empresa and is_company_admin(request.user))
+    if es_admin_empresa:
+        miembros = anotar_creditos(list(
+            get_user_model().objects.filter(profile__empresa=empresa, is_active=True)
+            .select_related('profile')
+            .order_by('email')
+        ))
+        equipo_creditos = []
+        for miembro in miembros:
+            fila = next((c for c in miembro.creditos if c['key'] == MODULO_SERVICIOS), None)
+            if fila:
+                equipo_creditos.append({'user': miembro, **fila})
 
     return render(request, 'servicios/index.html', {
         'servicios': page_obj.object_list,
@@ -234,23 +396,36 @@ def lista_servicios_view(request):
         'order': order,
         'per_page': per_page,
         'per_page_options': per_page_options,
-        'total_usuarios': total_usuarios,
+        # None en cuentas personales: no tienen equipo, así que la tarjeta no se muestra.
+        'equipo': equipo_de(request.user),
+        'equipo_creditos': equipo_creditos,
+        'creditos': disponible(request.user, MODULO_SERVICIOS),
         'total_categorias': total_categorias,
         'total_subcategorias': total_subcategorias,
         'datos_catalogo': datos_catalogo,
+        # Solo el Administrador de una empresa puede editar SU catálogo de categorías.
+        'puede_editar_catalogo': es_admin_empresa,
         'borradores': borradores_ctx,
     })
 
 
 @login_required
 def crear_servicio_view(request):
+    # Sin créditos no se inicia el flujo: el botón está deshabilitado en el índice,
+    # pero la URL directa también debe rebotar.
+    ok, motivo = puede_consumir(request.user, MODULO_SERVICIOS)
+    if not ok:
+        messages.error(request, motivo)
+        return redirect('servicios:lista_servicios')
+
     if request.method == 'POST':
-        form = ServicioForm(request.POST)
+        empresa = get_user_empresa(request.user)
+        form = ServicioForm(request.POST, empresa=empresa)
         if form.is_valid():
             codigo = form.cleaned_data['subcategoria_codigo']
-            cat_nombre, sub_nombre = _lookup_catalogo(codigo)
+            cat_nombre, sub_nombre = _lookup_catalogo(codigo, empresa)
 
-            catalogo = CatalogoServicios.get_activo()
+            catalogo = CatalogoServicios.get_activo(empresa)
             subcategorias_categoria = []
             if catalogo:
                 for cat in catalogo.datos:
@@ -280,6 +455,7 @@ def crear_servicio_view(request):
                     resp = requests.post(
                         N8N_WEBHOOK_SER_COHERENCIA_URL,
                         json=payload,
+                        headers=N8N_HEADERS,
                         timeout=30,
                     )
                     resp.raise_for_status()
@@ -296,7 +472,7 @@ def crear_servicio_view(request):
                         }
                         return render(request, 'servicios/crear_servicio.html', {
                             'form': form,
-                            'categorias_json': _categorias_json(),
+                            'categorias_json': _categorias_json(empresa),
                             'sugerencia': sugerencia,
                             'bypass_coherencia': True,
                         })
@@ -307,19 +483,24 @@ def crear_servicio_view(request):
             servicio.categoria_nombre = cat_nombre
             servicio.subcategoria_nombre = sub_nombre
             servicio.creado_por = request.user
+            # Se fija una sola vez, al crear: no se recalcula si el usuario cambia de
+            # empresa después (ver accounts.permissions.filtrar_visibles).
+            servicio.empresa = get_user_empresa(request.user)
             servicio.save()
             return redirect('servicios:paso2_objetivo', servicio_id=servicio.id)
     else:
-        form = ServicioForm()
+        form = ServicioForm(empresa=get_user_empresa(request.user))
     return render(request, 'servicios/crear_servicio.html', {
         'form': form,
-        'categorias_json': _categorias_json(),
+        'categorias_json': _categorias_json(get_user_empresa(request.user)),
     })
 
 
 @login_required
 def paso2_objetivo_view(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
 
     if request.method == 'POST':
         objetivo = request.POST.get('objetivo', '').strip()
@@ -333,7 +514,9 @@ def paso2_objetivo_view(request, servicio_id):
 @login_required
 @require_http_methods(['POST'])
 def generar_objetivo_ajax(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -350,6 +533,7 @@ def generar_objetivo_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_OBJETIVO_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=60,
         )
         resp.raise_for_status()
@@ -361,7 +545,9 @@ def generar_objetivo_ajax(request, servicio_id):
 
 @login_required
 def paso3_alcance_view(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
 
     if request.method == 'POST':
         alcance_raw = request.POST.get('alcance', '').strip().replace('\x00', '')
@@ -380,7 +566,9 @@ def paso3_alcance_view(request, servicio_id):
 
 @login_required
 def paso4_secciones_view(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
 
     if request.method == 'POST':
         secciones_raw = request.POST.get('secciones', '').strip().replace('\x00', '')
@@ -396,7 +584,9 @@ def paso4_secciones_view(request, servicio_id):
 
 @login_required
 def paso5_consolidar_view(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
 
     if request.method == 'POST':
         contenido_raw = request.POST.get('contenido', '').strip().replace('\x00', '')
@@ -447,7 +637,7 @@ def paso5_consolidar_view(request, servicio_id):
             lineas.append(linea)
     contenido_md = '\n'.join(lineas)
 
-    preview_html = mark_safe(markdown(contenido_md, extensions=['extra']))
+    preview_html = mark_safe(sanitizar_html(markdown(contenido_md, extensions=['extra'])))
 
     return render(request, 'servicios/paso5_consolidar.html', {
         'servicio': servicio,
@@ -459,9 +649,11 @@ def paso5_consolidar_view(request, servicio_id):
 @login_required
 @require_http_methods(['POST'])
 def clasificar_alcance_ajax(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
 
-    catalogo = CatalogoServicios.get_activo()
+    catalogo = CatalogoServicios.get_activo(get_user_empresa(request.user))
     intencion_raw = ''
     if catalogo:
         for cat in catalogo.datos:
@@ -482,6 +674,7 @@ def clasificar_alcance_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_CLASIFICAR_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=30,
         )
         resp.raise_for_status()
@@ -539,6 +732,7 @@ def _vision_paginas(pdf_bytes_io, indices_paginas, nombre, servicio):
     resp_v = requests.post(
         N8N_WEBHOOK_SER_PDF_EXTRACTOR_URL,
         json=payload_vision,
+        headers=N8N_HEADERS,
         timeout=90,
     )
     resp_v.raise_for_status()
@@ -551,7 +745,9 @@ def _vision_paginas(pdf_bytes_io, indices_paginas, nombre, servicio):
 @login_required
 @require_http_methods(['POST'])
 def extraer_equipo_ajax(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
 
     tipo = request.POST.get('tipo', '').strip()
     nombre = request.POST.get('nombre', '').strip()
@@ -563,7 +759,7 @@ def extraer_equipo_ajax(request, servicio_id):
         if not contenido:
             return JsonResponse({'error': 'URL vacía.'}, status=400)
         try:
-            r = requests.get(contenido, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
+            r = get_seguro(contenido, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
             content_type = r.headers.get('Content-Type', '').lower()
             is_pdf = 'pdf' in content_type or contenido.lower().split('?')[0].endswith('.pdf')
 
@@ -609,8 +805,11 @@ def extraer_equipo_ajax(request, servicio_id):
                 html = re.sub(r'<[^>]+>', '', html)
                 html = re.sub(r'\s{2,}', ' ', html).strip()
                 texto = html[:6000]
+        except URLNoPermitida as e:
+            return JsonResponse({'error': str(e)}, status=400)
         except Exception as e:
-            return JsonResponse({'error': f'No se pudo obtener la URL: {e}'}, status=400)
+            logger.warning(f'No se pudo obtener la URL {contenido}: {e}')
+            return JsonResponse({'error': 'No se pudo obtener la URL.'}, status=400)
 
     elif tipo == 'pdf':
         pdf_file = request.FILES.get('archivo')
@@ -674,6 +873,7 @@ def extraer_equipo_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_EQUIPOS_EXTRACTOR_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=60,
         )
         resp.raise_for_status()
@@ -690,14 +890,16 @@ def extraer_equipo_ajax(request, servicio_id):
 @login_required
 @require_http_methods(['POST'])
 def generar_alcance_ajax(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         body = {}
 
     # Obtener intencion de la subcategoría en el catálogo
-    catalogo = CatalogoServicios.get_activo()
+    catalogo = CatalogoServicios.get_activo(get_user_empresa(request.user))
     intencion_raw = ''
     if catalogo:
         for cat in catalogo.datos:
@@ -723,7 +925,7 @@ def generar_alcance_ajax(request, servicio_id):
         texto = ref.get('texto_referencia', '').strip()
         if url:
             try:
-                r = requests.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
+                r = get_seguro(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
                 html = r.text
                 html = re.sub(r'<script[\s\S]*?>[\s\S]*?</script>', '', html, flags=re.IGNORECASE)
                 html = re.sub(r'<style[\s\S]*?>[\s\S]*?</style>', '', html, flags=re.IGNORECASE)
@@ -753,6 +955,7 @@ def generar_alcance_ajax(request, servicio_id):
             resp_clas = requests.post(
                 N8N_WEBHOOK_SER_CLASIFICAR_URL,
                 json=payload_clasificar,
+                headers=N8N_HEADERS,
                 timeout=30,
             )
             if resp_clas.ok and resp_clas.text.strip():
@@ -788,6 +991,7 @@ def generar_alcance_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_ALCANCE_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=120,
         )
         resp.raise_for_status()
@@ -814,7 +1018,18 @@ def generar_alcance_ajax(request, servicio_id):
 @login_required
 @require_http_methods(['POST'])
 def generar_secciones_ajax(request, servicio_id):
-    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True, creado_por=request.user)
+    servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
+    if not puede_editar(request.user, servicio):
+        raise Http404
+
+    # Las secciones son el entregable del módulo Servicios: cuestan 1 crédito. Se verifica
+    # antes de gastar IA, pero se cobra recién cuando n8n responde bien (más abajo).
+    cobrar_credito = not servicio.credito_consumido
+    if cobrar_credito:
+        ok, motivo = puede_consumir(request.user, MODULO_SERVICIOS)
+        if not ok:
+            return JsonResponse({'error': motivo, 'sin_creditos': True}, status=402)
+
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -822,7 +1037,7 @@ def generar_secciones_ajax(request, servicio_id):
 
     estructura = body.get('estructura', '').strip()
     if not estructura:
-        catalogo = CatalogoServicios.get_activo()
+        catalogo = CatalogoServicios.get_activo(get_user_empresa(request.user))
         intencion_raw = ''
         if catalogo:
             for cat in catalogo.datos:
@@ -841,6 +1056,7 @@ def generar_secciones_ajax(request, servicio_id):
                     'subcategoria_nombre': servicio.subcategoria_nombre,
                     'intenciones': intenciones,
                 },
+                headers=N8N_HEADERS,
                 timeout=30,
             )
             if resp_clas.ok and resp_clas.text.strip():
@@ -869,6 +1085,7 @@ def generar_secciones_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_SECCIONES_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=120,
         )
         resp.raise_for_status()
@@ -883,6 +1100,16 @@ def generar_secciones_ajax(request, servicio_id):
             if not servicio.secciones_generadas:
                 servicio.secciones_generadas = result['secciones'].replace('\x00', '')
                 servicio.save(update_fields=['secciones_generadas'])
+
+            # La IA entregó: recién ahora se cobra. El flag deja el servicio pagado, así
+            # regenerar las secciones para afinarlas no vuelve a descontar.
+            if cobrar_credito:
+                try:
+                    consumir(request.user, MODULO_SERVICIOS, referencia=f'Servicio#{servicio.id}')
+                    servicio.credito_consumido = True
+                    servicio.save(update_fields=['credito_consumido'])
+                except SinCreditos as e:
+                    logger.warning(f'Servicio {servicio.id} generado sin poder cobrar: {e}')
         return JsonResponse(result)
     except Exception as e:
         logger.exception(f"Error webhook secciones: {e}")
@@ -895,20 +1122,22 @@ def ver_servicio_view(request, servicio_id):
         Servicio.objects.select_related('creado_por').prefetch_related('imagenes'),
         id=servicio_id, activo=True
     )
-    if not (servicio.publico or servicio.creado_por == request.user):
+    if not puede_ver(request.user, servicio):
         messages.error(request, 'No tienes permisos para ver este servicio.')
         return redirect('servicios:lista_servicios')
 
-    es_propietario = servicio.creado_por == request.user
+    es_propietario = puede_editar(request.user, servicio)
     contenido_md = servicio.contenido or ''
-    preview_html = mark_safe(markdown(contenido_md, extensions=['extra']))
+    preview_html = mark_safe(sanitizar_html(markdown(contenido_md, extensions=['extra'])))
     tiene_cantidad = bool(servicio.cantidad and servicio.cantidad.strip())
 
     return render(request, 'servicios/ver_servicio.html', {
         'servicio': servicio,
         'es_propietario': es_propietario,
         'preview_html': preview_html,
-        'contenido_md_json': json.dumps(contenido_md),
+        # Cadena, no dict, pero igual objeto Python "crudo": el template usa
+        # `|json_script`, no `|safe` sobre un `json.dumps` manual.
+        'contenido_md_json': contenido_md,
         'tiene_cantidad': tiene_cantidad,
     })
 
@@ -917,15 +1146,15 @@ def ver_servicio_view(request, servicio_id):
 def editar_servicio_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
 
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         messages.error(request, 'Solo puedes editar servicios de tu cuenta.')
         return redirect('servicios:ver_servicio', servicio_id=servicio_id)
 
     if request.method == 'POST':
-        form = ServicioForm(request.POST, instance=servicio)
+        form = ServicioForm(request.POST, instance=servicio, empresa=servicio.empresa)
         if form.is_valid():
             codigo = form.cleaned_data['subcategoria_codigo']
-            cat_nombre, sub_nombre = _lookup_catalogo(codigo)
+            cat_nombre, sub_nombre = _lookup_catalogo(codigo, servicio.empresa)
             servicio = form.save(commit=False)
             servicio.categoria_nombre = cat_nombre
             servicio.subcategoria_nombre = sub_nombre
@@ -933,12 +1162,12 @@ def editar_servicio_view(request, servicio_id):
             messages.success(request, 'Servicio actualizado correctamente.')
             return redirect('servicios:ver_servicio', servicio_id=servicio.id)
     else:
-        form = ServicioForm(instance=servicio)
+        form = ServicioForm(instance=servicio, empresa=servicio.empresa)
 
     return render(request, 'servicios/editar_servicio.html', {
         'form': form,
         'servicio': servicio,
-        'categorias_json': _categorias_json(),
+        'categorias_json': _categorias_json(servicio.empresa),
     })
 
 
@@ -946,7 +1175,7 @@ def editar_servicio_view(request, servicio_id):
 @require_http_methods(['POST'])
 def guardar_contenido_ajax(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         return JsonResponse({'error': 'Sin permiso'}, status=403)
     body = json.loads(request.body)
     contenido = body.get('contenido', '').strip().replace('\x00', '')
@@ -959,7 +1188,7 @@ def guardar_contenido_ajax(request, servicio_id):
 def eliminar_servicio_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
 
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         is_ajax = (
             request.headers.get('X-Requested-With') == 'XMLHttpRequest'
             or request.content_type == 'application/json'
@@ -991,7 +1220,7 @@ def eliminar_servicio_view(request, servicio_id):
 @require_http_methods(["POST"])
 def toggle_publico_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         return JsonResponse({'error': 'Sin permisos.'}, status=403)
     servicio.publico = not servicio.publico
     servicio.save(update_fields=['publico'])
@@ -1014,7 +1243,7 @@ def exportar_servicio_word_view(request, servicio_id):
     import os
 
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if not (servicio.publico or servicio.creado_por == request.user):
+    if not puede_ver(request.user, servicio):
         messages.error(request, 'Sin permisos para exportar este servicio.')
         return redirect('servicios:ver_servicio', servicio_id=servicio_id)
 
@@ -1022,74 +1251,70 @@ def exportar_servicio_word_view(request, servicio_id):
     template_path = os.path.join(
         settings.BASE_DIR, 'servicios', 'templates', 'word_templates', 'template_servicios.docx'
     )
-    usa_template = os.path.exists(template_path)
+    # Crear directorio si no existe
+    os.makedirs(os.path.dirname(template_path), exist_ok=True)
+
+    # Marca del usuario (su empresa, o la suya si es cuenta personal): aporta logo y colores.
+    # La plantilla tiene su propia precedencia: la del usuario pisa a la de la empresa, y
+    # sin ninguna se usa la del sistema.
+    marca = marca_de(request.user)
+    fuente_docx = plantilla_de(request.user, 'servicios', template_path)
+    fuente_docx = con_logo(fuente_docx, logo_de(request.user))
+    usa_template = os.path.exists(template_path) or not isinstance(fuente_docx, str)
 
     # Valores editables desde el modal (POST) con fallback al modelo
     fecha_default   = servicio.fecha_creacion.strftime('%d/%m/%Y') if servicio.fecha_creacion else ''
-    titulo_export   = request.POST.get('titulo',      servicio.titulo or '')
-    codigo_export   = request.POST.get('codigo',      servicio.subcategoria_codigo or '')
-    solicitante_exp = request.POST.get('solicitante', servicio.solicitante or '')
-    fecha_export    = request.POST.get('fecha',       fecha_default)
-    revision_exp    = request.POST.get('revision',    '1')
-    nro_pliego_exp  = request.POST.get('nro_pliego',  '')
-    operacion_exp   = request.POST.get('operacion',   '')
-    usuario_exp     = request.POST.get('usuario',     '')
-    tipo_contrato   = request.POST.get('tipo_contrato', 'CO')
+    titulo_export   = servicio.titulo or ''
+    codigo_export   = servicio.subcategoria_codigo or ''
+    solicitante_exp = servicio.solicitante or ''
+    fecha_export    = fecha_default
+    revision_exp    = '1'
+    usuario_exp     = ''
+    ubicacion_exp   = ''
+    tipo_contrato   = 'CO'
+
+    if request.method == 'POST':
+        titulo_export   = request.POST.get('titulo',      titulo_export)
+        codigo_export   = request.POST.get('codigo',      codigo_export)
+        solicitante_exp = request.POST.get('solicitante', solicitante_exp)
+        fecha_export    = request.POST.get('fecha',       fecha_export)
+        revision_exp    = request.POST.get('revision',    revision_exp)
+        usuario_exp     = request.POST.get('usuario',     usuario_exp)
+        ubicacion_exp   = request.POST.get('ubicacion',   ubicacion_exp)
+        tipo_contrato   = request.POST.get('tipo_contrato', tipo_contrato)
+        if tipo_contrato == 'OTRO':
+            tipo_contrato = request.POST.get('tipo_contrato_otro', '').strip() or 'OTRO'
 
     if usa_template:
-        doc = Document(template_path)
+        doc = Document(fuente_docx)
 
-        # Reemplazar placeholders en encabezados del template
-        CHK   = '\u2611'  # ☑
-        UNCHK = '\u2610'  # ☐
+        # Reemplazar placeholders en encabezados (y body) del template
         placeholders = {
-            '<<TITULO>>':       titulo_export,
-            '<<PROYECTO>>':     titulo_export,
-            '<<CODIGO>>':       codigo_export,
-            '<<SOLICITANTE>>':  solicitante_exp,
-            '<<CATEGORIA>>':    servicio.categoria_nombre or '',
-            '<<SUBCATEGORIA>>': servicio.subcategoria_nombre or '',
-            '<<FECHA>>':        fecha_export,
-            '<<REV>>':          revision_exp,
-            '<<REV.>>':         revision_exp,
-            '<<NRO_PLIEGO>>':   nro_pliego_exp,
-            '<<OPERACION>>':    operacion_exp,
-            '<<USUARIO>>':      usuario_exp,
-            '<<CHK_SPOT>>':     CHK if tipo_contrato == 'SPOT' else UNCHK,
-            '<<CHK_NCM>>':      CHK if tipo_contrato == 'NCM'  else UNCHK,
-            '<<CHK_CO>>':       CHK if tipo_contrato == 'CO'   else UNCHK,
-            '<<XHK_CO>>':       CHK if tipo_contrato == 'CO'   else UNCHK,
+            '<<TITULO>>':        titulo_export,
+            '<<PROYECTO>>':      titulo_export,
+            '<<CODIGO>>':        codigo_export,
+            '<<SOLICITANTE>>':   solicitante_exp,
+            '<<CATEGORIA>>':     servicio.categoria_nombre or '',
+            '<<SUBCATEGORIA>>':  servicio.subcategoria_nombre or '',
+            '<<UBICACION>>':     ubicacion_exp,
+            '<<FECHA>>':         fecha_export,
+            '<<REV>>':           revision_exp,
+            '<<REV.>>':          revision_exp,
+            '<<USUARIO>>':       usuario_exp,
+            '<<TIPO_CONTRATO>>': tipo_contrato_label(tipo_contrato),
+        }
+        # Datos de la marca (empresa o cuenta personal); vacíos si no hay marca.
+        placeholders.update(placeholders_de(marca))
+        # Body: título en mayúsculas (misma convención que proyectos).
+        placeholders_body = {
+            **placeholders,
+            '<<TITULO>>':   titulo_export.upper(),
+            '<<PROYECTO>>': titulo_export.upper(),
         }
 
-        def _replace_in_para(para, ph_map):
-            full = ''.join(r.text for r in para.runs)
-            if not any(k in full for k in ph_map):
-                return
-            for k, v in ph_map.items():
-                full = full.replace(k, v)
-            for run in para.runs:
-                run.text = ''
-            if para.runs:
-                para.runs[0].text = full
-            else:
-                para.add_run(full)
-
-        def _replace_in_container(container, ph_map):
-            for para in container.paragraphs:
-                _replace_in_para(para, ph_map)
-            for table in container.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        _replace_in_container(cell, ph_map)
-
-        for section in doc.sections:
-            _replace_in_container(section.header, placeholders)
-
-        # Limpiar body del template preservando sectPr
-        body = doc.element.body
-        for child in list(body):
-            if child.tag != qn('w:sectPr'):
-                body.remove(child)
+        reemplazar_placeholders(doc, placeholders, placeholders_body)
+        insertar_logo(doc, logo_de(request.user))
+        aplicar_colores(doc, marca)
     else:
         doc = Document()
         style = doc.styles['Normal']
@@ -1212,7 +1437,7 @@ def exportar_servicio_word_view(request, servicio_id):
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
-    filename = f'{slugify(servicio.titulo) or "servicio"}.docx'
+    filename = f'{slugify(titulo_export) or "servicio"}.docx'
     response = HttpResponse(
         buffer,
         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -1224,7 +1449,7 @@ def exportar_servicio_word_view(request, servicio_id):
 @login_required
 def obtener_imagenes_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if not (servicio.publico or servicio.creado_por == request.user):
+    if not puede_ver(request.user, servicio):
         return JsonResponse({'error': 'Sin permisos.'}, status=403)
     imagenes = servicio.imagenes.all()
     return JsonResponse({
@@ -1241,7 +1466,7 @@ def obtener_imagenes_view(request, servicio_id):
 @login_required
 def subir_imagenes_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         return JsonResponse({'error': 'Solo puedes agregar imágenes a tus servicios.'}, status=403)
 
     imagenes_subidas = request.FILES.getlist('imagenes')
@@ -1275,7 +1500,7 @@ def subir_imagenes_view(request, servicio_id):
 @require_http_methods(["POST"])
 def eliminar_imagen_view(request, imagen_id):
     imagen = get_object_or_404(ServicioImagen, id=imagen_id)
-    if imagen.servicio.creado_por != request.user:
+    if not puede_editar(request.user, imagen.servicio):
         return JsonResponse({'error': 'Sin permisos.'}, status=403)
     if imagen.imagen:
         imagen.imagen.delete(save=False)
@@ -1287,7 +1512,7 @@ def eliminar_imagen_view(request, imagen_id):
 @require_http_methods(["POST"])
 def actualizar_descripcion_imagen_view(request, imagen_id):
     imagen = get_object_or_404(ServicioImagen, id=imagen_id)
-    if imagen.servicio.creado_por != request.user:
+    if not puede_editar(request.user, imagen.servicio):
         return JsonResponse({'error': 'Sin permisos.'}, status=403)
     try:
         data = json.loads(request.body)
@@ -1302,7 +1527,7 @@ def actualizar_descripcion_imagen_view(request, imagen_id):
 @require_http_methods(["POST"])
 def actualizar_cantidad_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     try:
         data = json.loads(request.body)
@@ -1320,7 +1545,7 @@ def actualizar_cantidad_view(request, servicio_id):
 @require_http_methods(["POST"])
 def actualizar_actividad_view(request, servicio_id, actividad_idx):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     try:
         data = json.loads(request.body)
@@ -1345,7 +1570,7 @@ def actualizar_actividad_view(request, servicio_id, actividad_idx):
 @require_http_methods(["POST"])
 def actualizar_mostrar_view(request, servicio_id):
     servicio = get_object_or_404(Servicio, id=servicio_id, activo=True)
-    if servicio.creado_por != request.user:
+    if not puede_editar(request.user, servicio):
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     try:
         data = json.loads(request.body)
@@ -1397,7 +1622,7 @@ def obtener_actividades_view(request, servicio_id):
         Servicio.objects.select_related('creado_por'),
         id=servicio_id, activo=True
     )
-    if not (servicio.publico or servicio.creado_por == request.user):
+    if not puede_ver(request.user, servicio):
         return JsonResponse({'error': 'Sin permisos.'}, status=403)
     actividades = servicio.actividades_adicionales or []
     return JsonResponse({
@@ -1415,6 +1640,6 @@ def obtener_actividades_view(request, servicio_id):
             'unidad_medida': servicio.unidad_medida or '',
             'cantidad': servicio.cantidad or '',
             'mostrar': servicio.mostrar,
-            'es_propietario': servicio.creado_por == request.user,
+            'es_propietario': puede_editar(request.user, servicio),
         },
     })

@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 class Proyecto(models.Model):
     nombre = models.CharField(max_length=200, verbose_name="Nombre de Proyecto")
-    solicitante = models.CharField(max_length=200, verbose_name="Solicitante")
-    ubicacion = models.CharField(max_length=200, verbose_name="Ubicación")
+    solicitante = models.CharField(max_length=200, verbose_name="Solicitante", blank=True)
+    ubicacion = models.CharField(max_length=200, verbose_name="Ubicación", blank=True)
     descripcion = models.TextField(verbose_name="Descripción", blank=True)
     creado_por = models.ForeignKey(
         User,
@@ -23,6 +23,15 @@ class Proyecto(models.Model):
         null=True,
         blank=True,
         related_name='proyectos_creados'
+    )
+    empresa = models.ForeignKey(
+        'accounts.Empresa',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='proyectos',
+        verbose_name='Empresa',
+        help_text='Empresa dueña de este proyecto, fijada al crearlo. Vacío = cuenta personal.',
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)

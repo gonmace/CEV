@@ -53,11 +53,21 @@ Notas:
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
+          {% comment %} Sin créditos en el módulo: no tiene sentido dejar continuar el borrador,
+          ya que la generación final fallará igual. Se deja el botón deshabilitado. {% endcomment %}
+          {% if creditos == 0 %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold
+                         text-base-content/30 bg-base-content/5 border border-base-content/10
+                         cursor-not-allowed whitespace-nowrap"
+                  title="Sin créditos disponibles en este módulo">
+              <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-base-content/10 text-[10px] font-bold leading-none shrink-0">{{ b.resume_paso }}</span>
+              {{ b.resume_label }}
+              <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
+            </span>
+          {% else %}
           {% comment %} URL de reanudación según módulo {% endcomment %}
           {% if modulo == 'pliego' %}
-            {% if b.resume_paso == 8 %}
-              <a href="{% url 'pliego_licitacion:pasos' %}?paso=5&especificacion_id={{ b.obj.id }}"
-            {% elif b.resume_paso == 7 %}
+            {% if b.resume_paso == 8 or b.resume_paso == 7 %}
               <a href="{% url 'pliego_licitacion:paso4_actividades' b.obj.id %}"
             {% elif b.resume_paso == 6 %}
               <a href="{% url 'pliego_licitacion:paso3_titulo' b.obj.id %}"
@@ -83,6 +93,7 @@ Notas:
             {{ b.resume_label }}
             <i class="fas fa-arrow-right text-[9px] opacity-70"></i>
           </a>
+          {% endif %}
 
           {% comment %} Botón eliminar para pliego (AJAX) {% endcomment %}
           {% if show_delete != False and modulo == 'pliego' %}

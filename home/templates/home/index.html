@@ -4,110 +4,27 @@
 {% block extra_head %}
   {% tailwind_css %}
   <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
-  <style>
-    /* ── Light ──────────────────────────────── */
-    .home-bg {
-      background:
-        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,0,0,0.10) 0%, transparent 70%),
-        oklch(90% 0 0);
-    }
-    .glass-card {
-      background: color-mix(in srgb, white 72%, transparent);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid rgba(255,255,255,0.55);
-      box-shadow:
-        0 2px 0 rgba(255,255,255,0.8) inset,
-        0 20px 60px rgba(0,0,0,0.08),
-        0 4px 16px rgba(0,0,0,0.05);
-      border-radius: 1.25rem;
-      transition: box-shadow 0.22s ease, transform 0.22s ease;
-    }
-    .glass-card:hover {
-      box-shadow:
-        0 2px 0 rgba(255,255,255,0.9) inset,
-        0 28px 72px rgba(0,0,0,0.12),
-        0 6px 20px rgba(0,0,0,0.07);
-      transform: translateY(-2px);
-    }
-    .module-icon {
-      width: 3.5rem;
-      height: 3.5rem;
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4) inset;
-    }
-    .topbar {
-      background: color-mix(in srgb, white 55%, transparent);
-      backdrop-filter: blur(20px) saturate(160%);
-      -webkit-backdrop-filter: blur(20px) saturate(160%);
-      border-bottom: 1px solid rgba(255,255,255,0.6);
-    }
-    .avatar-pill {
-      background: color-mix(in srgb, white 60%, transparent);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.6);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    }
-
-    /* ── Dark ───────────────────────────────── */
-    [data-theme="cev-dark"] .home-bg {
-      background:
-        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,59,48,0.07) 0%, transparent 70%),
-        #2e2e32;
-    }
-    [data-theme="cev-dark"] .glass-card {
-      background: color-mix(in srgb, #3a3a3e 90%, transparent);
-      border: 1px solid rgba(255,255,255,0.07);
-      box-shadow:
-        0 1px 0 rgba(255,255,255,0.05) inset,
-        0 20px 60px rgba(0,0,0,0.25),
-        0 4px 16px rgba(0,0,0,0.18);
-    }
-    [data-theme="cev-dark"] .glass-card:hover {
-      box-shadow:
-        0 1px 0 rgba(255,255,255,0.07) inset,
-        0 28px 72px rgba(0,0,0,0.32),
-        0 6px 20px rgba(0,0,0,0.22);
-    }
-    [data-theme="cev-dark"] .topbar {
-      background: color-mix(in srgb, #3a3a3e 88%, transparent);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    [data-theme="cev-dark"] .avatar-pill {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.10);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.30);
-    }
-    [data-theme="cev-dark"] .avatar-pill span.text-base-content\/70 {
-      color: rgba(245,245,247,0.65);
-    }
-  </style>
 {% endblock %}
 
 {% block title %}GDAR — Inicio{% endblock %}
 
 {% block content %}
-<div class="min-h-screen home-bg flex flex-col">
+<div class="flex-1 glass-bg flex flex-col">
 
-  <!-- Topbar -->
-  <div class="topbar sticky top-0 z-50">
-    <div class="max-w-5xl mx-auto px-5 py-2.5 flex items-center gap-4">
+  <!-- Topbar flotante -->
+  <div class="sticky top-3 z-50 px-4">
+    <div class="glass-topbar max-w-2xl mx-auto rounded-full px-4 py-2 flex items-center gap-4">
 
-      <!-- Logo + nombre -->
+      {% if site_logo_url %}
+      <!-- Logo -->
       <div class="flex items-center gap-2.5">
-        <a href="/" class="bg-white rounded-lg p-1 flex items-center justify-center shadow-sm">
-          {% if site_logo_url %}
-          <img src="{{ site_logo_url }}" alt="Logo" class="h-7 object-contain">
-          {% else %}
-          <img src="{% static 'img/logo-gdar.png' %}" alt="GDAR" class="h-7 object-contain">
-          {% endif %}
+        <a href="/" class="bg-white rounded-full p-1.5 flex items-center justify-center shadow-sm">
+          <img src="{{ site_logo_url }}" alt="Logo" class="h-6 w-6 object-contain">
         </a>
       </div>
+      {% endif %}
+
+      {% include 'partials/_empresa_badge.html' with badge_class="bg-base-content/5 text-base-content/70" %}
 
       <div class="flex-1"></div>
 
@@ -126,78 +43,70 @@
 
       {% if request.user.is_authenticated %}
       <div class="flex items-center gap-2">
-        <!-- Avatar pill -->
-        {% with request.user.first_name|default:request.user.username as fn %}
-        {% with request.user.last_name as ln %}
-        <div class="avatar-pill flex items-center gap-2 rounded-full px-3 py-1">
-          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-content text-[11px] font-bold uppercase">
-            {{ fn|slice:':1' }}{{ ln|default:''|slice:':1' }}
-          </span>
-          <span class="text-xs font-medium text-base-content/70 hidden sm:block">
-            {{ fn }}{% if ln %} {{ ln }}{% endif %}
-          </span>
-        </div>
-        {% endwith %}{% endwith %}
-
-        <!-- Logout -->
-        <form action="{% url 'logout' %}" method="post" class="m-0">
-          {% csrf_token %}
-          <button type="submit"
-                  title="Cerrar sesión"
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-base-content/40 hover:text-error hover:bg-error/10 transition-colors">
-            <i class="fas fa-sign-out-alt text-xs"></i>
-          </button>
-        </form>
+        {% comment %}
+          Mismo menú que en el resto de la app (Cuentas, Roles, Correo, Impersonar…): antes
+          la home solo tenía el avatar y el logout, así que desde acá no se podía llegar a
+          ninguna pantalla de administración sin entrar primero a un módulo.
+        {% endcomment %}
+        {% include 'partials/_user_menu.html' with avatar_class="bg-primary text-primary-content" %}
       </div>
       {% endif %}
-
-      <!-- Embol logo -->
-      <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center p-2 shadow-lg border border-white/60">
-        <img src="{% static 'img/logo-embol.png' %}" alt="Embol" class="h-full w-full object-contain">
-      </div>
 
     </div>
   </div>
 
   <!-- Hero -->
-  <div class="flex-1 flex flex-col items-center justify-center px-4 py-16">
+  <div class="flex-1 flex flex-col items-center justify-center px-4 py-20">
 
     <!-- Eyebrow + Title -->
-    <div class="mb-10 text-center">
-      <p class="text-[10px] font-bold text-secondary/40 uppercase tracking-[0.2em] mb-2"></p>
-      <h1 class="text-3xl font-bold text-base-content tracking-tight leading-tight">
-        Sistema de Gestión de Proyectos
+    <div class="mb-11 text-center fade-up">
+      <span class="glass-eyebrow-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold text-primary tracking-wide uppercase mb-5">
+        <i class="fas fa-bolt text-[9px]"></i> Constructor_EV
+      </span>
+      <h1 class="text-4xl sm:text-5xl font-bold text-base-content tracking-tight leading-[1.1]">
+        Sistema de Gestión<br class="hidden sm:block"> de Proyectos
       </h1>
-      <p class="mt-2 text-sm text-base-content/45 font-normal">Selecciona el módulo al que deseas acceder</p>
+      <p class="mt-3.5 text-[15px] text-base-content/45 font-normal">Selecciona el módulo al que quieres acceder</p>
     </div>
 
     <!-- Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full max-w-xl">
 
-      <!-- Licitación -->
-      <a href="{% url 'proyectos:lista_proyectos' %}" class="glass-card group flex flex-col p-6 gap-4">
+      {# Anónimo: ve ambas cards (Ingresar cae al login); logueado: solo sus módulos. #}
+      <!-- Proyectos -->
+      {% if not request.user.is_authenticated or nav_can_pliegos %}
+      <a href="{% url 'proyectos:lista_proyectos' %}" class="glass-card group flex flex-col p-7 gap-4 fade-up" style="animation-delay: 80ms">
         <div class="flex items-start gap-4">
-          <div class="module-icon bg-primary text-primary-content">
-            <i class="fas fa-gavel"></i>
+          <div class="glass-icon bg-gradient-to-br from-primary to-primary/65 text-primary-content">
+            <i class="fas fa-building"></i>
           </div>
           <div class="flex-1 min-w-0 pt-0.5">
             <p class="text-[9px] font-bold text-base-content/35 uppercase tracking-widest mb-0.5">Módulo</p>
-            <p class="text-sm font-bold text-base-content leading-snug">Especificaciones<br>para Licitación</p>
+            <p class="text-sm font-bold text-base-content leading-snug">Especificaciones<br>para Proyectos</p>
           </div>
         </div>
-        <p class="text-[11px] text-base-content/50 leading-relaxed -mt-1">
+        <p class="text-[11px] text-base-content/50 leading-relaxed">
           Gestiona proyectos y genera especificaciones técnicas para procesos de licitación con apoyo de IA.
         </p>
-        <div class="flex items-center gap-1.5 text-xs font-semibold text-primary group-hover:gap-3 transition-all duration-200 mt-auto">
-          <span>Ingresar</span>
-          <i class="fas fa-arrow-right text-[9px]"></i>
+        {% comment %}Créditos + botón pegados abajo (mt-auto): quedan a la misma altura en
+        ambas tarjetas aunque las descripciones tengan distinto largo.{% endcomment %}
+        <div class="mt-auto flex flex-col gap-3 pt-1">
+          {% if request.user.is_authenticated %}
+          {% include 'partials/_creditos_card.html' with saldo=creditos_pliegos usados=usados_pliegos color='primary' %}
+          {% endif %}
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-content bg-primary px-3.5 py-1.5 rounded-full shadow-sm w-fit group-hover:gap-2.5 group-hover:shadow-md transition-all duration-300">
+            Ingresar
+            <i class="fas fa-arrow-right text-[9px]"></i>
+          </span>
         </div>
       </a>
+      {% endif %}
 
       <!-- Servicios -->
-      <a href="{% url 'servicios:lista_servicios' %}" class="glass-card group flex flex-col p-6 gap-4">
+      {% if not request.user.is_authenticated or nav_can_servicios %}
+      <a href="{% url 'servicios:lista_servicios' %}" class="glass-card group flex flex-col p-7 gap-4 fade-up" style="animation-delay: 160ms">
         <div class="flex items-start gap-4">
-          <div class="module-icon bg-info text-info-content">
+          <div class="glass-icon bg-gradient-to-br from-info to-info/65 text-info-content">
             <i class="fas fa-screwdriver-wrench"></i>
           </div>
           <div class="flex-1 min-w-0 pt-0.5">
@@ -205,19 +114,34 @@
             <p class="text-sm font-bold text-base-content leading-snug">Especificaciones<br>para Servicios</p>
           </div>
         </div>
-        <p class="text-[11px] text-base-content/50 leading-relaxed -mt-1">
+        <p class="text-[11px] text-base-content/50 leading-relaxed">
           Crea y administra especificaciones técnicas para servicios con apoyo de IA.
         </p>
-        <div class="flex items-center gap-1.5 text-xs font-semibold text-info group-hover:gap-3 transition-all duration-200 mt-auto">
-          <span>Ingresar</span>
-          <i class="fas fa-arrow-right text-[9px]"></i>
+        <div class="mt-auto flex flex-col gap-3 pt-1">
+          {% if request.user.is_authenticated %}
+          {% include 'partials/_creditos_card.html' with saldo=creditos_servicios usados=usados_servicios color='info' %}
+          {% endif %}
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-info-content bg-info px-3.5 py-1.5 rounded-full shadow-sm w-fit group-hover:gap-2.5 group-hover:shadow-md transition-all duration-300">
+            Ingresar
+            <i class="fas fa-arrow-right text-[9px]"></i>
+          </span>
         </div>
       </a>
+      {% endif %}
+
+      {% if request.user.is_authenticated and not nav_can_pliegos and not nav_can_servicios %}
+      <div class="sm:col-span-2 glass-card p-8 text-center fade-up">
+        <div class="w-14 h-14 rounded-2xl bg-base-content/5 flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-lock text-lg text-base-content/30"></i>
+        </div>
+        <p class="text-sm text-base-content/60 max-w-xs mx-auto">
+          Tu cuenta todavía no tiene acceso a ningún módulo. Pide al administrador que te habilite
+          Proyectos o Servicios.
+        </p>
+      </div>
+      {% endif %}
 
     </div>
-
-    <!-- Footer note -->
-    <p class="mt-10 text-[10px] text-base-content/25 tracking-wide">Magoreal &mdash; Gestión de Especificaciones</p>
 
   </div>
 </div>

@@ -265,6 +265,7 @@
   </div>
 </template>
 
+{{ datos_json|json_script:"datos-iniciales" }}
 <script>
 function toggleCategoria(header) {
   const body = header.closest('.cat-block').querySelector('.cat-body');
@@ -273,7 +274,7 @@ function toggleCategoria(header) {
   header.classList.toggle('collapsed', !isOpen);
 }
 
-const datosIniciales = {{ datos_json|safe }};
+const datosIniciales = JSON.parse(document.getElementById('datos-iniciales').textContent);
 
 function agregarCategoria(data) {
   const tpl = document.getElementById('tpl-categoria');

@@ -1,0 +1,72 @@
+    {% comment %}
+      Banner de impersonación. Es imprescindible en producción: sin él, el superuser puede
+      olvidar que está viendo la app como otra persona y hacer cambios en su nombre creyendo
+      que actúa como él mismo. Va arriba del todo, en rojo y fijo.
+    {% endcomment %}
+    {% if impersonate_active %}
+    <div class="bg-error text-error-content px-4 py-2 text-sm flex flex-wrap items-center justify-center gap-3 sticky top-0 z-[100]">
+        <span class="flex items-center gap-2">
+            <i class="fas fa-user-secret"></i>
+            Estás viendo la app como <b>{{ impersonate_active.email|default:impersonate_active.username }}</b>.
+            Lo que hagas queda a su nombre.
+        </span>
+        <form action="{% url 'accounts:impersonate' %}" method="post" class="inline">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="btn btn-xs btn-neutral">Volver a mi cuenta</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if impersonate_available %}
+    <dialog id="modal-impersonar" class="modal">
+        <div class="modal-box max-w-md">
+            <h3 class="font-bold text-lg">Ver la app como…</h3>
+            <p class="text-xs text-base-content/50 mb-3">
+                Navegas con los datos y permisos de esa persona. Todo lo que hagas queda a su
+                nombre, y la impersonación se registra.
+            </p>
+
+            <input type="text" id="buscar-impersonar" placeholder="Buscar por correo o nombre…"
+                   class="input input-bordered input-sm w-full mb-3" autocomplete="off">
+
+            <div class="max-h-72 overflow-y-auto divide-y divide-base-200" id="lista-impersonar">
+                {% for candidato in impersonate_candidates %}
+                <form action="{% url 'accounts:impersonate' %}" method="post"
+                      class="fila-impersonar flex items-center justify-between gap-2 py-2"
+                      data-buscar="{{ candidato.email|default:candidato.username|lower }} {{ candidato.get_full_name|lower }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <input type="hidden" name="user_id" value="{{ candidato.pk }}">
+                    <div class="min-w-0">
+                        <div class="text-sm font-medium truncate">{{ candidato.get_full_name|default:candidato.username }}</div>
+                        <div class="text-xs text-base-content/50 truncate">{{ candidato.email }}</div>
+                    </div>
+                    <button class="btn btn-xs btn-success shrink-0">Ver como</button>
+                </form>
+                {% empty %}
+                <p class="text-sm text-base-content/40 py-3">No hay cuentas a las que entrar.</p>
+                {% endfor %}
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm"
+                        onclick="document.getElementById('modal-impersonar').close()">Cerrar</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>cerrar</button></form>
+    </dialog>
+    <script>
+      // Filtro del buscador del modal de impersonación.
+      (function () {
+        var input = document.getElementById('buscar-impersonar');
+        if (!input) return;
+        input.addEventListener('input', function () {
+          var q = this.value.trim().toLowerCase();
+          document.querySelectorAll('#lista-impersonar .fila-impersonar').forEach(function (fila) {
+            fila.style.display = fila.dataset.buscar.indexOf(q) === -1 ? 'none' : '';
+          });
+        });
+      })();
+    </script>
+    {% endif %}

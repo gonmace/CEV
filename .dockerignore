@@ -1,12 +1,31 @@
+# Datos y runtime
 .env
-.venv
-__pycache__
-*.pyc
-*.pyo
-.git
+.env.*
+db/
+volumes/
+*.sqlite3
+staticfiles/
+media/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Node
+node_modules/
+theme/static_src/node_modules/
+
+# Dev y CI
+.git/
 .gitignore
-node_modules
-staticfiles
-media
-db
-n8n
+*.log
+
+# n8n (no se necesita dentro de la imagen de Django)
+n8n/
+
+# Secretos y datos de prueba: nunca deben entrar a la imagen
+client_secret*.json
+junk/
+AUDITORIA.md

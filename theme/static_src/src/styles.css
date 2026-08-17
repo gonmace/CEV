@@ -6,11 +6,62 @@
 @source "../../**/templates/**/*.html";
 @source "../../**/forms.py";
 
-@plugin "@tailwindcss/forms";
+/* Sin @tailwindcss/forms a propósito: daisyUI ya estiliza los formularios con sus propias
+   clases (.input, .select, .textarea, .checkbox, .toggle), que es lo que usan todos los
+   widgets del proyecto. El plugin aplica además un reset a TODOS los [type=…] en @layer
+   base, que compite con daisyUI sin aportar nada acá. */
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/aspect-ratio";
+@theme {
+  --color-whatsapp: #25D366;
+  --color-ia: #7C3AED;
+  --color-ia-content: #ffffff;
+  --color-ia-end: #3B82F6;
+  --color-logistica: #FBBF24;
+  --color-automatizacion: #EA4B71;
+}
+
 @plugin "daisyui" {
-  themes: cev, cev-dark;
+  themes: cev, cev-dark, magoreal-dark;
+}
+
+/* ── Magoreal Dark (tema demo) ────────────────────────────────────────────── */
+@plugin "daisyui/theme" {
+  name: "magoreal-dark";
+  default: false;
+  prefersdark: false;
+  color-scheme: dark;
+  --color-base-100: #0F141E;
+  --color-base-200: #18202F;
+  --color-base-300: #202A3C;
+  --color-base-content: #CBD5E1;
+  --color-primary: #38BDF8;
+  --color-primary-content: #0F141E;
+  --color-secondary: #14B8A6;
+  --color-secondary-content: #0F141E;
+  --color-accent: #4ADE80;
+  --color-accent-content: #0F141E;
+  --color-neutral: #202A3C;
+  --color-neutral-content: #CBD5E1;
+  --color-info: #38BDF8;
+  --color-info-content: #0F141E;
+  --color-success: #4ADE80;
+  --color-success-content: #0F141E;
+  --color-warning: #FBBF24;
+  --color-warning-content: #0F141E;
+  --color-error: #F87171;
+  --color-error-content: #FFFFFF;
+
+  /* Ver nota en el tema "cev": daisyUI 5 necesita estos tokens o los toggles/checkboxes
+     salen colapsados y sin borde. */
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 /* ── Light theme ─────────────────────────────────────────────────────────── */
@@ -48,6 +99,19 @@
   --color-view-content: #fff;
   --color-copy: #06b6d4;
   --color-copy-content: #fff;
+
+  /* Tokens de forma/tamaño. NO son opcionales en daisyUI 5: sin --border ni
+     --size-selector, `border: var(--border) solid` queda inválido y los toggles,
+     checkboxes y radios colapsan (ancho 5px, sin borde). Los botones y las cards no
+     los usan, por eso el resto de la interfaz parecía correcta. */
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 /* ── Dark theme ──────────────────────────────────────────────────────────── */
@@ -71,7 +135,7 @@
   --color-info: #38bdf8;
   --color-info-content: #fff;
   --color-success: #34d399;
-  --color-success-content: #fff;
+  --color-success-content: #000;
   --color-warning: #fbbf24;
   --color-warning-content: #000;
   --color-error: #fb923c;
@@ -85,6 +149,17 @@
   --color-view-content: #fff;
   --color-copy: #22d3ee;
   --color-copy-content: #000;
+
+  /* Ver nota en el tema "cev": daisyUI 5 necesita estos tokens o los toggles/checkboxes
+     salen colapsados y sin borde. */
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 @layer base {
@@ -95,6 +170,13 @@
   .sombra {
     -webkit-filter: drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.7));
     filter: drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.7));
+  }
+
+  /* Cada módulo usa como primary el mismo color que su card en la home:
+     Proyectos ya es primary por defecto; Servicios pisa primary con info. */
+  .module-servicios {
+    --color-primary: var(--color-info);
+    --color-primary-content: var(--color-info-content);
   }
 }
 
@@ -231,75 +313,48 @@
     color: var(--color-base-content) !important;
   }
 
-  /* Botones personalizados para DaisyUI */
-  .btn.btn-edit {
+  /* Botones de color propios (editar, eliminar, ver, copiar).
+     Se declaran igual que los de daisyUI (.btn-primary y compañía): solo las variables
+     --btn-color/--btn-fg. daisyUI deriva de ahí el fondo, el borde, el hover y el focus,
+     así que NO hay que pisar background-color/color/border-color — hacerlo obligaba a
+     usar !important y a reimplementar a mano el :hover. */
+  .btn-edit {
     --btn-color: var(--color-edit);
     --btn-fg: var(--color-edit-content);
-    background-color: var(--color-edit);
-    color: var(--color-edit-content) !important;
-    border-color: var(--color-edit);
-  }
-  .btn.btn-edit:hover {
-    background-color: color-mix(in srgb, var(--color-edit) 90%, black);
-    border-color: color-mix(in srgb, var(--color-edit) 90%, black);
-    color: var(--color-edit-content) !important;
-  }
-  .btn.btn-edit:focus-visible {
-    outline-color: var(--color-edit);
+    --btn-soft-bg: initial;
   }
 
-  .btn.btn-delete {
+  .btn-delete {
     --btn-color: var(--color-delete);
     --btn-fg: var(--color-delete-content);
-    background-color: var(--color-delete);
-    color: var(--color-delete-content) !important;
-    border-color: var(--color-delete);
-  }
-  .btn.btn-delete:hover {
-    background-color: color-mix(in srgb, var(--color-delete) 90%, black);
-    border-color: color-mix(in srgb, var(--color-delete) 90%, black);
-    color: var(--color-delete-content) !important;
-  }
-  .btn.btn-delete:focus-visible {
-    outline-color: var(--color-delete);
+    --btn-soft-bg: initial;
   }
 
-  .btn.btn-view {
+  .btn-view {
     --btn-color: var(--color-view);
     --btn-fg: var(--color-view-content);
-    background-color: var(--color-view);
-    color: var(--color-view-content) !important;
-    border-color: var(--color-view);
-  }
-  .btn.btn-view:hover {
-    background-color: color-mix(in srgb, var(--color-view) 90%, black);
-    border-color: color-mix(in srgb, var(--color-view) 90%, black);
-    color: var(--color-view-content) !important;
-  }
-  .btn.btn-view:focus-visible {
-    outline-color: var(--color-view);
+    --btn-soft-bg: initial;
   }
 
-  .btn.btn-copy {
+  .btn-copy {
     --btn-color: var(--color-copy);
     --btn-fg: var(--color-copy-content);
-    background-color: var(--color-copy);
-    color: var(--color-copy-content) !important;
-    border-color: var(--color-copy);
+    --btn-soft-bg: initial;
   }
-  .btn.btn-copy:hover {
-    background-color: color-mix(in srgb, var(--color-copy) 90%, black);
-    border-color: color-mix(in srgb, var(--color-copy) 90%, black);
-    color: var(--color-copy-content) !important;
-  }
-  .btn.btn-copy:focus-visible {
-    outline-color: var(--color-copy);
+
+  .btn-ia {
+    --btn-color: var(--color-ia);
+    --btn-fg: var(--color-ia-content);
+    --btn-soft-bg: initial;
   }
 
   /* Utilidades de color semántico */
   .text-copy  { color: var(--color-copy); }
   .bg-copy    { background-color: var(--color-copy); }
   .bg-copy\/10 { background-color: color-mix(in srgb, var(--color-copy) 10%, transparent); }
+
+  /* text-ia / bg-ia / border-ia (+ opacidades) no necesitan regla propia: al declararse
+     --color-ia en @theme, Tailwind ya genera esas utilidades automáticamente. */
 
   .text-edit  { color: var(--color-edit); }
   .bg-edit    { background-color: var(--color-edit); }
@@ -349,6 +404,10 @@
   }
 
   /* ── Documento (doc-wrap / doc-header / doc-body) ────────────────────────── */
+  /* Los templates fijan data-theme="cev" en el .doc-wrap para que este panel se
+     vea siempre en tema claro, incluso con el sitio en modo oscuro — por eso no
+     hay overrides [data-theme="cev-dark"] acá: var(--color-base-*) ya resuelve
+     a los valores claros dentro de ese subárbol. */
   .doc-wrap {
     border-radius: 1rem;
     box-shadow: 0 4px 24px -4px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
@@ -413,20 +472,6 @@
   .doc-body :is(tbody tr:last-child td) { border-bottom: none; }
   .doc-body :is(tbody tr:hover td) { background: #f8fafc; }
 
-  /* Dark mode overrides para doc-* */
-  [data-theme="cev-dark"] .doc-header .doc-title { color: var(--color-base-content); }
-  [data-theme="cev-dark"] .doc-header .doc-meta  { color: color-mix(in srgb, var(--color-base-content) 60%, transparent); }
-  [data-theme="cev-dark"] .doc-body :is(h2),
-  [data-theme="cev-dark"] .doc-body :is(h3) { color: #93c5fd; }
-  [data-theme="cev-dark"] .doc-body :is(th) { color: #93c5fd; }
-  [data-theme="cev-dark"] .doc-body :is(table) { border-color: #1e3a5f; }
-  [data-theme="cev-dark"] .doc-body :is(thead) { background: #1e293b; }
-  [data-theme="cev-dark"] .doc-body :is(th) { border-bottom-color: #2d4a7a; }
-  [data-theme="cev-dark"] .doc-body :is(th:not(:last-child)) { border-right-color: #2d4a7a; }
-  [data-theme="cev-dark"] .doc-body :is(td) { border-bottom-color: color-mix(in srgb, var(--color-base-300) 80%, transparent); }
-  [data-theme="cev-dark"] .doc-body :is(td:not(:last-child)) { border-right-color: color-mix(in srgb, var(--color-base-300) 80%, transparent); }
-  [data-theme="cev-dark"] .doc-body :is(tbody tr:hover td) { background: color-mix(in srgb, var(--color-base-300) 30%, transparent); }
-
   /* Barra de acciones fija */
   .action-bar {
     position: sticky;
@@ -446,6 +491,115 @@
     border-top-color: color-mix(in srgb, var(--color-base-300) 80%, transparent);
   }
   /* ─────────────────────────────────────────────────────────────────────────── */
+
+  /* ── Glass UI (nacido en el home) ──────────────────────────────────────────
+     Sistema "frosted glass" para pantallas destacadas (landing, selector de
+     módulos). Nació en home/index.html; se extrajo acá para reusarlo en otras
+     páginas sin duplicar el <style> por template — basta con las clases. */
+  .glass-bg {
+    background:
+      radial-gradient(ellipse 70% 45% at 50% -5%, rgba(255,0,0,0.09) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 90% 15%, rgba(0,0,0,0.03) 0%, transparent 70%),
+      oklch(90% 0 0);
+  }
+  [data-theme="cev-dark"] .glass-bg {
+    background:
+      radial-gradient(ellipse 70% 45% at 50% -5%, rgba(255,59,48,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 90% 15%, rgba(255,255,255,0.02) 0%, transparent 70%),
+      #2e2e32;
+  }
+
+  .glass-card {
+    background: color-mix(in srgb, white 74%, transparent);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.6);
+    box-shadow:
+      0 2px 0 rgba(255,255,255,0.85) inset,
+      0 24px 70px rgba(0,0,0,0.08),
+      0 4px 16px rgba(0,0,0,0.05);
+    border-radius: 1.75rem;
+    transition: box-shadow 0.3s cubic-bezier(0.16,1,0.3,1), transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  .glass-card:hover {
+    box-shadow:
+      0 2px 0 rgba(255,255,255,0.9) inset,
+      0 32px 90px rgba(0,0,0,0.12),
+      0 6px 22px rgba(0,0,0,0.07);
+    transform: translateY(-3px);
+  }
+  [data-theme="cev-dark"] .glass-card {
+    background: color-mix(in srgb, #3a3a3e 90%, transparent);
+    border: 1px solid rgba(255,255,255,0.07);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.05) inset,
+      0 24px 70px rgba(0,0,0,0.28),
+      0 4px 16px rgba(0,0,0,0.2);
+  }
+  [data-theme="cev-dark"] .glass-card:hover {
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.07) inset,
+      0 32px 90px rgba(0,0,0,0.36),
+      0 6px 22px rgba(0,0,0,0.24);
+  }
+
+  .glass-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.16), 0 1px 0 rgba(255,255,255,0.45) inset;
+  }
+
+  .glass-topbar {
+    background: color-mix(in srgb, white 68%, transparent);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.7);
+    box-shadow: 0 10px 32px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+  }
+  [data-theme="cev-dark"] .glass-topbar {
+    background: color-mix(in srgb, #3a3a3e 85%, transparent);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 10px 32px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .glass-avatar-pill {
+    background: color-mix(in srgb, white 60%, transparent);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.6);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  [data-theme="cev-dark"] .glass-avatar-pill {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.30);
+  }
+  [data-theme="cev-dark"] .glass-avatar-pill span.text-base-content\/70 {
+    color: rgba(245,245,247,0.65);
+  }
+
+  .glass-eyebrow-pill {
+    background: color-mix(in srgb, white 70%, transparent);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.65);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  [data-theme="cev-dark"] .glass-eyebrow-pill {
+    background: color-mix(in srgb, #3a3a3e 85%, transparent);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fade-up 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+  /* ─────────────────────────────────────────────────────────────────────────── */
 }
 
 /* ── Compatibilidad DaisyUI v4 → v5 ─────────────────────────────────────────
@@ -463,4 +617,58 @@
 .select-bordered:focus {
   border-color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
   outline: none;
+}
+
+/* ── Color por empresa/usuario sobre .badge ─────────────────────────────────
+   El componente .badge de DaisyUI vive en su propio @layer (namespace daisyui,
+   anidado dentro de @layer utilities) y fija su propio background-color/color.
+   En Tailwind v4 el orden de las @layer manda POR ENCIMA de la especificidad: un
+   selector .badge.avatar-c-N con más especificidad igual pierde si vive dentro de
+   @layer components, porque esa capa está declarada antes que "utilities" (ver
+   @layer theme, base, components, utilities). Por eso estas reglas van acá,
+   fuera de cualquier @layer — el CSS sin capa siempre gana sobre el que tiene
+   capa, sea cual sea su especificidad u orden (mismo motivo que .input-bordered
+   arriba). Mismos valores que .avatar-c-N (ver @layer components). */
+.badge.avatar-c-0 { background-color: color-mix(in srgb, #cb4040 15%, white); color: #9b2020; }
+.badge.avatar-c-1 { background-color: color-mix(in srgb, #45484d 15%, white); color: #2a2c30; }
+.badge.avatar-c-2 { background-color: color-mix(in srgb, #0ea5e9 15%, white); color: #0369a1; }
+.badge.avatar-c-3 { background-color: color-mix(in srgb, #10b981 15%, white); color: #047857; }
+.badge.avatar-c-4 { background-color: color-mix(in srgb, #f59e0b 15%, white); color: #b45309; }
+.badge.avatar-c-5 { background-color: color-mix(in srgb, #6366f1 15%, white); color: #4338ca; }
+.badge.avatar-c-6 { background-color: color-mix(in srgb, #eab308 15%, white); color: #854d0e; }
+.badge.avatar-c-7 { background-color: color-mix(in srgb, #06b6d4 15%, white); color: #0e7490; }
+.badge.avatar-c-8 { background-color: color-mix(in srgb, #3b82f6 15%, white); color: #1d4ed8; }
+.badge.avatar-c-9 { background-color: color-mix(in srgb, #ea580c 15%, white); color: #9a3412; }
+
+[data-theme="cev-dark"] .badge.avatar-c-0 { background-color: color-mix(in srgb, #cb4040 25%, #2c2c2e); color: #fca5a5; }
+[data-theme="cev-dark"] .badge.avatar-c-1 { background-color: color-mix(in srgb, #45484d 25%, #2c2c2e); color: #d1d5db; }
+[data-theme="cev-dark"] .badge.avatar-c-2 { background-color: color-mix(in srgb, #0ea5e9 25%, #2c2c2e); color: #7dd3fc; }
+[data-theme="cev-dark"] .badge.avatar-c-3 { background-color: color-mix(in srgb, #10b981 25%, #2c2c2e); color: #6ee7b7; }
+[data-theme="cev-dark"] .badge.avatar-c-4 { background-color: color-mix(in srgb, #f59e0b 25%, #2c2c2e); color: #fcd34d; }
+[data-theme="cev-dark"] .badge.avatar-c-5 { background-color: color-mix(in srgb, #6366f1 25%, #2c2c2e); color: #a5b4fc; }
+[data-theme="cev-dark"] .badge.avatar-c-6 { background-color: color-mix(in srgb, #eab308 25%, #2c2c2e); color: #fde68a; }
+[data-theme="cev-dark"] .badge.avatar-c-7 { background-color: color-mix(in srgb, #06b6d4 25%, #2c2c2e); color: #67e8f9; }
+[data-theme="cev-dark"] .badge.avatar-c-8 { background-color: color-mix(in srgb, #3b82f6 25%, #2c2c2e); color: #93c5fd; }
+[data-theme="cev-dark"] .badge.avatar-c-9 { background-color: color-mix(in srgb, #ea580c 25%, #2c2c2e); color: #fdba74; }
+
+/* ── Degradé sobre .btn-ia ────────────────────────────────────────────────
+   .btn de daisyUI fija su propio `background-image: none, var(--fx-noise)`
+   dentro de su @layer (mismo motivo que el bloque .badge de arriba), así que
+   el degradé no puede vivir en @layer components — necesita estar fuera de
+   cualquier @layer para ganarle. El texto usa --color-ia-content (blanco)
+   para contrastar sobre ambos extremos del degradé. */
+.btn-ia {
+  background-image: linear-gradient(135deg, var(--color-ia), var(--color-ia-end));
+  border-color: transparent;
+  color: var(--color-ia-content);
+}
+.btn-ia:hover {
+  background-image: linear-gradient(135deg, var(--color-ia), var(--color-ia-end));
+  filter: brightness(1.08);
+}
+.btn-ia:active {
+  filter: brightness(0.92);
+}
+.btn-ia:is(:disabled, [disabled], .btn-disabled) {
+  background-image: none;
 }

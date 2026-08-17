@@ -76,7 +76,10 @@ async function enviarTituloAjustado(tituloFinal, aceptar, resumeUrl, tituloInici
     modalRespuestaApi.close();
   }
   
-  if (typeof showSpinner === 'function') showSpinner('Guardando título y buscando actividades adicionales...');
+  // Nota: el rótulo ya no debe empezar con "Guardando título" — ese texto matchea la
+  // entrada 'título' de _SPINNER_STEPS (base_pliego.html), cuyo tramo dura 1s, y el arco
+  // queda congelado el resto de la espera real.
+  if (typeof showSpinner === 'function') showSpinner('Procesando ajuste de nombre...');
   
   if (modalAceptarBtn) modalAceptarBtn.disabled = true;
   if (modalRechazarBtn) modalRechazarBtn.disabled = true;

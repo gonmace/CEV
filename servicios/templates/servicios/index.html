@@ -17,7 +17,7 @@
 {% block breadcrumbs %}{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-base-200">
+<div class="flex-1 glass-bg">
   <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6">
   <div class="flex flex-col lg:flex-row lg:items-start gap-6">
 
@@ -25,11 +25,18 @@
     <aside class="w-full lg:w-64 shrink-0 flex flex-col gap-3">
 
       <!-- Acciones -->
-      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
-        <div class="px-4 pt-4 pb-2">
-          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
-        </div>
-        <div class="flex flex-col px-3 pb-3 gap-1">
+      <div class="glass-card fade-up overflow-hidden">
+        <div class="flex flex-col p-3 gap-1">
+          {# Sin créditos en el módulo no se pueden crear servicios (superuser = None, ilimitado). #}
+          {% if creditos == 0 %}
+          <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-base-content/30 cursor-not-allowed"
+               title="Sin créditos disponibles en este módulo">
+            <span class="w-7 h-7 rounded-lg bg-base-content/5 flex items-center justify-center shrink-0">
+              <i class="fas fa-plus text-base-content/30 text-xs"></i>
+            </span>
+            Crear Nuevo Servicio
+          </div>
+          {% else %}
           <a href="{% url 'servicios:crear_servicio' %}"
              class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-success hover:bg-success/10 transition-colors">
             <span class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
@@ -37,57 +44,110 @@
             </span>
             Crear Nuevo Servicio
           </a>
+          {% endif %}
+          {# Solo el Administrador de una empresa edita SU catálogo de categorías. #}
+          {% if puede_editar_catalogo %}
+          <a href="{% url 'servicios:editar_catalogo' %}"
+             class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-accent hover:bg-accent/10 transition-colors">
+            <span class="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+              <i class="fas fa-folder-tree text-accent text-xs"></i>
+            </span>
+            Editar Catálogo
+          </a>
+          {% endif %}
         </div>
       </div>
 
       <!-- Stats -->
       <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-1">
             <i class="fas fa-cogs text-primary text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-primary leading-none">{{ page_obj.paginator.count }}</span>
+          <span class="text-2xl font-bold text-primary leading-none text-center">{{ page_obj.paginator.count }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Servicios</span>
         </div>
         {% if borradores %}
-        <div class="rounded-xl bg-base-100 border border-warning/30 shadow-sm p-4 flex flex-col gap-1">
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center mb-1">
             <i class="fas fa-clock text-warning text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-warning leading-none">{{ borradores|length }}</span>
+          <span class="text-2xl font-bold text-warning leading-none text-center">{{ borradores|length }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Borradores</span>
         </div>
         {% endif %}
         <button onclick="abrirVisor('categorias')"
-                class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1 text-left hover:border-accent/40 hover:bg-accent/5 transition-colors cursor-pointer">
+                class="glass-card fade-up p-4 flex flex-col gap-1 text-left hover:border-accent/40 hover:bg-accent/5 transition-colors cursor-pointer">
           <div class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center mb-1">
             <i class="fas fa-folder text-accent text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-accent leading-none">{{ total_categorias }}</span>
+          <span class="text-2xl font-bold text-accent leading-none text-center">{{ total_categorias }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Categorías</span>
         </button>
         <button onclick="abrirVisor('subcategorias')"
-                class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1 text-left hover:border-info/40 hover:bg-info/5 transition-colors cursor-pointer">
+                class="glass-card fade-up p-4 flex flex-col gap-1 text-left hover:border-info/40 hover:bg-info/5 transition-colors cursor-pointer">
           <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mb-1">
             <i class="fas fa-tag text-info text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-info leading-none">{{ total_subcategorias }}</span>
+          <span class="text-2xl font-bold text-info leading-none text-center">{{ total_subcategorias }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Subcategorías</span>
         </button>
-        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+        {# Créditos del módulo. None = superuser (no consume), por eso el "∞". #}
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mb-1">
+            <i class="fas fa-coins text-info text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-info leading-none text-center">
+            {% if creditos is None %}∞{% else %}{{ creditos }}{% endif %}
+          </span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Créditos</span>
+        </div>
+        {# Solo las cuentas de empresa tienen equipo; en las personales no se muestra. #}
+        {% if equipo %}
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mb-1">
             <i class="fas fa-users text-success text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-success leading-none">{{ total_usuarios }}</span>
+          <span class="text-2xl font-bold text-success leading-none text-center">{{ equipo.usados }}<span class="text-base font-medium text-secondary/40">/{{ equipo.contratados }}</span></span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Usuarios</span>
         </div>
+        {% endif %}
       </div>
+
+      {% comment %}
+        Consumido/tope de cada compañero en ESTE módulo — solo para quien administra la
+        empresa (mismo gate que accounts:mi_equipo, donde se edita el tope). En rojo cuando
+        alguien alcanzó su tope individual; "∞" para el superuser, que no consume.
+      {% endcomment %}
+      {% if equipo_creditos %}
+      <div class="glass-card fade-up p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Créditos del equipo</p>
+          <button type="button" class="text-[10px] font-semibold text-info hover:underline"
+                  onclick="document.getElementById('modal-creditos-equipo').showModal()">Gestionar</button>
+        </div>
+        <div class="flex flex-col gap-2">
+          {% for m in equipo_creditos %}
+            <div class="flex items-center justify-between gap-2 text-xs">
+              <span class="truncate text-base-content/70" title="{{ m.user.email }}">
+                {{ m.user.get_full_name|default:m.user.email|default:m.user.username }}
+              </span>
+              <span class="shrink-0 font-mono {% if m.tope and m.consumido >= m.tope %}text-error font-semibold{% else %}text-base-content/40{% endif %}"
+                    title="Créditos consumidos{% if m.tope %} · tope {{ m.tope }}{% endif %} · saldo de la bolsa: {{ m.saldo }}">
+                {% if m.ilimitado %}∞{% else %}{{ m.consumido }}{% if m.tope %}/{{ m.tope }}{% endif %}{% endif %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% include 'accounts/partials/_modal_creditos_equipo.html' %}
+      {% endif %}
 
     </aside>
 
     <!-- Tabla principal -->
     <div class="flex-1 min-w-0">
-      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+      <div class="glass-card fade-up overflow-hidden" style="animation-delay: 100ms">
 
         {% if servicios %}
         <div class="overflow-x-auto">
@@ -146,7 +206,17 @@
                 </td>
 
                 <td class="py-3 text-center">
-                  {% if servicio.publico %}
+                  {% if servicio.creado_por == request.user %}
+                    <button type="button"
+                            class="toggle-publico-btn inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors
+                                   {% if servicio.publico %}bg-info/10 text-info hover:bg-info/20{% else %}bg-base-200 text-base-content/35 hover:bg-base-300{% endif %}"
+                            title="Cambiar a {% if servicio.publico %}privado{% else %}público{% endif %}"
+                            data-url="{% url 'servicios:toggle_publico' servicio.id %}"
+                            data-publico="{{ servicio.publico|yesno:'true,false' }}">
+                      <i class="fas {% if servicio.publico %}fa-globe{% else %}fa-lock{% endif %} text-[10px]"></i>
+                      <span class="hidden sm:inline">{% if servicio.publico %}Público{% else %}Privado{% endif %}</span>
+                    </button>
+                  {% elif servicio.publico %}
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info">
                       <i class="fas fa-globe text-[10px]"></i>
                       <span class="hidden sm:inline">Público</span>
@@ -250,9 +320,15 @@
           <p class="text-sm mt-1 text-base-content/30">Completa los borradores pendientes para que aparezcan aquí.</p>
           {% else %}
           <p class="text-lg font-medium">No hay servicios disponibles</p>
-          <a href="{% url 'servicios:crear_servicio' %}" class="btn btn-primary btn-sm mt-4 gap-2">
+          {% if creditos == 0 %}
+          <button type="button" class="btn btn-sm mt-4 gap-2 btn-disabled" title="Sin créditos disponibles en este módulo">
+            <i class="fas fa-plus"></i> Crear primer servicio
+          </button>
+          {% else %}
+          <a href="{% url 'servicios:crear_servicio' %}" class="btn btn-success btn-sm mt-4 gap-2">
             <i class="fas fa-plus"></i> Crear primer servicio
           </a>
+          {% endif %}
           {% endif %}
         </div>
         {% endif %}
@@ -287,6 +363,7 @@
 {% endblock %}
 
 {% block js %}
+{{ datos_catalogo|json_script:"datos-catalogo" }}
 <script>
   document.addEventListener('click', function(event) {
     const button = event.target.closest('.eliminar-servicio-btn');
@@ -298,7 +375,53 @@
     }
   });
 
-  const CATALOGO = {{ datos_catalogo|safe }};
+  // ── Toggle público/privado desde el badge de la tabla ──────────────────────
+  document.addEventListener('click', async function(event) {
+    const btn = event.target.closest('.toggle-publico-btn');
+    if (!btn || btn.disabled) return;
+
+    function getCsrf() {
+      const m = document.cookie.match(/csrftoken=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    btn.disabled = true;
+    try {
+      const r = await fetch(btn.dataset.url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrf(), 'Content-Type': 'application/json' },
+      });
+      const data = await r.json();
+      if (r.ok) {
+        const publico = data.publico;
+        btn.dataset.publico = publico;
+        const icono = btn.querySelector('i');
+        const label = btn.querySelector('span');
+        if (publico) {
+          btn.classList.remove('bg-base-200', 'text-base-content/35', 'hover:bg-base-300');
+          btn.classList.add('bg-info/10', 'text-info', 'hover:bg-info/20');
+          icono.className = 'fas fa-globe text-[10px]';
+          label.textContent = 'Público';
+          btn.title = 'Cambiar a privado';
+        } else {
+          btn.classList.remove('bg-info/10', 'text-info', 'hover:bg-info/20');
+          btn.classList.add('bg-base-200', 'text-base-content/35', 'hover:bg-base-300');
+          icono.className = 'fas fa-lock text-[10px]';
+          label.textContent = 'Privado';
+          btn.title = 'Cambiar a público';
+        }
+        if (window.flashy) flashy.success(publico ? 'Servicio publicado.' : 'Servicio marcado como privado.');
+      } else {
+        if (window.flashy) flashy.error(data.error || 'Error al cambiar visibilidad.');
+      }
+    } catch (e) {
+      if (window.flashy) flashy.error('Error al cambiar visibilidad.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  const CATALOGO = JSON.parse(document.getElementById('datos-catalogo').textContent);
 
   function abrirVisor(tipo) {
     const modal = document.getElementById('modal-catalogo');

@@ -20,6 +20,21 @@ except Exception:
 done
 echo 'PostgreSQL está listo.'
 
+echo 'Esperando a que Redis esté disponible...'
+until python -c "
+import redis, os, sys
+try:
+    r = redis.from_url(os.environ.get('REDIS_URL', 'redis://redis:6379/0'))
+    r.ping()
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+"; do
+  echo '  Redis no disponible, reintentando en 2s...'
+  sleep 2
+done
+echo 'Redis está listo.'
+
 echo 'Recopilando archivos estáticos...'
 python manage.py collectstatic --noinput
 chmod -R o+rX /app/staticfiles
@@ -30,6 +45,9 @@ python manage.py migrate
 echo 'Iniciando Gunicorn...'
 exec gunicorn core.wsgi:application \
     --bind 0.0.0.0:8000 \
-    --workers 3 \
+    --workers "${GUNICORN_WORKERS:-3}" \
+    --threads "${GUNICORN_THREADS:-4}" \
+    --timeout "${GUNICORN_TIMEOUT:-150}" \
+    --graceful-timeout 30 \
     --access-logfile - \
     --error-logfile -

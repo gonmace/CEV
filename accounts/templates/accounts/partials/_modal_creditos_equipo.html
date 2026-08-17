@@ -1,0 +1,127 @@
+{% comment %}
+Modal reutilizable para repartir el tope de créditos del equipo en UN módulo.
+
+Uso, desde cualquier página cuya vista arme `equipo_creditos` (lista de
+{user, key, label, saldo, tope, consumido, ilimitado} — la construyen los índices de
+Proyectos y Servicios con anotar_creditos):
+
+    {% if equipo_creditos %}
+      ...
+      {% include 'accounts/partials/_modal_creditos_equipo.html' %}
+    {% endif %}
+
+y se abre con document.getElementById('modal-creditos-equipo').showModal().
+
+Los POST van a accounts:mi_equipo (action=set_tope), que valida que quien guarda sea
+Administrador de SU empresa — el modal no agrega superficie nueva, reutiliza ese gate.
+Cada tope se guarda solo (al salir del campo); al cerrar el modal, si hubo cambios, se
+recarga la página para que la tarjeta lateral quede al día.
+{% endcomment %}
+<dialog id="modal-creditos-equipo" class="modal">
+  <div class="modal-box rounded-xl border border-secondary/20 p-0 overflow-hidden max-w-md">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/10">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-info/10 flex items-center justify-center">
+          <i class="fas fa-coins text-info text-xs"></i>
+        </span>
+        <div>
+          <span class="text-sm font-semibold text-base-content block">Créditos del equipo · {{ equipo_creditos.0.label }}</span>
+          <span class="text-[10px] text-secondary/50">Saldo de la bolsa compartida: {{ equipo_creditos.0.saldo }}</span>
+        </div>
+      </div>
+      <form method="dialog">
+        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-base-content/40 hover:bg-base-200 hover:text-base-content transition-colors">
+          <i class="fas fa-times text-xs"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div class="px-5 py-4">
+      <p class="text-xs text-secondary/60 mb-3">
+        Tope individual de cada miembro sobre la bolsa compartida.
+        Vacío = sin tope propio (puede usar toda la bolsa). Se guarda al salir del campo.
+      </p>
+      <div class="flex flex-col gap-2">
+        {% for m in equipo_creditos %}
+          <form method="post" action="{% url 'accounts:mi_equipo' %}"
+                class="flex items-center justify-between gap-3" data-tope-form>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_tope">
+            <input type="hidden" name="id" value="{{ m.user.pk }}">
+            <input type="hidden" name="modulo" value="{{ m.key }}">
+            <span class="flex-1 truncate text-xs text-base-content/70" title="{{ m.user.email }}">
+              {{ m.user.get_full_name|default:m.user.email|default:m.user.username }}
+            </span>
+            {% if m.ilimitado %}
+              <span class="text-xs font-mono text-base-content/40" title="El superuser no consume créditos">∞</span>
+            {% else %}
+              <span class="text-[10px] leading-none font-mono {% if m.tope and m.consumido >= m.tope %}text-error font-semibold{% else %}text-base-content/40{% endif %}"
+                    title="Créditos consumidos por esta cuenta">{{ m.consumido }}/</span>
+              <input type="number" name="tope" min="0" max="{{ m.saldo }}" value="{{ m.tope|default_if_none:'' }}" placeholder="∞"
+                     class="input input-bordered input-xs w-16 text-center px-1"
+                     title="Tope de créditos que puede consumir de la bolsa compartida (máximo: {{ m.saldo }}) — vacío = sin tope propio">
+            {% endif %}
+          </form>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>cerrar</button></form>
+</dialog>
+
+<script>
+(function () {
+  var modal = document.getElementById('modal-creditos-equipo');
+  // El guard permite incluir el partial más de una vez sin duplicar handlers.
+  if (!modal || modal.dataset.wired) return;
+  modal.dataset.wired = '1';
+  var dirty = false;
+
+  // Enter en el input dispararía el submit clásico (recarga la página a mitad del
+  // flujo): se anula y el guardado queda siempre a cargo del handler de change.
+  modal.addEventListener('submit', function (ev) {
+    if (ev.target.matches('[data-tope-form]')) ev.preventDefault();
+  });
+
+  modal.addEventListener('change', function (ev) {
+    var input = ev.target;
+    if (input.name !== 'tope') return;
+    var form = input.closest('[data-tope-form]');
+    if (!form) return;
+    var body = new FormData(form); // antes de deshabilitar: un campo disabled no viaja
+    input.disabled = true;
+    // getAttribute, no form.action: el <input name="action"> del form pisa esa propiedad.
+    fetch(form.getAttribute('action'), {
+      method: 'POST',
+      body: body,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.tag === 'error') {
+          // Rechazado por el servidor (p. ej. tope mayor que el saldo de la bolsa):
+          // se vuelve al último valor guardado para no mostrar un número que no rige.
+          input.value = input.defaultValue;
+        } else {
+          input.defaultValue = input.value;
+          dirty = true;
+        }
+        if (!window.flashy || !data.message) return;
+        window.flashy(data.message, { type: data.tag === 'debug' ? 'info' : (data.tag || 'info') });
+      })
+      .catch(function () {
+        input.value = input.defaultValue;
+        if (window.flashy) window.flashy.error('No se pudo guardar el tope.');
+      })
+      .finally(function () { input.disabled = false; });
+  });
+
+  // La tarjeta "Créditos del equipo" de la página se renderizó en el servidor: si algo
+  // cambió, recargar al cerrar es lo que la deja consistente con los topes nuevos.
+  modal.addEventListener('close', function () {
+    if (dirty) window.location.reload();
+  });
+})();
+</script>

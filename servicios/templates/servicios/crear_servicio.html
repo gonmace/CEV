@@ -139,7 +139,7 @@
             <i class="fas fa-circle-info mr-1"></i>Al omitir la revisión, los resultados generados por la IA podrían no ajustarse a lo esperado.
           </p>
           {% endif %}
-          <button type="submit" id="btn_continuar" class="btn btn-primary">
+          <button type="submit" id="btn_continuar" class="btn btn-success">
             Continuar <i class="fas fa-arrow-right ml-2"></i>
           </button>
         </div>
@@ -152,9 +152,10 @@
 {% endblock %}
 
 {% block js %}
+{{ categorias_json|json_script:"categorias-data" }}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const categorias = {{ categorias_json|safe }};
+    const categorias = JSON.parse(document.getElementById('categorias-data').textContent);
     const selectCat = document.getElementById('id_categoria');
     const selectSub = document.getElementById('id_subcategoria_codigo');
 

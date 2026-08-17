@@ -5,12 +5,12 @@
   {% tailwind_css %}
 {% endblock %}
 
-{% block title %}Especificaciones para Licitación{% endblock %}
+{% block title %}Especificaciones para Proyectos{% endblock %}
 
 {% block body_class %}bg-base-200{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-base-200">
+<div class="flex-1 glass-bg">
   <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6">
   <div class="flex flex-col lg:flex-row lg:items-start gap-6">
 
@@ -18,11 +18,18 @@
     <aside class="w-full lg:w-64 flex-shrink-0 flex flex-col gap-3">
 
       <!-- Acciones principales -->
-      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
-        <div class="px-4 pt-4 pb-2">
-          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
-        </div>
-        <div class="flex flex-col px-3 pb-3 gap-1">
+      <div class="glass-card fade-up overflow-hidden">
+        <div class="flex flex-col p-3 gap-1">
+          {# Sin créditos en el módulo no se pueden crear proyectos (superuser = None, ilimitado). #}
+          {% if creditos == 0 %}
+          <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-base-content/30 cursor-not-allowed"
+               title="Sin créditos disponibles en este módulo">
+            <span class="w-7 h-7 rounded-lg bg-base-content/5 flex items-center justify-center flex-shrink-0">
+              <i class="fas fa-plus text-base-content/30 text-xs"></i>
+            </span>
+            Crear Nuevo Proyecto
+          </div>
+          {% else %}
           <a href="{% url 'proyectos:crear_proyecto' %}"
              class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-success hover:bg-success/10 transition-colors">
             <span class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
@@ -30,6 +37,7 @@
             </span>
             Crear Nuevo Proyecto
           </a>
+          {% endif %}
           <a href="{% url 'proyectos:especificaciones_disponibles' %}"
              class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-info hover:bg-info/10 transition-colors">
             <span class="w-7 h-7 rounded-lg bg-info/10 flex items-center justify-center flex-shrink-0">
@@ -42,7 +50,7 @@
 
       <!-- Proyecto activo -->
       {% if proyecto_seleccionado %}
-      <div class="rounded-xl bg-base-100 border border-primary/30 shadow-sm overflow-hidden">
+      <div class="glass-card fade-up overflow-hidden">
         <!-- Header -->
         <div class="bg-primary/8 border-b border-primary/15 px-4 py-2.5 flex items-center gap-2">
           <span class="w-5 h-5 rounded-md bg-primary/15 flex items-center justify-center flex-shrink-0">
@@ -79,41 +87,83 @@
 
       <!-- Stats -->
       <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-1">
             <i class="fas fa-folder text-primary text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-primary leading-none">{{ page_obj.paginator.count }}</span>
+          <span class="text-2xl font-bold text-primary leading-none text-center">{{ page_obj.paginator.count }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Proyectos</span>
         </div>
-        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mb-1">
             <i class="fas fa-file-alt text-info text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-info leading-none">{{ total_especificaciones }}</span>
+          <span class="text-2xl font-bold text-info leading-none text-center">{{ total_especificaciones }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Especificaciones</span>
         </div>
-        <div class="rounded-xl bg-base-100 border border-warning/30 shadow-sm p-4 flex flex-col gap-1">
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center mb-1">
             <i class="fas fa-clock text-warning text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-warning leading-none">{{ total_borradores }}</span>
+          <span class="text-2xl font-bold text-warning leading-none text-center">{{ total_borradores }}</span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Borradores</span>
         </div>
-        <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm p-4 flex flex-col gap-1">
+        {# Créditos del módulo. None = superuser (no consume), por eso el "∞". #}
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
+          <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mb-1">
+            <i class="fas fa-coins text-info text-sm"></i>
+          </div>
+          <span class="text-2xl font-bold text-info leading-none text-center">
+            {% if creditos is None %}∞{% else %}{{ creditos }}{% endif %}
+          </span>
+          <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Créditos</span>
+        </div>
+        {# Solo las cuentas de empresa tienen equipo; en las personales no se muestra. #}
+        {% if equipo %}
+        <div class="glass-card fade-up p-4 flex flex-col gap-1">
           <div class="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mb-1">
             <i class="fas fa-users text-success text-sm"></i>
           </div>
-          <span class="text-2xl font-bold text-success leading-none">{{ total_usuarios }}</span>
+          <span class="text-2xl font-bold text-success leading-none text-center">{{ equipo.usados }}<span class="text-base font-medium text-secondary/40">/{{ equipo.contratados }}</span></span>
           <span class="text-[11px] text-secondary/60 font-medium mt-0.5">Usuarios</span>
         </div>
+        {% endif %}
       </div>
+
+      {% comment %}
+        Consumido/tope de cada compañero en ESTE módulo — solo para quien administra la
+        empresa (mismo gate que accounts:mi_equipo, donde se edita el tope). En rojo cuando
+        alguien alcanzó su tope individual; "∞" para el superuser, que no consume.
+      {% endcomment %}
+      {% if equipo_creditos %}
+      <div class="glass-card fade-up p-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Créditos del equipo</p>
+          <button type="button" class="text-[10px] font-semibold text-info hover:underline"
+                  onclick="document.getElementById('modal-creditos-equipo').showModal()">Gestionar</button>
+        </div>
+        <div class="flex flex-col gap-2">
+          {% for m in equipo_creditos %}
+            <div class="flex items-center justify-between gap-2 text-xs">
+              <span class="truncate text-base-content/70" title="{{ m.user.email }}">
+                {{ m.user.get_full_name|default:m.user.email|default:m.user.username }}
+              </span>
+              <span class="shrink-0 font-mono {% if m.tope and m.consumido >= m.tope %}text-error font-semibold{% else %}text-base-content/40{% endif %}"
+                    title="Créditos consumidos{% if m.tope %} · tope {{ m.tope }}{% endif %} · saldo de la bolsa: {{ m.saldo }}">
+                {% if m.ilimitado %}∞{% else %}{{ m.consumido }}{% if m.tope %}/{{ m.tope }}{% endif %}{% endif %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% include 'accounts/partials/_modal_creditos_equipo.html' %}
+      {% endif %}
 
     </aside>
 
     <!-- Tabla -->
     <div class="flex-1 min-w-0">
-      <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+      <div class="glass-card fade-up overflow-hidden" style="animation-delay: 100ms">
 
 
         {% if proyectos %}
@@ -136,7 +186,7 @@
                   {% else %}
                     hover:bg-base-200/40
                   {% endif %}"
-                  onclick="window.location.href='{% url 'proyectos:seleccionar_proyecto' proyecto.id %}?next={{ request.get_full_path|urlencode }}'">
+                  onclick="window.location.href='{% url 'proyectos:proyecto_detalle' proyecto.id %}'">
 
                 <td class="py-3 pl-4">
                   <div class="flex items-center gap-3">
@@ -249,9 +299,15 @@
         <div class="flex flex-col items-center justify-center py-20 text-base-content/40">
           <i class="fas fa-folder-open text-5xl mb-4"></i>
           <p class="text-lg font-medium">No hay proyectos disponibles</p>
-          <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-primary btn-sm mt-4 gap-2">
+          {% if creditos == 0 %}
+          <button type="button" class="btn btn-sm mt-4 gap-2 btn-disabled" title="Sin créditos disponibles en este módulo">
+            <i class="fas fa-plus"></i> Crear primer proyecto
+          </button>
+          {% else %}
+          <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-success btn-sm mt-4 gap-2">
             <i class="fas fa-plus"></i> Crear primer proyecto
           </a>
+          {% endif %}
         </div>
         {% endif %}
       </div>

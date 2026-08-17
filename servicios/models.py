@@ -32,6 +32,15 @@ class CatalogoServicios(models.Model):
         ),
     )
     activo = models.BooleanField(default=True, verbose_name="Activo")
+    empresa = models.ForeignKey(
+        'accounts.Empresa',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='catalogos_servicios',
+        verbose_name='Empresa',
+        help_text='Vacío = catálogo global/base, usado por empresas sin catálogo propio.',
+    )
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -43,8 +52,15 @@ class CatalogoServicios(models.Model):
         return self.nombre
 
     @classmethod
-    def get_activo(cls):
-        return cls.objects.filter(activo=True).first()
+    def get_activo(cls, empresa=None):
+        """El catálogo propio de `empresa` si tiene uno activo; si no, el global
+        (empresa=None), que sirve de base para cualquier empresa que no personalizó
+        el suyo todavía."""
+        if empresa is not None:
+            propio = cls.objects.filter(activo=True, empresa=empresa).first()
+            if propio:
+                return propio
+        return cls.objects.filter(activo=True, empresa__isnull=True).first()
 
 
 def servicio_upload_path(instance, filename):
@@ -88,10 +104,22 @@ class Servicio(models.Model):
         blank=True,
         related_name='servicios_propios'
     )
+    empresa = models.ForeignKey(
+        'accounts.Empresa',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='servicios',
+        verbose_name='Empresa',
+        help_text='Empresa dueña de este servicio, fijada al crearlo. Vacío = cuenta personal.',
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     activo = models.BooleanField(default=True)
     fecha_eliminacion = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de eliminación")
+    # Se cobra 1 crédito al generar las secciones (el entregable). Regenerarlas no vuelve
+    # a cobrar (ver accounts.creditos y servicios.views.generar_secciones_ajax).
+    credito_consumido = models.BooleanField(default=False, verbose_name='Crédito consumido')
 
     class Meta:
         db_table = 'servicios_servicio'

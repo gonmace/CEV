@@ -1,0 +1,284 @@
+{% extends 'base_pliego.html' %}
+{% load static tailwind_tags %}
+
+{% block css %}
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}" />
+{% endblock %}
+
+{% block title %}Catálogo de Servicios{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <a href="{% url 'servicios:lista_servicios' %}" class="hover:text-primary transition-colors">Servicios</a>
+</li>
+{% endblock %}
+
+{% block breadcrumbs %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span class="font-semibold text-base-content">Catálogo</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-6 flex flex-col gap-5">
+
+  <div class="glass-card p-5 flex items-start justify-between gap-4 flex-wrap">
+    <div class="flex items-start gap-3">
+      <span class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+        <i class="fas fa-folder-tree text-accent text-sm"></i>
+      </span>
+      <div>
+        <h1 class="text-lg font-bold text-base-content">Catálogo de categorías y subcategorías</h1>
+        <p class="text-xs text-secondary/60 mt-0.5 max-w-2xl">
+          Estas categorías se usan al crear un servicio. Los campos <strong>Definición</strong>, <strong>Alcance</strong>
+          y <strong>Descripción</strong> los usa la IA para verificar coherencia. El catálogo es propio de tu empresa
+          {% if not tiene_catalogo_propio %}— hoy estás viendo el catálogo por defecto; se guarda como propio recién al presionar "Guardar catálogo"{% endif %}.
+        </p>
+      </div>
+    </div>
+    <button type="submit" form="catalogo-form-restaurar" class="btn btn-ghost btn-sm"
+            onclick="return confirm('¿Restaurar el catálogo por defecto? Se perderán los cambios propios de tu empresa.')">
+      <i class="fas fa-rotate-left"></i> Restaurar por defecto
+    </button>
+  </div>
+
+  <form method="post" id="catalogo-form-restaurar" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="accion" value="restaurar">
+  </form>
+
+  <form method="post" id="catalogo-form" onsubmit="return prepararJSON()">
+    {% csrf_token %}
+    <input type="hidden" name="datos_json" id="datos-json-input">
+
+    <div class="flex justify-between items-center mb-3">
+      <button type="button" onclick="agregarCategoria()" class="btn btn-success btn-sm">
+        <i class="fas fa-plus"></i> Agregar categoría
+      </button>
+      <div class="flex gap-2">
+        <a href="{% url 'servicios:lista_servicios' %}" class="btn btn-ghost btn-sm">Cancelar</a>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-save"></i> Guardar catálogo
+        </button>
+      </div>
+    </div>
+
+    <div id="categorias-container" class="flex flex-col gap-3"></div>
+
+    <div class="flex justify-end gap-2 pt-4 mt-2 border-t border-base-300">
+      <a href="{% url 'servicios:lista_servicios' %}" class="btn btn-ghost btn-sm">Cancelar</a>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save"></i> Guardar catálogo
+      </button>
+    </div>
+  </form>
+
+  <!-- Panel JSON directo (opcional, para ediciones avanzadas) -->
+  <div class="glass-card overflow-hidden">
+    <button type="button" onclick="toggleJsonPanel(this)"
+            class="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-200/40 transition-colors">
+      <span class="text-xs font-bold text-base-content"><span class="json-panel-arrow">▶</span> Editar JSON directamente</span>
+      <span class="text-[11px] text-secondary/50">Para ediciones avanzadas</span>
+    </button>
+    <div class="json-panel-body hidden px-4 pb-4">
+      <textarea id="json-directo" spellcheck="false"
+                class="textarea textarea-bordered w-full min-h-72 font-mono text-xs"></textarea>
+      <button type="button" onclick="aplicarJsonDirecto()" class="btn btn-primary btn-sm mt-2">
+        Aplicar JSON al formulario
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<template id="tpl-categoria">
+  <div class="cat-block glass-card overflow-hidden">
+    <div class="cat-header flex items-start gap-3 px-4 py-3 bg-base-200/50 border-b border-base-300 cursor-pointer collapsed">
+      <span class="cat-toggle text-accent text-xs mt-2 shrink-0 transition-transform">▼</span>
+      <div class="flex-1 flex flex-col gap-2" onclick="event.stopPropagation()">
+        <input type="text" name="cat_nombre" placeholder="Nombre de la categoría" autocomplete="off"
+               class="input input-bordered input-sm font-bold w-full">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Definición</label>
+            <textarea name="cat_definicion" placeholder="Descripción general de esta categoría..."
+                      class="textarea textarea-bordered textarea-xs min-h-11 w-full"></textarea>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Alcance</label>
+            <textarea name="cat_alcance" placeholder="Qué tipo de trabajos abarca..."
+                      class="textarea textarea-bordered textarea-xs min-h-11 w-full"></textarea>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-error btn-xs shrink-0"
+              onclick="event.stopPropagation(); this.closest('.cat-block').remove()">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+    <div class="cat-body p-4 hidden flex-col gap-2">
+      <div class="subcategorias-container flex flex-col gap-2"></div>
+      <button type="button" class="btn btn-success btn-xs self-start mt-1" onclick="agregarSubcategoria(this)">
+        <i class="fas fa-plus"></i> Agregar subcategoría
+      </button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-subcategoria">
+  <div class="sub-card border border-base-300 rounded-lg p-3 bg-base-100 flex flex-col gap-2">
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
+      <div class="flex flex-col gap-1">
+        <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Código</label>
+        <input type="text" name="sub_codigo" placeholder="SM-01" autocomplete="off" class="input input-bordered input-xs w-full">
+      </div>
+      <div class="flex flex-col gap-1 sm:col-span-2">
+        <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Nombre</label>
+        <input type="text" name="sub_nombre" placeholder="Nombre de la subcategoría" autocomplete="off" class="input input-bordered input-xs w-full">
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Unidad</label>
+        <input type="text" name="sub_unidad" placeholder="glb / hr / mes" autocomplete="off" class="input input-bordered input-xs w-full">
+      </div>
+      <div class="flex items-end gap-2">
+        <div class="flex flex-col gap-1 flex-1">
+          <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Frecuencia</label>
+          <input type="text" name="sub_frecuencia" placeholder="Mensual / Anual" autocomplete="off" class="input input-bordered input-xs w-full">
+        </div>
+        <button type="button" class="btn btn-error btn-xs" onclick="this.closest('.sub-card').remove()" title="Eliminar subcategoría">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+      <div class="flex flex-col gap-1">
+        <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Descripción</label>
+        <textarea name="sub_descripcion" placeholder="Descripción del servicio..." class="textarea textarea-bordered textarea-xs min-h-11 w-full"></textarea>
+      </div>
+      <div class="flex flex-col gap-1 sm:w-40">
+        <label class="text-[10px] font-bold text-secondary/60 uppercase tracking-wide">Intención</label>
+        <input type="text" name="sub_intencion" placeholder="Predictivo / Correctivo" autocomplete="off" class="input input-bordered input-xs w-full">
+      </div>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block js %}
+{{ datos_json|json_script:"datos-iniciales" }}
+<script>
+function toggleCategoria(header) {
+  const body = header.closest('.cat-block').querySelector('.cat-body');
+  const isOpen = body.classList.contains('flex');
+  body.classList.toggle('hidden', isOpen);
+  body.classList.toggle('flex', !isOpen);
+  header.classList.toggle('collapsed', isOpen);
+  header.querySelector('.cat-toggle').style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+const datosIniciales = JSON.parse(document.getElementById('datos-iniciales').textContent);
+
+function agregarCategoria(data) {
+  const tpl = document.getElementById('tpl-categoria');
+  const clone = tpl.content.cloneNode(true);
+  const header = clone.querySelector('.cat-header');
+  header.addEventListener('click', function() { toggleCategoria(header); });
+  if (data) {
+    clone.querySelector('[name="cat_nombre"]').value     = data.nombre     || '';
+    clone.querySelector('[name="cat_definicion"]').value = data.definicion || '';
+    clone.querySelector('[name="cat_alcance"]').value    = data.alcance    || '';
+    const container = clone.querySelector('.subcategorias-container');
+    (data.subcategorias || []).forEach(sub => agregarSubcategoriaEn(container, sub));
+  }
+  document.getElementById('categorias-container').appendChild(clone);
+}
+
+function agregarSubcategoria(btn) {
+  const container = btn.previousElementSibling;
+  agregarSubcategoriaEn(container, null);
+}
+
+function agregarSubcategoriaEn(container, data) {
+  const tpl = document.getElementById('tpl-subcategoria');
+  const clone = tpl.content.cloneNode(true);
+  if (data) {
+    clone.querySelector('[name="sub_codigo"]').value      = data.codigo      || '';
+    clone.querySelector('[name="sub_nombre"]').value      = data.nombre      || '';
+    clone.querySelector('[name="sub_unidad"]').value      = data.unidad      || '';
+    clone.querySelector('[name="sub_frecuencia"]').value  = data.frecuencia  || '';
+    clone.querySelector('[name="sub_descripcion"]').value = data.descripcion || '';
+    clone.querySelector('[name="sub_intencion"]').value   = data.intencion   || '';
+  }
+  container.appendChild(clone);
+}
+
+function prepararJSON() {
+  const categorias = [];
+  document.querySelectorAll('#categorias-container .cat-block').forEach(catEl => {
+    const nombre = catEl.querySelector('[name="cat_nombre"]').value.trim();
+    if (!nombre) return;
+    const subcategorias = [];
+    catEl.querySelectorAll('.sub-card').forEach(subEl => {
+      const codigo    = subEl.querySelector('[name="sub_codigo"]').value.trim();
+      const subNombre = subEl.querySelector('[name="sub_nombre"]').value.trim();
+      if (!codigo && !subNombre) return;
+      subcategorias.push({
+        codigo,
+        nombre:      subNombre,
+        unidad:      subEl.querySelector('[name="sub_unidad"]').value.trim(),
+        descripcion: subEl.querySelector('[name="sub_descripcion"]').value.trim(),
+        intencion:   subEl.querySelector('[name="sub_intencion"]').value.trim(),
+        frecuencia:  subEl.querySelector('[name="sub_frecuencia"]').value.trim(),
+      });
+    });
+    categorias.push({
+      nombre,
+      definicion: catEl.querySelector('[name="cat_definicion"]').value.trim(),
+      alcance:    catEl.querySelector('[name="cat_alcance"]').value.trim(),
+      subcategorias,
+    });
+  });
+  if (!categorias.some(c => c.subcategorias.length)) {
+    window.flashy ? window.flashy.error('El catálogo no puede quedar vacío: agrega al menos una categoría con una subcategoría.') :
+      alert('El catálogo no puede quedar vacío: agrega al menos una categoría con una subcategoría.');
+    return false;
+  }
+  document.getElementById('datos-json-input').value = JSON.stringify(categorias);
+  return true;
+}
+
+datosIniciales.forEach(cat => agregarCategoria(cat));
+
+// Poblar JSON directo con los datos iniciales
+document.getElementById('json-directo').value = JSON.stringify(datosIniciales, null, 2);
+
+function toggleJsonPanel(header) {
+  const body = header.nextElementSibling;
+  const isHidden = body.classList.contains('hidden');
+  body.classList.toggle('hidden', !isHidden);
+  header.querySelector('.json-panel-arrow').textContent = isHidden ? '▼' : '▶';
+  if (isHidden) {
+    // Sincronizar JSON con estado actual del formulario antes de mostrar
+    prepararJSON();
+    try {
+      document.getElementById('json-directo').value =
+        JSON.stringify(JSON.parse(document.getElementById('datos-json-input').value), null, 2);
+    } catch(e) {}
+  }
+}
+
+function aplicarJsonDirecto() {
+  try {
+    const datos = JSON.parse(document.getElementById('json-directo').value);
+    document.getElementById('categorias-container').innerHTML = '';
+    datos.forEach(cat => agregarCategoria(cat));
+    window.flashy ? window.flashy.success('JSON aplicado al formulario.') : alert('JSON aplicado al formulario.');
+  } catch(e) {
+    window.flashy ? window.flashy.error('JSON inválido: ' + e.message) : alert('JSON inválido: ' + e.message);
+  }
+}
+</script>
+{% endblock %}

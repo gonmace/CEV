@@ -1,28 +1,39 @@
-Django>=5.1
-whitenoise>=6.8
-django-tailwind>=3.8
-django-crispy-forms>=2.3
-crispy-tailwind>=1.0
-pillow>=11.0
-python-decouple>=3.8
-psycopg2-binary>=2.9
-gunicorn>=23.0
-django-axes>=7.0
-django-csp>=3.8
+# Versiones fijadas (==), no rangos: con >= el mismo `docker build` podía resolver un
+# stack distinto en cada corrida — así fue como django-csp saltó de 3.8 a 4.0 sin que
+# nadie lo pidiera y la CSP dejó de emitirse (API distinta, ver core/settings.py).
+# Para actualizar una dependencia: cambiar el pin acá a propósito, no dejar que "sea
+# lo último disponible" lo decida el build.
+Django==6.0.7
+whitenoise==6.12.0
+django-tailwind==4.5.0
+django-crispy-forms==2.6
+crispy-tailwind==1.0.3
+pillow==12.3.0
+python-decouple==3.8
+psycopg2-binary==2.9.12
+gunicorn==26.0.0
+django-axes==8.3.1
+django-csp==4.0
+django-allauth==65.18.0
+django-redis==7.0.0
+redis==8.0.1
+PyJWT==2.13.0
 
 # pliego_licitacion / proyectos
-beautifulsoup4>=4.12
-python-docx>=1.0
-markdown>=3.8
-requests>=2.31.0
+beautifulsoup4==4.15.0
+python-docx==1.2.0
+Markdown==3.10.2
+nh3==0.3.6  # sanitiza el HTML que produce `markdown` antes de mark_safe/|safe (ver core/sanitize.py)
+Pygments==2.21.0  # usado por markdown.extensions.codehilite (dependencia implícita, no declarada antes)
+requests==2.34.2
 
 # servicios
-pdfplumber>=0.11
-pymupdf>=1.24
-easyocr>=1.7
-img2table>=1.3
+pdfplumber==0.11.10
+pymupdf==1.28.0
+easyocr==1.7.2
+img2table==2.0.0
 
 # PyTorch CPU-only (evita instalar librerías CUDA en VPS sin GPU)
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch
-torchvision
+torch==2.13.0+cpu
+torchvision==0.28.0+cpu

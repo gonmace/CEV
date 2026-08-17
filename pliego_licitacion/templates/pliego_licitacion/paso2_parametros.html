@@ -3,6 +3,8 @@
 
 {% block title %}Parámetros Técnicos — {{ especificacion.titulo }}{% endblock %}
 
+{% block breadcrumbs_bar %}{% if not es_demo %}{{ block.super }}{% endif %}{% endblock %}
+
 {% block breadcrumbs_parent %}
 <li class="flex items-center gap-2">
   <span class="text-base-content/50">›</span>
@@ -22,21 +24,19 @@
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col items-center justify-center mt-6 px-4 pb-10">
+<div class="flex-1 glass-bg flex flex-col items-center justify-center mt-6 px-4 pb-10">
   <div class="w-full max-w-6xl">
 
-    <div class="card w-full bg-base-100 shadow-xl overflow-hidden">
+    <div class="card w-full glass-card fade-up overflow-hidden">
 
       <!-- Header del paso -->
-      <div class="card-body pb-0">
-        <div class="mb-4">
-          <h2 class="card-title text-2xl mb-2">
-            <div class="flex items-center gap-4">
-              <div class="badge badge-primary badge-lg w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" id="page-parametros-badge">2</div>
-              <span class="text-primary" id="page-parametros-titulo">Parámetros materiales</span>
-            </div>
-          </h2>
-          <p class="text-sm text-base-content/60 ml-14">{{ especificacion.titulo }}</p>
+      <div class="bg-gradient-to-r from-primary to-primary/80 px-6 py-4 text-primary-content">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-white text-primary flex items-center justify-center text-sm font-bold shrink-0" id="page-parametros-badge">2</div>
+          <div>
+            <p class="font-semibold text-base leading-tight" id="page-parametros-titulo">Parámetros materiales</p>
+            <p class="text-primary-content/70 text-xs mt-0.5">{{ especificacion.titulo }}</p>
+          </div>
         </div>
       </div>
 
@@ -50,7 +50,7 @@
           </div>
         </div>
         <div class="flex justify-end mt-4">
-          <button type="button" class="btn btn-ghost btn-sm gap-2" onclick="iniciarSubPasoActual()">
+          <button type="button" class="btn btn-outline btn-success btn-sm rounded-full gap-2" onclick="iniciarSubPasoActual()">
             <i class="fas fa-rotate-right"></i> Reintentar
           </button>
         </div>
@@ -80,9 +80,9 @@
           </table>
         </div>
         <div class="flex items-center justify-end px-5 py-4 border-t border-base-200 gap-2">
-          <button class="btn btn-primary btn-sm" id="enviar-parametros-btn">
-            <i class="fas fa-arrow-right mr-1.5"></i>
+          <button class="btn btn-success rounded-full gap-2 shadow-sm" id="enviar-parametros-btn">
             Continuar
+            <i class="fas fa-arrow-right text-sm"></i>
           </button>
         </div>
       </div>
@@ -196,7 +196,7 @@ function poblarFilasTabla(parametros) {
   nuevaFila.id = 'nuevo-parametro-row';
   nuevaFila.className = 'bg-base-200';
   nuevaFila.innerHTML = `
-    <td><button class="btn btn-sm btn-success" id="agregar-parametro-btn" title="Agregar parámetro"><i class="fas fa-plus"></i></button></td>
+    <td><button class="btn btn-sm btn-success btn-circle shadow-sm" id="agregar-parametro-btn" title="Agregar parámetro"><i class="fas fa-plus text-xs"></i></button></td>
     <td><input type="text" class="input input-bordered input-sm w-full" id="nuevo-parametro-nombre" placeholder="Nombre del parámetro"></td>
     <td class="col-valor-recomendado text-right"><input type="text" class="input input-bordered input-sm w-full text-right" id="nuevo-parametro-valor" placeholder="Valor recomendado"></td>
     <td class="col-unidad text-center"><input type="text" class="input input-bordered input-sm w-full text-center" id="nuevo-parametro-unidad" placeholder="Unidad de medida"></td>
@@ -208,9 +208,7 @@ function poblarFilasTabla(parametros) {
 // ── Event listeners ───────────────────────────────────────────────────────────
 
 function updateBtn() {
-  const btn = document.getElementById('enviar-parametros-btn');
-  if (!btn) return;
-  btn.disabled = document.querySelectorAll('.parametro-checkbox:checked').length === 0;
+  // Siempre habilitado — se puede continuar con 0 selecciones
 }
 
 function agregarParametro() {
@@ -264,6 +262,7 @@ function initListeners() {
   const enviarBtn = document.getElementById('enviar-parametros-btn');
   if (enviarBtn) {
     const newBtn = enviarBtn.cloneNode(true);
+    newBtn.disabled = false;
     enviarBtn.parentNode.replaceChild(newBtn, enviarBtn);
     newBtn.addEventListener('click', continuar);
   }

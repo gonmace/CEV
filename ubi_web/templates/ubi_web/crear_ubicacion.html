@@ -24,7 +24,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-base-200 py-6 px-4">
+<div class="flex-1 bg-base-200 py-6 px-4">
   <div class="max-w-2xl mx-auto">
 
     <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
@@ -93,7 +93,7 @@
           <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-ghost btn-sm">
             Cancelar
           </a>
-          <button type="submit" class="btn btn-primary btn-sm">
+          <button type="submit" class="btn btn-success btn-sm">
             <i class="fas fa-save text-xs"></i> Crear Ubicación
           </button>
         </div>

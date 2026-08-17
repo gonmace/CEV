@@ -100,7 +100,7 @@
             <a href="{% url 'servicios:ver_servicio' servicio.id %}" class="btn btn-ghost">
               <i class="fas fa-times mr-2"></i> Cancelar
             </a>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-success">
               <i class="fas fa-save mr-2"></i> Guardar cambios
             </button>
           </div>
@@ -113,9 +113,10 @@
 {% endblock %}
 
 {% block js %}
+{{ categorias_json|json_script:"categorias-data" }}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const categorias = {{ categorias_json|safe }};
+    const categorias = JSON.parse(document.getElementById('categorias-data').textContent);
     const selectCat = document.getElementById('id_categoria');
     const selectSub = document.getElementById('id_subcategoria_codigo');
 

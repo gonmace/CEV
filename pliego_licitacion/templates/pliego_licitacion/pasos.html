@@ -8,6 +8,8 @@
 
 {% block title %}{% if proyecto_nombre %}{{ proyecto_nombre }}{% else %}IA - Especificación Técnica{% endif %}{% endblock %}
 
+{% block breadcrumbs_bar %}{% if not es_demo %}{{ block.super }}{% endif %}{% endblock %}
+
 {% block breadcrumbs %}
   <li class="flex items-center gap-2">
     <span class="text-base-content/50">›</span>
@@ -79,9 +81,7 @@
     var idFromUrl = parseInt(params.get('especificacion_id'));
     window.especificacionTecnicaId = idFromUrl || null;
     if (window.especificacionTecnicaId) {
-      var disp = document.getElementById('especificacion-id-display');
       var val  = document.getElementById('especificacion-id-value');
-      if (disp) disp.classList.remove('hidden');
       if (val)  val.textContent = window.especificacionTecnicaId;
     }
   })();

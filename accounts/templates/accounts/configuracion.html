@@ -1,0 +1,383 @@
+{% extends 'base_pliego.html' %}
+{% load main_tags %}
+{% block title %}Configuración{% endblock %}
+
+{% block breadcrumbs_parent %}
+<li class="flex items-center gap-2">
+  <span class="text-base-content/50">›</span>
+  <span>Configuración</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6" id="config-content">
+
+  <div class="mb-5">
+    <h1 class="text-2xl font-black tracking-tight">Configuración</h1>
+    <p class="text-sm text-base-content/50">
+      {% if empresa %}
+        Marca, datos y plantillas de <b>{{ empresa.nombre }}</b>: se aplican a los documentos
+        de todo el equipo.
+      {% else %}
+        Tu marca, tus datos y tus plantillas: se aplican a los documentos que generas.
+      {% endif %}
+    </p>
+  </div>
+
+  {% if not editable %}
+    <div class="alert alert-info text-sm mb-5">
+      <i class="fas fa-circle-info"></i>
+      <span>
+        La marca y los datos de <b>{{ empresa.nombre }}</b> los define el Administrador de la
+        empresa. Puedes subir tus propias plantillas —que reemplazan a las de la empresa
+        en tus documentos— y editar tus datos personales en «Mi cuenta».
+      </span>
+    </div>
+  {% endif %}
+
+  {% comment %}
+    Pestañas con radios: DaisyUI las resuelve por CSS, sin JavaScript, así que siguen
+    funcionando aunque falle un script. La activa se marca desde el servidor (`tab`) para
+    volver a la misma después de guardar.
+  {% endcomment %}
+  <div role="tablist" class="tabs tabs-lift mb-5">
+
+    {# Marca y Datos son configuración de la empresa: solo el Administrador las ve. #}
+    {% if editable %}
+    <!-- ── Marca ───────────────────────────────────────────────────────────── -->
+    <input type="radio" name="cfg_tabs" role="tab" class="tab" aria-label="Marca"
+           {% if tab == 'marca' %}checked{% endif %}>
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      {% if form %}
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="marca">
+
+        <h2 class="font-bold mb-1">Logo y colores</h2>
+        <p class="text-xs text-base-content/50 mb-4">
+          El logo reemplaza al de la plantilla conservando su posición y tamaño. Los colores
+          se aplican a los títulos del documento.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="text-sm font-medium">{{ form.nombre_mostrado.label }}</label>
+            {{ form.nombre_mostrado }}
+            <p class="text-xs text-base-content/40 mt-1">{{ form.nombre_mostrado.help_text }}</p>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="text-sm font-medium">{{ form.logo.label }}</label>
+            <div class="flex items-center gap-4 mt-1">
+              {% if marca.logo %}
+                <a href="{{ marca.logo.url }}" target="_blank" rel="noopener" title="Ver logo actual">
+                  <img src="{{ marca.logo.url }}" alt="Logo actual"
+                       class="h-14 w-auto max-w-[10rem] object-contain rounded border border-base-300 bg-base-200 p-1 hover:border-primary transition-colors">
+                </a>
+              {% else %}
+                <div class="h-14 w-24 rounded border border-dashed border-base-300 flex items-center justify-center text-base-content/30">
+                  <i class="fas fa-image"></i>
+                </div>
+              {% endif %}
+              <div class="flex-1">{{ form.logo }}</div>
+            </div>
+            {% if marca.logo %}
+            <label class="mt-1.5 inline-flex items-center gap-1.5 text-xs text-error/80 hover:text-error cursor-pointer">
+              <input type="checkbox" name="{{ form.logo.html_name }}-clear" class="checkbox checkbox-error checkbox-xs">
+              Eliminar logo actual
+            </label>
+            {% endif %}
+            {% for e in form.logo.errors %}<p class="text-error text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+
+          <div class="flex items-end gap-4">
+            <div>
+              <label class="text-sm font-medium block mb-1">{{ form.color_primario.label }}</label>
+              {{ form.color_primario }}
+            </div>
+            <div>
+              <label class="text-sm font-medium block mb-1">{{ form.color_secundario.label }}</label>
+              {{ form.color_secundario }}
+            </div>
+          </div>
+        </div>
+
+        {% if editable %}
+        <div class="flex gap-2 justify-end pt-5">
+          <button type="submit" name="action" value="vista_previa" class="btn btn-info btn-sm">
+            <i class="fas fa-file-word"></i> Ver una muestra
+          </button>
+          <button class="btn btn-success btn-sm">Guardar</button>
+        </div>
+        {% endif %}
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- ── Datos ───────────────────────────────────────────────────────────── -->
+    <input type="radio" name="cfg_tabs" role="tab" class="tab" aria-label="Datos"
+           {% if tab == 'datos' %}checked{% endif %}>
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      {% if form %}
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="datos">
+
+        <h2 class="font-bold mb-1">Datos que se imprimen</h2>
+        <p class="text-xs text-base-content/50 mb-4">
+          Se insertan donde la plantilla tenga los marcadores
+          <code class="text-[11px]">&lt;&lt;EMPRESA&gt;&gt;</code>,
+          <code class="text-[11px]">&lt;&lt;NIT&gt;&gt;</code>,
+          <code class="text-[11px]">&lt;&lt;DIRECCION&gt;&gt;</code>,
+          <code class="text-[11px]">&lt;&lt;TELEFONO&gt;&gt;</code>,
+          <code class="text-[11px]">&lt;&lt;WEB&gt;&gt;</code> y
+          <code class="text-[11px]">&lt;&lt;PIE&gt;&gt;</code>.
+          Si la plantilla no los tiene, estos datos simplemente no aparecen.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label class="text-sm font-medium">{{ form.identificacion_fiscal.label }}</label>{{ form.identificacion_fiscal }}</div>
+          <div><label class="text-sm font-medium">{{ form.telefono.label }}</label>{{ form.telefono }}</div>
+          <div><label class="text-sm font-medium">{{ form.direccion.label }}</label>{{ form.direccion }}</div>
+          <div><label class="text-sm font-medium">{{ form.sitio_web.label }}</label>{{ form.sitio_web }}</div>
+          <div class="sm:col-span-2"><label class="text-sm font-medium">{{ form.pie_pagina.label }}</label>{{ form.pie_pagina }}</div>
+        </div>
+
+        {% if editable %}
+        <div class="flex justify-end pt-5">
+          <button class="btn btn-success btn-sm">Guardar</button>
+        </div>
+        {% endif %}
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── Plantillas ──────────────────────────────────────────────────────── -->
+    <input type="radio" name="cfg_tabs" role="tab" class="tab" aria-label="Plantillas"
+           {% if tab == 'plantillas' %}checked{% endif %}>
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      {% comment %}
+        El dialog de ayuda va FUERA del <form>: un <form method="dialog"> anidado dentro
+        de otro <form> es HTML inválido y el navegador cierra el form exterior apenas lo
+        encuentra, dejando los botones de más abajo (Muestra, Guardar) sin formulario.
+      {% endcomment %}
+      <dialog id="modal-ayuda-plantillas" class="modal">
+        <div class="modal-box max-w-md">
+          <h3 class="font-bold mb-2">
+            {% if editable %}Plantillas propias{% else %}Mis plantillas{% endif %}
+          </h3>
+          <p class="text-sm text-base-content/70 leading-relaxed">
+            {% if editable and empresa %}
+              Este logo y estas plantillas son el <b>default de todo el equipo</b>. Cada usuario
+              puede subir los suyos propios, que reemplazan a estos en sus documentos.
+            {% elif not editable %}
+              Si no subes nada, se usa el logo y las plantillas de <b>{{ empresa.nombre }}</b> (los
+              define el Administrador) o el default del sistema. Lo que subas acá <b>reemplaza a lo
+              de la empresa</b> solo en los documentos que generes.
+            {% else %}
+              Si no subes nada, se usa la plantilla del sistema con tu logo y tus colores, que
+              para la mayoría alcanza.
+            {% endif %}
+            Sube un .docx propio solo si necesitas otra estructura de
+            portada o encabezado; conserva los marcadores
+            (<code class="text-xs">&lt;&lt;PROYECTO&gt;&gt;</code>,
+            <code class="text-xs">&lt;&lt;SOLICITANTE&gt;&gt;</code>…) o esos campos saldrán vacíos.
+            Para el logo, escribe <code class="text-xs">&lt;&lt;LOGO&gt;&gt;</code> donde
+            quieras que aparezca: se inserta ahí con 2 cm de ancho.
+          </p>
+          <div class="modal-action">
+            <form method="dialog">
+              <button class="btn btn-sm">Entendido</button>
+            </form>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+      </dialog>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="plantillas">
+
+        <h2 class="font-bold mb-4 flex items-center gap-1.5">
+          {% if editable %}Plantillas propias{% else %}Mis plantillas{% endif %}
+          <span class="badge badge-outline badge-sm badge-ghost">opcional</span>
+          <button type="button"
+                  onclick="document.getElementById('modal-ayuda-plantillas').showModal()"
+                  class="w-5 h-5 rounded-full flex items-center justify-center text-xs
+                         font-bold bg-info text-info-content shadow-sm
+                         hover:scale-110 transition-transform"
+                  title="Ayuda sobre plantillas y logo">?</button>
+        </h2>
+
+        <div class="mb-4">
+          <label class="text-sm font-medium">{{ form_plantillas.logo.label }}</label>
+          <div class="flex items-center gap-4 mt-1">
+            {% if marca_plantillas.logo %}
+              <a href="{{ marca_plantillas.logo.url }}" target="_blank" rel="noopener" title="Ver logo actual">
+                <img src="{{ marca_plantillas.logo.url }}" alt="Logo actual"
+                     class="h-14 w-auto max-w-[10rem] object-contain rounded border border-base-300 bg-base-200 p-1 hover:border-primary transition-colors">
+              </a>
+            {% else %}
+              <div class="h-14 w-24 rounded border border-dashed border-base-300 flex items-center justify-center text-base-content/30">
+                <i class="fas fa-image"></i>
+              </div>
+            {% endif %}
+            <div class="flex-1">{{ form_plantillas.logo }}</div>
+          </div>
+          {% if marca_plantillas.logo %}
+          <label class="mt-1.5 inline-flex items-center gap-1.5 text-xs text-error/80 hover:text-error cursor-pointer">
+            <input type="checkbox" name="{{ form_plantillas.logo.html_name }}-clear" class="checkbox checkbox-error checkbox-xs">
+            Eliminar logo actual
+          </label>
+          {% endif %}
+          {% for e in form_plantillas.logo.errors %}<p class="text-error text-xs mt-1">{{ e }}</p>{% endfor %}
+        </div>
+
+        <div class="grid grid-cols-1 {% if form_plantillas.plantilla_proyectos and form_plantillas.plantilla_servicios %}sm:grid-cols-2{% endif %} gap-4">
+          {% if form_plantillas.plantilla_proyectos %}
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <label class="text-sm font-medium">{{ form_plantillas.plantilla_proyectos.label }}</label>
+              <button type="submit" name="action" value="vista_previa_proyectos"
+                      class="btn btn-info btn-xs flex-shrink-0">
+                <i class="fas fa-file-word text-[10px]"></i> Muestra
+              </button>
+            </div>
+            {% if marca_plantillas.plantilla_proyectos %}
+            <div class="flex items-center gap-2 mt-1 mb-1.5 rounded-lg border border-base-300 bg-base-200 px-3 py-2 text-sm">
+              <i class="fas fa-file-word text-[#2B579A] flex-shrink-0"></i>
+              <a href="{{ marca_plantillas.plantilla_proyectos.url }}" target="_blank" rel="noopener"
+                 class="flex-1 min-w-0 truncate link link-hover"
+                 title="{{ marca_plantillas.plantilla_proyectos|basename }}">
+                {{ marca_plantillas.plantilla_proyectos|basename }}
+              </a>
+              <label class="flex items-center gap-1 text-xs text-error/80 hover:text-error cursor-pointer flex-shrink-0">
+                <input type="checkbox" name="{{ form_plantillas.plantilla_proyectos.html_name }}-clear" class="checkbox checkbox-error checkbox-xs">
+                Eliminar
+              </label>
+            </div>
+            {% endif %}
+            {{ form_plantillas.plantilla_proyectos }}
+            {% for e in form_plantillas.plantilla_proyectos.errors %}<p class="text-error text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+          {% endif %}
+          {% if form_plantillas.plantilla_servicios %}
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <label class="text-sm font-medium">{{ form_plantillas.plantilla_servicios.label }}</label>
+              <button type="submit" name="action" value="vista_previa_servicios"
+                      class="btn btn-info btn-xs flex-shrink-0">
+                <i class="fas fa-file-word text-[10px]"></i> Muestra
+              </button>
+            </div>
+            {% if marca_plantillas.plantilla_servicios %}
+            <div class="flex items-center gap-2 mt-1 mb-1.5 rounded-lg border border-base-300 bg-base-200 px-3 py-2 text-sm">
+              <i class="fas fa-file-word text-[#2B579A] flex-shrink-0"></i>
+              <a href="{{ marca_plantillas.plantilla_servicios.url }}" target="_blank" rel="noopener"
+                 class="flex-1 min-w-0 truncate link link-hover"
+                 title="{{ marca_plantillas.plantilla_servicios|basename }}">
+                {{ marca_plantillas.plantilla_servicios|basename }}
+              </a>
+              <label class="flex items-center gap-1 text-xs text-error/80 hover:text-error cursor-pointer flex-shrink-0">
+                <input type="checkbox" name="{{ form_plantillas.plantilla_servicios.html_name }}-clear" class="checkbox checkbox-error checkbox-xs">
+                Eliminar
+              </label>
+            </div>
+            {% endif %}
+            {{ form_plantillas.plantilla_servicios }}
+            {% for e in form_plantillas.plantilla_servicios.errors %}<p class="text-error text-xs mt-1">{{ e }}</p>{% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="flex justify-end pt-5">
+          <button class="btn btn-success btn-sm">Guardar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── Mi cuenta ───────────────────────────────────────────────────────── -->
+    <input type="radio" name="cfg_tabs" role="tab" class="tab" aria-label="Mi cuenta"
+           {% if tab == 'cuenta' %}checked{% endif %}>
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      <h2 class="font-bold mb-1">Mi cuenta</h2>
+      <p class="text-xs text-base-content/50 mb-4">
+        Tus datos personales. Esto sí es tuyo aunque pertenezcas a una empresa.
+      </p>
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="perfil">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-medium">{{ form_perfil.first_name.label }}</label>
+            {{ form_perfil.first_name }}
+          </div>
+          <div>
+            <label class="text-sm font-medium">{{ form_perfil.last_name.label }}</label>
+            {{ form_perfil.last_name }}
+          </div>
+        </div>
+
+        <div class="mt-4 text-sm space-y-1">
+          <div class="flex gap-2">
+            <span class="text-base-content/50 w-24">Correo</span>
+            <span class="font-medium">{{ request.user.email }}</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-base-content/50 w-24">Rol</span>
+            <span class="font-medium">{{ nav_role_label|default:'Usuario' }}</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-base-content/50 w-24">Cuenta</span>
+            <span class="font-medium">
+              {% if empresa %}{{ empresa.nombre }}{% else %}Personal{% endif %}
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 justify-end pt-5">
+          <a href="{% url 'accounts:password_reset' %}" class="btn btn-ghost btn-sm">Cambiar contraseña</a>
+          <button class="btn btn-success btn-sm">Guardar</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+{% include 'accounts/partials/_admin_scripts.html' %}
+<script>
+(function () {
+  document.querySelectorAll('#config-content form').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      const btn = e.submitter;
+      if (!btn || btn.disabled) return;
+      const esMuestra = btn.value && btn.value.startsWith('vista_previa');
+      const texto = esMuestra ? 'Generando…' : 'Guardando…';
+      const original = btn.innerHTML;
+      // Deshabilitar recién en el próximo tick: si se deshabilita durante el propio evento
+      // 'submit', el navegador arma el FormData DESPUÉS de correr este handler y excluye el
+      // par name=value del botón por estar disabled — se pierde el `action` y el servidor
+      // nunca sabe qué botón se apretó (queda como si no se hubiese mandado ninguno).
+      setTimeout(function () {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> ' + texto;
+        // Guardar navega a otra página (se resetea solo). Una muestra descarga un archivo
+        // sin navegar, así que el botón quedaría deshabilitado para siempre si no se restaura.
+        if (esMuestra) {
+          setTimeout(function () {
+            btn.disabled = false;
+            btn.innerHTML = original;
+          }, 3000);
+        }
+      }, 0);
+    });
+  });
+})();
+</script>
+{% endblock %}

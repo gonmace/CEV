@@ -23,18 +23,18 @@
     <meta name="twitter:description" content="{% block twitter_description %}{% endblock %}">
 
     {% load static %}
-    <link rel="icon" type="image/png" href="{% static 'img/logo-gdar.png' %}">
-    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}?v={{ css_version }}">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-    {% block content %}{% endblock %}
+<body class="min-h-screen flex flex-col">
+
+    {% include 'partials/_impersonate.html' %}
+    <div class="flex-1 flex flex-col">
+        {% block content %}{% endblock %}
+    </div>
+    {% include 'partials/_footer.html' %}
 
     {% block extra_scripts %}{% endblock %}
-
-    {% if debug %}
-        {% url 'django_browser_reload:reload' as reload_url %}
-        <script src="{{ reload_url }}" defer></script>
-    {% endif %}
 </body>
 </html>

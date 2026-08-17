@@ -5,6 +5,7 @@ app_name = 'servicios'
 
 urlpatterns = [
     path('', views.lista_servicios_view, name='lista_servicios'),
+    path('catalogo/', views.editar_catalogo_view, name='editar_catalogo'),
     path('nuevo/', views.crear_servicio_view, name='crear_servicio'),
     path('<int:servicio_id>/objetivo/', views.paso2_objetivo_view, name='paso2_objetivo'),
     path('<int:servicio_id>/objetivo/generar/', views.generar_objetivo_ajax, name='generar_objetivo_ajax'),

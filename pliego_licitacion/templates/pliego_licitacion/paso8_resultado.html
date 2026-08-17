@@ -49,18 +49,28 @@
       color: var(--color-base-content);
       margin-top: .8rem; margin-bottom: .2rem;
     }
-    [data-theme="cev-dark"] .doc-body :is(h3) { color: var(--color-base-content); }
-    [data-theme="cev-dark"] .doc-body :is(h4),
-    [data-theme="cev-dark"] .doc-body :is(h5) { color: #93c5fd; }
-    .doc-body > :is(h1,h2,h3,h4,h5,h6):first-child { display: none; }
+    .doc-body article > :is(h1,h2,h3,h4,h5,h6):first-child { display: none; }
   </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    {% if proyecto %}
+      <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="hover:text-primary transition-colors">{{ proyecto_nombre }}</a>
+    {% endif %}
+  </li>
+  <li class="flex items-center gap-2">
+    <span class="text-base-content/50">›</span>
+    <span class="font-semibold text-base-content truncate max-w-xs">{{ especificacion.titulo|default:"Especificación Técnica" }}</span>
+  </li>
 {% endblock %}
 
 {% block content %}
   {{ block.super }}
-  
+
   <!-- Contenido del Paso 5: Resultado -->
-  <div class="min-h-screen bg-base-100 py-6 px-4">
+  <div class="flex-1 bg-base-100 py-6 px-4">
     <div class="max-w-3xl mx-auto space-y-4">
 
       <!-- Indicador de paso -->
@@ -71,10 +81,9 @@
         <span class="text-sm font-semibold text-base-content/60">Especificación Técnica Generada</span>
       </div>
 
-      <!-- Documento -->
-      <div id="resultContainer" class="doc-wrap" style="display: none;">
+      <!-- Documento: siempre en tema claro, incluso si el sitio está en modo oscuro -->
+      <div id="resultContainer" class="doc-wrap" data-theme="cev" style="display: none;">
         <div class="doc-header">
-          <div class="doc-code">Especificación Técnica</div>
           <div id="result-title" class="doc-title"></div>
         </div>
         <div class="doc-body pt-0">
@@ -82,16 +91,18 @@
         </div>
       </div>
 
-      <!-- Barra de acciones fija -->
-      <div class="action-bar rounded-xl">
-        <button onclick="window.location.href='{% url 'pliego_licitacion:pasos' %}'" class="btn btn-ghost btn-sm gap-2">
-          <i class="fas fa-redo"></i>
-          Generar Nueva
-        </button>
-        <button id="btnGuardar" onclick="guardarEspecificacion()" class="btn btn-success btn-sm gap-2 btn-disabled" disabled>
-          <i class="fas fa-save"></i>
-          Guardar
-        </button>
+      <!-- Barra de acciones -->
+      <div id="action-bar" class="action-bar rounded-xl" style="display: none;">
+        {% if proyecto %}
+          <a href="{% url 'proyectos:proyecto_detalle' proyecto.id %}" class="btn btn-primary gap-2">
+            <i class="fas fa-arrow-left"></i> Volver al proyecto
+          </a>
+        {% else %}
+          <span></span>
+        {% endif %}
+        <a id="btn-editar-espec" href="#" class="btn btn-warning gap-2 hidden">
+          <i class="fas fa-edit"></i> Editar especificación
+        </a>
       </div>
 
     </div>
@@ -101,14 +112,19 @@
 
 {% block js %}
   <script>
-    const btnGuardar = document.getElementById('btnGuardar');
-    window.__ultimoMarkdown = null;  // Markdown original (raw)
-    window.__ultimoMarkdownRaw = null;  // Markdown original garantizado
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+    window.__ultimoMarkdown    = null;
+    window.__ultimoMarkdownRaw = null;
 
-    function setGuardarEnabled(enabled) {
-      if (!btnGuardar) return;
-      btnGuardar.disabled = !enabled;
-      btnGuardar.classList.toggle('btn-disabled', !enabled);
+    // Muestra el ícono de editar (arriba a la derecha) apuntando a la especificación
+    // ya guardada en el proyecto.
+    function mostrarBotonEditar(editUrl) {
+      const btn = document.getElementById('btn-editar-espec');
+      if (!btn || !editUrl) return;
+      btn.href = editUrl;
+      btn.classList.remove('hidden');
+      btn.classList.add('flex');
     }
 
     // Función para mostrar/ocultar el spinner (usa el spinner global ai-spinner)
@@ -133,19 +149,20 @@
       return cookieValue;
     }
 
-    // Función para guardar la especificación
+    // Guarda automáticamente la especificación apenas se muestra el resultado: convierte
+    // el borrador en la Especificacion del proyecto (o actualiza la ya guardada si esta
+    // página se recarga/regenera). No requiere acción del usuario.
     async function guardarEspecificacion() {
       // Usar el markdown RAW original si está disponible, si no, el servidor lo obtendrá de la BD
       const contenidoAGuardar = window.__ultimoMarkdownRaw || window.__ultimoMarkdown;
-      
+
       if (!contenidoAGuardar && !window.especificacionTecnicaId) {
         flashy.error('No hay especificación para guardar.');
         return;
       }
 
       try {
-        toggleSpinner(true);
-        setGuardarEnabled(false);
+        toggleSpinner(true, 'Guardando especificación...');
 
         // Obtener proyecto_id de la URL si existe
         const urlParams = new URLSearchParams(window.location.search);
@@ -192,16 +209,12 @@
           throw new Error(data.error || 'No se pudo guardar la especificación');
         }
 
-        // Redirigir a la página de éxito o mostrar mensaje
-        if (data.redirect_url) {
-          window.location.href = data.redirect_url;
-        } else {
-          // No mostrar alert, solo redirigir al inicio
-          window.location.href = '{% url "pliego_licitacion:pasos" %}';
-        }
+        // Guardado listo: mostrar el ícono de editar apuntando a la especificación
+        // recién creada/actualizada. El usuario se queda en esta misma página.
+        mostrarBotonEditar(data.edit_url);
+        toggleSpinner(false);
       } catch (error) {
         flashy.error('Error al guardar la especificación: ' + error.message);
-        setGuardarEnabled(true);
         toggleSpinner(false);
       }
     }
@@ -236,12 +249,8 @@
         window.especificacionTecnicaId = especificacionId;
         
         // Actualizar el ID en el breadcrumbs si existe el elemento
-        const idDisplay = document.getElementById('especificacion-id-display');
         const idValue = document.getElementById('especificacion-id-value');
-        if (idDisplay && idValue) {
-          idValue.textContent = especificacionId;
-          idDisplay.classList.remove('hidden');
-        }
+        if (idValue) idValue.textContent = especificacionId;
         
         // Obtener el proyecto_id de la URL si existe (para mantenerlo en la sesión)
         const proyectoIdFromUrl = urlParams.get('proyecto_id');
@@ -277,6 +286,7 @@
             document.getElementById('result-title').textContent = resultado.titulo;
           }
           document.getElementById('resultContainer').style.display = 'block';
+          document.getElementById('action-bar').style.display = 'flex';
           
           // IMPORTANTE: Guardar el markdown RAW original del POST, no el HTML
           // Prioridad: raw_markdown > (obtener de BD si no está disponible)
@@ -288,16 +298,22 @@
             window.__ultimoMarkdownRaw = null;
           }
           
-          toggleSpinner(false);
-          setGuardarEnabled(true);
+          // El resultado ya está a la vista: guardarlo automáticamente, sin esperar
+          // ninguna acción del usuario.
+          await guardarEspecificacion();
         } else {
           throw new Error(resultado.error || 'No se encontró el resultado de la especificación');
         }
       } catch (error) {
         toggleSpinner(false);
         flashy.error('Error al cargar el resultado: ' + error.message);
-        // Redirigir al inicio si hay error
-        window.location.href = '{% url "pliego_licitacion:pasos" %}';
+        // Si el resultado aún no existe (p.ej. la generación se interrumpió), volver
+        // a la página de actividades para poder regenerarlo, en vez de ir a paso1.
+        if (especificacionId) {
+          window.location.href = `/pliego/especificacion/${especificacionId}/actividades/`;
+        } else {
+          window.location.href = '{% url "pliego_licitacion:pasos" %}';
+        }
       }
     });
   </script>
