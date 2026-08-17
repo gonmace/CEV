@@ -36,10 +36,13 @@ def llamar_webhook(url, payload, timeout=120):
     Retorna el JSON parseado de la respuesta.
     Lanza requests.exceptions.RequestException o json.JSONDecodeError si falla.
     """
+    headers = {'Content-Type': 'application/json'}
+    if settings.N8N_WEBHOOK_TOKEN:
+        headers[settings.N8N_WEBHOOK_TOKEN_HEADER] = settings.N8N_WEBHOOK_TOKEN
     response = requests.post(
         url,
         json=payload,
-        headers={'Content-Type': 'application/json'},
+        headers=headers,
         timeout=timeout,
     )
     if not response.ok:

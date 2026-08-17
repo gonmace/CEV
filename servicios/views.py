@@ -91,6 +91,14 @@ def extraer_texto_ocr(pdf_bytes_io):
 
     return '\n'.join(resultado).strip()[:8000]
 
+# Header Auth de los webhooks de n8n (ver core/settings.py): sin esto, cualquiera que
+# conociera la URL podía disparar los workflows y quemar créditos de OpenAI sin pasar
+# por el sistema de créditos de la app.
+N8N_HEADERS = (
+    {settings.N8N_WEBHOOK_TOKEN_HEADER: settings.N8N_WEBHOOK_TOKEN}
+    if settings.N8N_WEBHOOK_TOKEN else {}
+)
+
 _n8n = lambda path: f"{settings.N8N_BASE_URL}/webhook/{path}"
 N8N_WEBHOOK_SER_COHERENCIA_URL        = _n8n('ser-coherencia')
 N8N_WEBHOOK_SER_OBJETIVO_URL          = _n8n('ser-objetivo')
@@ -447,6 +455,7 @@ def crear_servicio_view(request):
                     resp = requests.post(
                         N8N_WEBHOOK_SER_COHERENCIA_URL,
                         json=payload,
+                        headers=N8N_HEADERS,
                         timeout=30,
                     )
                     resp.raise_for_status()
@@ -524,6 +533,7 @@ def generar_objetivo_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_OBJETIVO_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=60,
         )
         resp.raise_for_status()
@@ -664,6 +674,7 @@ def clasificar_alcance_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_CLASIFICAR_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=30,
         )
         resp.raise_for_status()
@@ -721,6 +732,7 @@ def _vision_paginas(pdf_bytes_io, indices_paginas, nombre, servicio):
     resp_v = requests.post(
         N8N_WEBHOOK_SER_PDF_EXTRACTOR_URL,
         json=payload_vision,
+        headers=N8N_HEADERS,
         timeout=90,
     )
     resp_v.raise_for_status()
@@ -861,6 +873,7 @@ def extraer_equipo_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_EQUIPOS_EXTRACTOR_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=60,
         )
         resp.raise_for_status()
@@ -942,6 +955,7 @@ def generar_alcance_ajax(request, servicio_id):
             resp_clas = requests.post(
                 N8N_WEBHOOK_SER_CLASIFICAR_URL,
                 json=payload_clasificar,
+                headers=N8N_HEADERS,
                 timeout=30,
             )
             if resp_clas.ok and resp_clas.text.strip():
@@ -977,6 +991,7 @@ def generar_alcance_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_ALCANCE_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=120,
         )
         resp.raise_for_status()
@@ -1041,6 +1056,7 @@ def generar_secciones_ajax(request, servicio_id):
                     'subcategoria_nombre': servicio.subcategoria_nombre,
                     'intenciones': intenciones,
                 },
+                headers=N8N_HEADERS,
                 timeout=30,
             )
             if resp_clas.ok and resp_clas.text.strip():
@@ -1069,6 +1085,7 @@ def generar_secciones_ajax(request, servicio_id):
         resp = requests.post(
             N8N_WEBHOOK_SER_SECCIONES_URL,
             json=payload,
+            headers=N8N_HEADERS,
             timeout=120,
         )
         resp.raise_for_status()

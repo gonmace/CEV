@@ -22,6 +22,16 @@ SITE_LOGO_URL = config('SITE_LOGO_URL', default='')
 # mal formada y la llamada falla explícitamente en vez de aterrizar en producción.
 N8N_BASE_URL = config('N8N_BASE_URL', default='')
 
+# Header que Django manda en cada llamada a un webhook de n8n (ver
+# pliego_licitacion.views.llamar_webhook, servicios/views.py y ubi_web/views.py).
+# Los nodos Webhook del lado de n8n están configurados con Header Auth usando el mismo
+# nombre/valor (credencial "CEV Django webhook token") — SIN esto, cualquiera que
+# conociera la URL del webhook podía dispararlo y quemar créditos de OpenAI sin pasar
+# por el sistema de créditos de la app. Vacío por defecto: si falta, las llamadas fallan
+# con 401 en vez de silenciosamente no autenticar nada.
+N8N_WEBHOOK_TOKEN = config('N8N_WEBHOOK_TOKEN', default='')
+N8N_WEBHOOK_TOKEN_HEADER = 'X-N8N-Webhook-Token'
+
 # Application definition
 
 INSTALLED_APPS = [

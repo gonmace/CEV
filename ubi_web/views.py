@@ -278,7 +278,10 @@ def enviar_a_n8n_ubicacion(ubicacion_instance, google_maps_api_key=None, indicac
             N8N_WEBHOOK_UBICACION_URL,
             json=payload,
             headers={
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                # Header Auth del lado de n8n (ver core/settings.py): sin token, el
+                # webhook queda abierto a cualquiera que conozca la URL.
+                **({settings.N8N_WEBHOOK_TOKEN_HEADER: settings.N8N_WEBHOOK_TOKEN} if settings.N8N_WEBHOOK_TOKEN else {}),
             },
             timeout=60  # Timeout de 60 segundos
         )
