@@ -17,8 +17,10 @@ N8N_DOMAIN=${N8N_DOMAIN:-}
 N8N_MCP_ENABLED=${N8N_MCP_ENABLED:-}
 
 # Lista de "servicio:puerto" separados por espacio
+# Nota: el Postgres de docker-compose.yml (prod) no publica puerto al host — solo
+# docker-compose.dev.yml lo hace. Chequearlo aquí daba falsos positivos en VPS
+# compartidos donde algún otro proyecto ya tiene el 5432 tomado.
 CHECKS="Django(APP_PORT):${APP_PORT:-8000}"
-[ "${POSTGRES_MODE}" = "container" ] && CHECKS="${CHECKS} PostgreSQL(POSTGRES_HOST_PORT):${POSTGRES_HOST_PORT:-5432}"
 [ -n "${N8N_DOMAIN}" ] && CHECKS="${CHECKS} n8n(N8N_PORT):${N8N_PORT:-8001}"
 [ "${N8N_MCP_ENABLED}" = "true" ] && [ -n "${N8N_DOMAIN}" ] && CHECKS="${CHECKS} n8n-MCP(N8N_MCP_PORT):${N8N_MCP_PORT:-8002}"
 
