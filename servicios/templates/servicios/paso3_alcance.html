@@ -85,7 +85,7 @@
             <button id="btn-continuar-sin-equipos" type="button" class="btn btn-ghost btn-sm gap-2" onclick="generarSinEquipos()" disabled>
               Continuar sin equipos
             </button>
-            <button id="btn-generar-alcance" class="btn btn-primary btn-sm gap-2" onclick="generarAlcanceConEquipos()" disabled>
+            <button id="btn-generar-alcance" class="btn btn-success btn-sm gap-2" onclick="generarAlcanceConEquipos()" disabled>
               <i class="fas fa-floppy-disk"></i> Guardar equipos
             </button>
           </div>
@@ -110,7 +110,7 @@
                   <i class="fas fa-align-left"></i> Texto
                 </button>
               </div>
-              <button type="button" class="btn btn-xs btn-ghost btn-square text-error" onclick="eliminarEquipo(this)" title="Quitar">
+              <button type="button" class="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10" onclick="eliminarEquipo(this)" title="Quitar">
                 <i class="fas fa-times"></i>
               </button>
             </div>
@@ -125,19 +125,19 @@
               <textarea class="eq-texto textarea textarea-bordered w-full text-sm" rows="4"
                 placeholder="Pega aquí fichas técnicas, especificaciones, datos del equipo..."></textarea>
             </div>
-            <button type="button" class="eq-btn-extraer btn btn-sm btn-secondary gap-2 w-full" onclick="extraerEquipoIA(this)">
+            <button type="button" class="eq-btn-extraer btn btn-sm btn-ia gap-2 w-full" onclick="extraerEquipoIA(this)">
               <span class="normal-text flex items-center gap-2"><i class="fas fa-wand-magic-sparkles"></i> <span class="eq-btn-label">Extraer con IA</span></span>
               <span class="loading loading-spinner loading-xs hidden"></span>
             </button>
             <!-- Panel selección de páginas (oculto hasta que el PDF tenga > 3 páginas) -->
-            <div class="eq-panel-paginas hidden space-y-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+            <div class="eq-panel-paginas hidden space-y-2 p-3 rounded-lg bg-ia/10 border border-ia/30">
               <p class="text-xs text-base-content/70">
-                <i class="fas fa-file-pdf text-warning mr-1"></i>
+                <i class="fas fa-file-pdf text-ia mr-1"></i>
                 El PDF tiene <strong class="eq-total-paginas"></strong> páginas. Indica cuáles procesar <span class="text-base-content/50">(máx. 3, ej: "1,2,3" o "1-3")</span>:
               </p>
               <input type="text" class="eq-input-paginas input input-bordered input-sm w-full text-sm font-mono"
                 placeholder='ej: "1,3" o "2-4"'>
-              <button type="button" class="eq-btn-paginas btn btn-sm btn-warning gap-2 w-full" onclick="extraerEquipoIAConPaginas(this)">
+              <button type="button" class="eq-btn-paginas btn btn-sm btn-ia gap-2 w-full" onclick="extraerEquipoIAConPaginas(this)">
                 <i class="fas fa-wand-magic-sparkles"></i> Extraer páginas seleccionadas
               </button>
             </div>
@@ -148,10 +148,10 @@
           <div class="eq-state-editing hidden p-3 space-y-2">
             <!-- Tarjeta — color dinámico según relevancia -->
             <div class="eq-card relative rounded-xl border p-3">
-              <button type="button" class="absolute top-2 right-10 btn btn-xs btn-ghost text-base-content/50 hover:text-primary hover:bg-primary/10" onclick="abrirModalEdicion(this)" title="Editar equipo">
+              <button type="button" class="absolute top-2 right-10 btn btn-xs btn-ghost text-base-content/50 hover:text-warning hover:bg-warning/10" onclick="abrirModalEdicion(this)" title="Editar equipo">
                 <i class="fas fa-pen"></i>
               </button>
-              <button type="button" class="absolute top-2 right-2 btn btn-xs btn-ghost btn-error text-error/60 hover:text-error hover:bg-error/10" onclick="eliminarEquipo(this)" title="Eliminar equipo">
+              <button type="button" class="absolute top-2 right-2 btn btn-xs btn-ghost text-error hover:bg-error/10" onclick="eliminarEquipo(this)" title="Eliminar equipo">
                 <i class="fas fa-trash-alt"></i>
               </button>
               <dl class="space-y-1">
@@ -173,8 +173,8 @@
 
       <!-- ── Bloque: Pregunta del AI ──────────────────────────────────────── -->
       <div id="bloque-pregunta" class="hidden space-y-4">
-        <div class="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
-          <i class="fas fa-robot text-warning mt-0.5 shrink-0"></i>
+        <div class="flex items-start gap-3 p-4 rounded-xl bg-ia/10 border border-ia/30">
+          <i class="fas fa-robot text-ia mt-0.5 shrink-0"></i>
           <p id="texto-pregunta" class="text-sm text-base-content font-medium"></p>
         </div>
         <div class="form-control">
@@ -183,7 +183,7 @@
             placeholder="Escribe tu respuesta aquí..."></textarea>
         </div>
         <div class="flex justify-end">
-          <button id="btn-responder" class="btn btn-primary btn-sm gap-2">
+          <button id="btn-responder" class="btn btn-success btn-sm gap-2">
             <span class="normal-text flex items-center gap-2">
               <i class="fas fa-paper-plane"></i> Responder
             </span>
@@ -205,7 +205,7 @@
           </div>
 
           <div class="flex justify-end pt-4">
-            <button type="submit" id="btn-guardar-final" class="btn btn-primary gap-2" onclick="showSpinner('Guardando alcance...')">
+            <button type="submit" id="btn-guardar-final" class="btn btn-success gap-2" onclick="showSpinner('Guardando alcance...')">
               <i class="fas fa-arrow-right"></i> Guardar alcance y continuar
             </button>
           </div>
@@ -225,7 +225,7 @@
             <div id="editor-alcance-manual" class="border border-base-300 rounded-lg"></div>
           </div>
           <div class="flex justify-end pt-4">
-            <button type="submit" class="btn btn-primary" onclick="showSpinner('Guardando alcance...')">
+            <button type="submit" class="btn btn-success" onclick="showSpinner('Guardando alcance...')">
               <i class="fas fa-save mr-2"></i> Guardar y continuar
             </button>
           </div>
@@ -290,7 +290,7 @@
     </div>
     <div class="modal-action mt-4">
       <button type="button" class="btn btn-ghost btn-sm" onclick="cerrarModalEdicion()">Cancelar</button>
-      <button type="button" class="btn btn-primary btn-sm" onclick="guardarDesdeModal()">
+      <button type="button" class="btn btn-success btn-sm" onclick="guardarDesdeModal()">
         <i class="fas fa-check mr-1"></i> Guardar
       </button>
     </div>
@@ -425,8 +425,12 @@
     btn.disabled = true;
     status.classList.add('hidden');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     try {
-      const resp = await fetch(EXTRAER_EQUIPO_URL, { method: 'POST', body: fd });
+      const resp = await fetch(EXTRAER_EQUIPO_URL, { method: 'POST', body: fd, signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await resp.json();
 
       if (data.necesita_paginas) {
@@ -467,7 +471,10 @@
         setStatus(status, data.error || 'No se identificaron equipos en el contenido.', 'error');
       }
     } catch (e) {
-      setStatus(status, 'Error de conexión al procesar.', 'error');
+      clearTimeout(timeoutId);
+      setStatus(status, e.name === 'AbortError'
+        ? 'La extracción está tardando demasiado y se detuvo. Intenta nuevamente.'
+        : 'Error de conexión al procesar.', 'error');
     }
 
     btn.querySelector('.normal-text').classList.remove('hidden');
@@ -510,8 +517,12 @@
     btnPaginas.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Extrayendo...';
     status.classList.add('hidden');
 
+    const controllerPaginas = new AbortController();
+    const timeoutIdPaginas = setTimeout(() => controllerPaginas.abort(), 60000);
+
     try {
-      const resp = await fetch(EXTRAER_EQUIPO_URL, { method: 'POST', body: fd });
+      const resp = await fetch(EXTRAER_EQUIPO_URL, { method: 'POST', body: fd, signal: controllerPaginas.signal });
+      clearTimeout(timeoutIdPaginas);
       const data = await resp.json();
 
       if (data.equipos && data.equipos.length > 0) {
@@ -535,7 +546,10 @@
         btnPaginas.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Extraer páginas seleccionadas';
       }
     } catch (e) {
-      setStatus(status, 'Error de conexión al procesar.', 'error');
+      clearTimeout(timeoutIdPaginas);
+      setStatus(status, e.name === 'AbortError'
+        ? 'La extracción está tardando demasiado y se detuvo. Intenta nuevamente.'
+        : 'Error de conexión al procesar.', 'error');
       btnPaginas.disabled = false;
       btnPaginas.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Extraer páginas seleccionadas';
     }
@@ -681,6 +695,8 @@
   }
 
   function onModalidadChange() {
+    const hint = document.getElementById('modalidad-hint');
+    if (hint) hint.classList.toggle('hidden', !!getModalidad());
     actualizarBotones();
   }
 
@@ -699,16 +715,16 @@
     const tieneModalidad = !!getModalidad();
     const n = contarEquipos();
 
-    // "Continuar sin equipos": solo habilitado si no hay equipos
-    btnSinEq.disabled = n > 0;
+    // "Continuar sin equipos": requiere modalidad y que no haya equipos
+    btnSinEq.disabled = !tieneModalidad || n > 0;
 
-    // "Guardar equipos": habilitado si hay >=1 equipo
-    btnGenerar.disabled = n === 0;
+    // "Guardar equipos": requiere modalidad y >=1 equipo
+    btnGenerar.disabled = !tieneModalidad || n === 0;
 
-    if (n > 0) {
-      hint.textContent = !tieneModalidad
-        ? `${n} equipo(s) listo(s). Selecciona la modalidad antes de guardar.`
-        : `${n} equipo(s) listo(s). Puedes agregar más o guardar.`;
+    if (!tieneModalidad) {
+      hint.textContent = 'Selecciona la modalidad para poder continuar.';
+    } else if (n > 0) {
+      hint.textContent = `${n} equipo(s) listo(s). Puedes agregar más o guardar.`;
     } else {
       hint.textContent = 'Agrega equipos o continúa sin ellos.';
     }
@@ -724,16 +740,22 @@
       .filter(Boolean);
   }
 
+  function exigirModalidad() {
+    if (getModalidad()) return true;
+    const hint = document.getElementById('modalidad-hint');
+    if (hint) hint.classList.remove('hidden');
+    document.getElementById('select-modalidad')?.focus();
+    return false;
+  }
+
   function generarAlcanceConEquipos() {
-    if (!getModalidad()) {
-      const hint = document.getElementById('modalidad-hint');
-      if (hint) hint.classList.remove('hidden');
-      document.getElementById('select-modalidad')?.focus();
-      return;
-    }
+    if (!exigirModalidad()) return;
     llamarWebhook('Guardando equipos y generando Alcance...', getEquiposData());
   }
-  function generarSinEquipos()        { llamarWebhook('Generando Alcance...', []); }
+  function generarSinEquipos() {
+    if (!exigirModalidad()) return;
+    llamarWebhook('Generando Alcance...', []);
+  }
 
   // ── Webhook alcance ────────────────────────────────────────────────────────
   async function llamarWebhook(texto, equipos) {

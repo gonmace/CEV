@@ -24,14 +24,14 @@
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-base-200">
+<div class="flex-1 glass-bg">
 <div class="px-4 py-6 max-w-7xl mx-auto w-full flex flex-col lg:flex-row lg:items-start gap-4">
 
   <!-- Columna principal -->
   <div class="w-full lg:flex-1 flex flex-col gap-3">
 
-    <!-- Documento -->
-    <div class="doc-wrap bg-base-100">
+    <!-- Documento: siempre en tema claro, incluso si el sitio está en modo oscuro -->
+    <div class="doc-wrap bg-base-100" data-theme="cev">
 
       <!-- Cabecera -->
       <div class="doc-header flex items-start justify-between gap-4">
@@ -105,7 +105,7 @@
 
     <!-- Imágenes -->
     {% with n=servicio.imagenes.count %}
-    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+    <div class="glass-card fade-up overflow-hidden" style="animation-delay: 80ms">
       <details class="group" {% if not n %}open{% endif %}>
         <summary class="list-none select-none cursor-pointer">
           <div class="flex items-center justify-between px-5 py-3.5 hover:bg-base-200/40 transition-colors">
@@ -175,7 +175,7 @@
   <div class="w-full lg:w-72 flex-shrink-0 flex flex-col gap-3">
 
     <!-- Info del servicio -->
-    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+    <div class="glass-card fade-up overflow-hidden" style="animation-delay: 40ms">
       <div class="bg-primary px-5 py-4">
         <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest mb-1">Servicio</p>
         <h2 class="text-base font-bold text-primary-content leading-snug">{{ servicio.titulo }}</h2>
@@ -238,7 +238,7 @@
     </div>
 
     <!-- Acciones -->
-    <div class="rounded-xl bg-base-100 border border-secondary/20 shadow-sm overflow-hidden">
+    <div class="glass-card fade-up overflow-hidden" style="animation-delay: 120ms">
       <div class="px-4 pt-4 pb-2">
         <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Acciones</p>
       </div>
@@ -280,6 +280,7 @@
 
 {% include 'servicios/modals/gestionar_imagenes_modal.html' %}
 {% include 'partials/eliminar_servicio_modal.html' %}
+{% include 'servicios/modals/exportar_word_modal.html' %}
 {% endblock %}
 
 {% block js %}
@@ -417,143 +418,5 @@
     });
   })();
   {% endif %}
-</script>
-
-<!-- Modal Exportar a Word -->
-<dialog id="exportar-word-servicio-modal" class="modal">
-  <div class="modal-box w-11/12 max-w-2xl p-0 overflow-hidden">
-
-    <!-- Header -->
-    <div class="bg-primary px-6 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-          <i class="fas fa-file-word text-lg text-[#1c7bb0]"></i>
-        </span>
-        <div>
-          <p class="text-[10px] font-bold text-primary-content/60 uppercase tracking-widest">Documento</p>
-          <h3 class="text-sm font-bold text-primary-content">Exportar a Word</h3>
-        </div>
-      </div>
-      <button type="button" onclick="document.getElementById('exportar-word-servicio-modal').close()"
-              class="w-8 h-8 rounded-lg flex items-center justify-center text-primary-content/60 hover:bg-primary-content/10 transition-colors cursor-pointer">
-        <i class="fas fa-times text-sm"></i>
-      </button>
-    </div>
-
-    <!-- Form -->
-    <form id="exportar-word-servicio-form" method="POST" action="{% url 'servicios:exportar_word' servicio.id %}">
-      {% csrf_token %}
-      <div class="px-6 py-5 flex flex-col gap-4">
-
-        <div>
-          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Título</label>
-          <input type="text" name="titulo" value="{{ servicio.titulo }}"
-                 class="input input-bordered input-sm w-full" required>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Solicitante</label>
-            <input type="text" name="solicitante" value="{{ servicio.solicitante }}"
-                   class="input input-bordered input-sm w-full">
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">NRO.PR</label>
-            <input type="text" name="codigo" value=""
-                   class="input input-bordered input-sm w-full">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Revisión</label>
-            <input type="text" name="revision" value="1"
-                   class="input input-bordered input-sm w-full">
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Fecha</label>
-            <input type="text" name="fecha" value="{{ servicio.fecha_creacion|date:'d/m/Y' }}"
-                   class="input input-bordered input-sm w-full">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Nro. Pliego</label>
-            <input type="text" name="nro_pliego" value=""
-                   class="input input-bordered input-sm w-full">
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Operación</label>
-            <input type="text" name="operacion" value=""
-                   class="input input-bordered input-sm w-full">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Usuario</label>
-            <input type="text" name="usuario"
-                   value="{{ request.user.get_full_name|default:request.user.username }}"
-                   class="input input-bordered input-sm w-full">
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Tipo de Contrato</label>
-            <select name="tipo_contrato" class="select select-bordered select-sm w-full" required>
-              <option value="" disabled selected></option>
-              <option value="CO">Contrato de Obra</option>
-              <option value="SPOT">SPOT</option>
-              <option value="NCM">Nuevo Contrato Marco</option>
-            </select>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-base-200">
-        <button type="submit" class="btn btn-primary btn-sm">
-          <i class="fas fa-download text-xs"></i>
-          Exportar
-        </button>
-      </div>
-    </form>
-
-  </div>
-  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
-</dialog>
-
-<script>
-(function () {
-  const form = document.getElementById('exportar-word-servicio-form');
-  const modal = document.getElementById('exportar-word-servicio-modal');
-  const submitBtn = form.querySelector('[type="submit"]');
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const orig = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Exportando...';
-    try {
-      const resp = await fetch(form.action, { method: 'POST', body: new FormData(form) });
-      if (!resp.ok) throw new Error('Error al exportar');
-      const blob = await resp.blob();
-      const cd = resp.headers.get('Content-Disposition') || '';
-      const match = cd.match(/filename="?([^"]+)"?/);
-      const filename = match ? match[1] : 'servicio.docx';
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      modal.close();
-    } catch {
-      if (window.flashy) flashy.error('Error al generar el documento.');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = orig;
-    }
-  });
-})();
 </script>
 {% endblock %}

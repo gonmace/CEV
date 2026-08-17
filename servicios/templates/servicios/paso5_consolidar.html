@@ -13,25 +13,21 @@
   <span class="text-base-content/50">›</span>
   <a href="{% url 'servicios:lista_servicios' %}" class="hover:text-primary transition-colors">Servicios</a>
 </li>
-<li class="flex items-center gap-2">
-  <span class="text-base-content/50">›</span>
-  <span class="text-base-content/70">Nuevo Servicio</span>
-</li>
 {% endblock %}
 
 {% block breadcrumbs %}
 <li class="flex items-center gap-2">
   <span class="text-base-content/50">›</span>
-  <span class="font-semibold text-base-content">Documento Final</span>
+  <span class="font-semibold text-base-content truncate max-w-xs">{{ servicio.titulo }}</span>
 </li>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-base-100 py-6 px-4">
+<div class="flex-1 bg-base-100 py-6 px-4">
   <div class="max-w-3xl mx-auto space-y-4">
 
-    <!-- Documento -->
-    <div class="doc-wrap">
+    <!-- Documento: siempre en tema claro, incluso si el sitio está en modo oscuro -->
+    <div class="doc-wrap" data-theme="cev">
 
       <!-- Indicador de paso -->
       <div class="flex items-center gap-4 px-8 pt-6 pb-2">

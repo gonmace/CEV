@@ -6,12 +6,27 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_http_methods
+from accounts.creditos import SinCreditos, consumir, puede_consumir
+from accounts.permissions import filtrar_visibles, get_user_empresa, puede_editar, puede_ver
 from .forms import EspecificacionTecnicaForm
 from .models import EspecificacionTecnica
 
 logger = logging.getLogger(__name__)
+
+# El pliego es el entregable del módulo Licitación: generar uno cuesta 1 crédito de aquí.
+MODULO_PLIEGOS = 'pliegos.access'
+
+
+def _es_demo(request, especificacion):
+    """True si esta generación es parte del flujo de prueba (app `demo`).
+
+    La demo ya tiene su propia cuota (`demo.models.DemoTrial`), así que no consume créditos
+    del cliente: cobrarle dos veces sería absurdo, y una demo sin créditos no arrancaría.
+    Se detecta por la sesión, que es donde `demo` guarda la especificación en curso.
+    """
+    return str(request.session.get('demo_especificacion_id') or '') == str(especificacion.id)
 
 
 def llamar_webhook(url, payload, timeout=120):
@@ -70,7 +85,7 @@ def pasos_view(request):
                 proyecto_id = int(proyecto_id)
                 from proyectos.models import Proyecto
                 proyecto = Proyecto.objects.get(id=proyecto_id, activo=True)
-                if proyecto.creado_por == request.user or proyecto.publico:
+                if puede_ver(request.user, proyecto):
                     request.session['pliego_proyecto_id'] = proyecto_id
                     request.session.modified = True
                     logger.info(f"pasos_view - Proyecto ID {proyecto_id} guardado en sesión para paso {paso_actual}")
@@ -115,14 +130,18 @@ def pasos_view(request):
                 from django.db.models import Q
                 proy = Proyecto.objects.filter(id=pid).first()
                 if proy:
-                    borradores = list(
-                        EspecificacionTecnica.objects.filter(
-                            Q(proyecto=proy) | Q(proyecto__isnull=True, creado_por=request.user),
-                            eliminado=False,
-                            paso__gte=2,
-                            paso__lt=8,
-                        ).order_by('-fecha_actualizacion')
+                    qs_borradores = EspecificacionTecnica.objects.filter(
+                        Q(proyecto=proy) | Q(proyecto__isnull=True, creado_por=request.user),
+                        eliminado=False,
+                        paso__gte=2,
+                        paso__lt=8,
                     )
+                    # Sin filtrar_visibles a propósito: el queryset ya está acotado a los
+                    # borradores DE ESTE proyecto (+ los huérfanos propios), y el acceso al
+                    # proyecto se validó arriba con puede_ver. Filtrar además por creado_por
+                    # escondería a cada usuario los borradores de sus compañeros en un
+                    # proyecto compartido, que hoy sí se ven.
+                    borradores = list(qs_borradores.order_by('-fecha_actualizacion'))
                     # Vincular retroactivamente los sin proyecto al proyecto actual
                     ids_sin_proyecto = [b.id for b in borradores if b.proyecto_id is None]
                     if ids_sin_proyecto:
@@ -163,6 +182,21 @@ def pasos_view(request):
             except Exception:
                 pass
 
+        # Especificación técnica del resultado (paso 5): solo para breadcrumb/título,
+        # el JS de paso8_resultado.html resuelve el id igual desde la URL.
+        especificacion_ctx = None
+        if paso_actual == 5:
+            especificacion_id_qs = request.GET.get('especificacion_id')
+            if especificacion_id_qs:
+                try:
+                    candidata = EspecificacionTecnica.objects.get(id=especificacion_id_qs, eliminado=False)
+                    if puede_ver(request.user, candidata):
+                        especificacion_ctx = candidata
+                except (EspecificacionTecnica.DoesNotExist, ValueError):
+                    pass
+                except Exception as e:
+                    logger.error(f"pasos_view - Error al obtener especificacion para paso 5: {e}", exc_info=True)
+
         return render(request, template_name, {
             'pasos': pasos,
             'paso_actual': paso_actual,
@@ -175,6 +209,7 @@ def pasos_view(request):
             'proyecto_id': pid,
             'proyecto_nombre': proyecto_nombre_ctx,
             'proyecto': proyecto_obj,
+            'especificacion': especificacion_ctx,
         })
     except Exception as e:
         logger.error(f"Error inesperado en pasos_view: {str(e)}", exc_info=True)
@@ -187,7 +222,9 @@ def pasos_view(request):
 @login_required
 def paso2_parametros_view(request, especificacion_id):
     """Página de parámetros técnicos (sub-pasos 2-5, AJAX sin recargar)."""
-    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False, creado_por=request.user)
+    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False)
+    if not puede_editar(request.user, spec):
+        raise Http404
     proyecto = spec.proyecto
     return render(request, 'pliego_licitacion/paso2_parametros.html', {
         'especificacion': spec,
@@ -199,7 +236,9 @@ def paso2_parametros_view(request, especificacion_id):
 @login_required
 def paso3_titulo_view(request, especificacion_id):
     """Página para ajustar el título de la especificación."""
-    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False, creado_por=request.user)
+    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False)
+    if not puede_editar(request.user, spec):
+        raise Http404
     proyecto = spec.proyecto
     return render(request, 'pliego_licitacion/paso3_titulo.html', {
         'especificacion': spec,
@@ -211,7 +250,9 @@ def paso3_titulo_view(request, especificacion_id):
 @login_required
 def paso4_actividades_view(request, especificacion_id):
     """Página para seleccionar actividades adicionales."""
-    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False, creado_por=request.user)
+    spec = get_object_or_404(EspecificacionTecnica, id=especificacion_id, eliminado=False)
+    if not puede_editar(request.user, spec):
+        raise Http404
     proyecto = spec.proyecto
     return render(request, 'pliego_licitacion/paso4_actividades.html', {
         'especificacion': spec,
@@ -262,6 +303,9 @@ def coherencia_view(request):
                 tipo_servicio=tipo_servicio,
                 unidad_medida=unidad_medida,
                 creado_por=request.user,
+                # Se fija una sola vez, al crear: no se recalcula si el usuario cambia
+                # de empresa después (ver accounts.permissions.filtrar_visibles).
+                empresa=get_user_empresa(request.user),
                 proyecto=_proyecto,
                 paso=1,
             )
@@ -361,8 +405,11 @@ def _sub_paso_view(request, webhook_url, tipo, nombre):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion = EspecificacionTecnica.objects.get(id=especificacion_id)
         except EspecificacionTecnica.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
+
+        if not puede_editar(request.user, especificacion):
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
         payload = {**_payload_base(especificacion), 'tipo': tipo}
@@ -429,7 +476,9 @@ def _guardar_campo_parametros(request, campo, nombre_view):
         if not especificacion_id:
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
-        especificacion = get_object_or_404(EspecificacionTecnica, id=especificacion_id, creado_por=request.user)
+        especificacion = get_object_or_404(EspecificacionTecnica, id=especificacion_id)
+        if not puede_editar(request.user, especificacion):
+            raise Http404
         setattr(especificacion, campo, parametros)
         nuevo_paso = _CAMPO_PASO.get(campo)
         if nuevo_paso and especificacion.paso < nuevo_paso:
@@ -494,8 +543,14 @@ def confirmar_parametros_view(request):
             }, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
         except EspecificacionTecnica.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'No se encontró la especificación técnica relacionada'
+            }, status=404)
+
+        if not puede_editar(request.user, especificacion_tecnica):
             return JsonResponse({
                 'success': False,
                 'error': 'No se encontró la especificación técnica relacionada'
@@ -548,8 +603,11 @@ def propuesta_titulo_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
         except EspecificacionTecnica.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
+
+        if not puede_editar(request.user, especificacion_tecnica):
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
         payload = {
@@ -608,8 +666,11 @@ def guardar_titulo_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
         except EspecificacionTecnica.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
+
+        if not puede_editar(request.user, especificacion_tecnica):
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
         if aceptar:
@@ -678,8 +739,11 @@ def adicionales_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
         except EspecificacionTecnica.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
+
+        if not puede_editar(request.user, especificacion_tecnica):
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
         payload = {
@@ -724,8 +788,14 @@ def actividades_view(request):
             }, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
         except EspecificacionTecnica.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'No se encontró la especificación técnica base para vincular las actividades. Asegúrese de haber completado los pasos anteriores.'
+            }, status=404)
+
+        if not puede_editar(request.user, especificacion_tecnica):
             return JsonResponse({
                 'success': False,
                 'error': 'No se encontró la especificación técnica base para vincular las actividades. Asegúrese de haber completado los pasos anteriores.'
@@ -777,11 +847,26 @@ def generar_resultado_view(request):
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
 
+        if not puede_editar(request.user, especificacion_tecnica):
+            return JsonResponse({'success': False, 'error': 'No se encontró la especificación técnica'}, status=404)
+
         especificacion_tecnica.refresh_from_db()
+
+        # El pliego es el entregable del módulo: cuesta 1 crédito. Se comprueba ANTES de
+        # llamar a la IA (para no gastar OpenAI si no hay saldo) pero se cobra DESPUÉS de
+        # que responda bien, así un fallo de n8n no le cuesta un crédito al usuario.
+        cobrar_credito = (
+            not especificacion_tecnica.credito_consumido
+            and not _es_demo(request, especificacion_tecnica)
+        )
+        if cobrar_credito:
+            ok, motivo = puede_consumir(request.user, MODULO_PLIEGOS)
+            if not ok:
+                return JsonResponse({'success': False, 'error': motivo, 'sin_creditos': True}, status=402)
 
         actividades_raw = especificacion_tecnica.actividades_adicionales or []
         actividades_formateadas = [
@@ -793,11 +878,21 @@ def generar_resultado_view(request):
             for act in actividades_raw
         ]
 
+        # El pliego debe indicar quién realiza la verificación técnica: la empresa
+        # dueña de la especificación, o el usuario mismo si es una cuenta personal.
+        if especificacion_tecnica.empresa:
+            nombre_empresa = especificacion_tecnica.empresa.nombre
+        elif especificacion_tecnica.creado_por:
+            nombre_empresa = especificacion_tecnica.creado_por.get_full_name() or especificacion_tecnica.creado_por.username
+        else:
+            nombre_empresa = ''
+
         payload = {
             'titulo': especificacion_tecnica.titulo,
             'descripcion': especificacion_tecnica.descripcion,
             'resumen': especificacion_tecnica.resumen or '',
             'unidad_medida': especificacion_tecnica.unidad_medida or '',
+            'nombre_empresa': nombre_empresa,
             'parametros_materiales': especificacion_tecnica.parametros_materiales or [],
             'parametros_ejecucion': especificacion_tecnica.parametros_ejecucion or [],
             'normas_aplicables': especificacion_tecnica.normas_aplicables or [],
@@ -827,6 +922,21 @@ def generar_resultado_view(request):
         especificacion_tecnica.paso = 8
         especificacion_tecnica.save(update_fields=['resultado_markdown', 'paso'])
         logger.info(f"Markdown guardado: {len(markdown_resultado)} caracteres")
+
+        # La IA respondió: recién ahora se cobra. `credito_consumido` marca el entregable
+        # como pagado, así regenerarlo (corregir y volver a generar) no vuelve a cobrar.
+        if cobrar_credito:
+            try:
+                consumir(
+                    request.user, MODULO_PLIEGOS,
+                    referencia=f'EspecificacionTecnica#{especificacion_tecnica.id}',
+                )
+                especificacion_tecnica.credito_consumido = True
+                especificacion_tecnica.save(update_fields=['credito_consumido'])
+            except SinCreditos as e:
+                # Se quedó sin saldo entre la comprobación y el cobro (otra generación en
+                # paralelo). El pliego ya está generado, así que no se descarta: se avisa.
+                logger.warning(f'Pliego {especificacion_tecnica.id} generado sin poder cobrar: {e}')
 
         extensions = [
             'markdown.extensions.extra',
@@ -869,7 +979,7 @@ def paso8_resultado_view(request):
                 proyecto_id = int(proyecto_id)
                 from proyectos.models import Proyecto
                 proyecto = Proyecto.objects.get(id=proyecto_id, activo=True)
-                if proyecto.creado_por == request.user or proyecto.publico:
+                if puede_ver(request.user, proyecto):
                     request.session['pliego_proyecto_id'] = proyecto_id
                     request.session.modified = True
                     logger.info(f"paso8_resultado_view - Proyecto ID {proyecto_id} guardado en sesión")
@@ -901,10 +1011,11 @@ def paso8_resultado_view(request):
         try:
             especificacion_tecnica = EspecificacionTecnica.objects.get(
                 id=especificacion_id,
-                creado_por=request.user,
                 resultado_markdown__isnull=False
             )
             if not especificacion_tecnica.resultado_markdown:
+                raise EspecificacionTecnica.DoesNotExist
+            if not puede_editar(request.user, especificacion_tecnica):
                 raise EspecificacionTecnica.DoesNotExist
         except EspecificacionTecnica.DoesNotExist:
             return JsonResponse({
@@ -963,10 +1074,17 @@ def guardar_resultado_view(request):
             }, status=400)
 
         try:
-            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id, creado_por=request.user)
+            especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
             logger.info(f"guardar_resultado_view - EspecificacionTecnica encontrada: {especificacion_tecnica.titulo}")
         except EspecificacionTecnica.DoesNotExist:
             logger.error(f"guardar_resultado_view - EspecificacionTecnica no encontrada con id: {especificacion_id}")
+            return JsonResponse({
+                'success': False,
+                'error': 'No se encontró la especificación técnica relacionada.'
+            }, status=404)
+
+        if not puede_editar(request.user, especificacion_tecnica):
+            logger.warning(f"guardar_resultado_view - Sin permisos sobre la especificación {especificacion_id}")
             return JsonResponse({
                 'success': False,
                 'error': 'No se encontró la especificación técnica relacionada.'
@@ -1044,7 +1162,7 @@ def guardar_resultado_view(request):
                         break
                     except (ValueError, TypeError):
                         pass
-        redirect_url = None
+        edit_url = None
 
         if proyecto_id:
             try:
@@ -1056,45 +1174,59 @@ def guardar_resultado_view(request):
 
                 proyecto = Proyecto.objects.get(id=proyecto_id, activo=True)
 
-                if proyecto.creado_por != request.user and not proyecto.publico:
+                if not puede_editar(request.user, proyecto) and not proyecto.publico:
                     return JsonResponse({
                         'success': False,
                         'error': 'No tiene permisos para guardar en este proyecto'
                     }, status=403)
 
+                unidad_medida = especificacion_tecnica.unidad_medida or 'glb'
+
+                # Idempotente: si este borrador ya generó una Especificacion antes
+                # (guardado automático + posible recarga/regeneración), se actualiza en
+                # vez de crear otra — así no se duplica en el proyecto.
+                especificacion = None
+                if especificacion_tecnica.especificacion_guardada_id:
+                    especificacion = Especificacion.objects.filter(
+                        id=especificacion_tecnica.especificacion_guardada_id,
+                        proyecto=proyecto,
+                    ).first()
+
                 slug = slugify(especificacion_tecnica.titulo) or 'especificacion'
                 timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
                 filename = f"{slug}-{timestamp}.md"
-                unidad_medida = especificacion_tecnica.unidad_medida or 'glb'
 
-                especificacion = Especificacion(
-                    proyecto=proyecto,
-                    titulo=especificacion_tecnica.titulo,
-                    contenido=contenido,
-                    unidad_medida=unidad_medida,
-                    actividades_adicionales=especificacion_tecnica.actividades_adicionales,
-                )
-                especificacion.archivo.save(filename, ContentFile(contenido), save=True)
+                if especificacion is not None:
+                    especificacion.titulo = especificacion_tecnica.titulo
+                    especificacion.contenido = contenido
+                    especificacion.unidad_medida = unidad_medida
+                    especificacion.actividades_adicionales = especificacion_tecnica.actividades_adicionales
+                    especificacion.archivo.save(filename, ContentFile(contenido), save=True)
+                else:
+                    especificacion = Especificacion(
+                        proyecto=proyecto,
+                        titulo=especificacion_tecnica.titulo,
+                        contenido=contenido,
+                        unidad_medida=unidad_medida,
+                        actividades_adicionales=especificacion_tecnica.actividades_adicionales,
+                    )
+                    especificacion.archivo.save(filename, ContentFile(contenido), save=True)
+                    especificacion_tecnica.especificacion_guardada = especificacion
+                    especificacion_tecnica.save(update_fields=['especificacion_guardada'])
 
-                redirect_url = reverse('proyectos:proyecto_detalle', args=[proyecto.id]) + '?guardado=1'
+                edit_url = reverse('proyectos:editar_especificacion', args=[especificacion.id])
 
             except Proyecto.DoesNotExist:
                 pass
             except Exception as e:
                 logger.error(f"Error al convertir EspecificacionTecnica a Especificacion: {str(e)}", exc_info=True)
 
-        if not redirect_url and proyecto_id:
-            try:
-                from django.urls import reverse
-                redirect_url = reverse('proyectos:proyecto_detalle', args=[proyecto_id]) + '?guardado=1'
-            except Exception as e:
-                logger.error(f"guardar_resultado_view - Error al crear redirect_url: {str(e)}")
-
         return JsonResponse({
             'success': True,
             'message': 'Especificación guardada exitosamente',
             'especificacion_id': especificacion_tecnica.id,
-            'redirect_url': redirect_url,
+            'especificacion_guardada_id': especificacion_tecnica.especificacion_guardada_id,
+            'edit_url': edit_url,
             'proyecto_id': proyecto_id,
         })
 
@@ -1120,7 +1252,7 @@ def actualizar_cantidad_especificacion_tecnica_view(request, especificacion_tecn
     try:
         especificacion_tecnica = get_object_or_404(EspecificacionTecnica, id=especificacion_tecnica_id)
 
-        if especificacion_tecnica.creado_por and especificacion_tecnica.creado_por != request.user:
+        if especificacion_tecnica.creado_por and not puede_editar(request.user, especificacion_tecnica):
             return JsonResponse({
                 'success': False,
                 'error': 'No tienes permisos para editar esta especificación técnica'
@@ -1156,13 +1288,11 @@ def eliminar_especificacion_tecnica_view(request, especificacion_tecnica_id):
     Soft-delete: marca la EspecificacionTecnica como eliminada.
     """
     try:
-        updated = EspecificacionTecnica.objects.filter(
-            id=especificacion_tecnica_id,
-            creado_por=request.user,
-        ).update(eliminado=True)
-        if updated:
-            return JsonResponse({'success': True})
-        return JsonResponse({'success': False, 'error': 'No encontrada o sin permisos'}, status=404)
+        especificacion = EspecificacionTecnica.objects.filter(id=especificacion_tecnica_id).first()
+        if not especificacion or not puede_editar(request.user, especificacion):
+            return JsonResponse({'success': False, 'error': 'No encontrada o sin permisos'}, status=404)
+        EspecificacionTecnica.objects.filter(id=especificacion.id).update(eliminado=True)
+        return JsonResponse({'success': True})
     except Exception as e:
         logger.error(f"eliminar_especificacion_tecnica_view - {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -1177,9 +1307,10 @@ def get_especificacion_datos_view(request, especificacion_tecnica_id):
     try:
         spec = EspecificacionTecnica.objects.get(
             id=especificacion_tecnica_id,
-            creado_por=request.user,
             eliminado=False,
         )
+        if not puede_editar(request.user, spec):
+            return JsonResponse({'error': 'No encontrada o sin permisos'}, status=404)
         return JsonResponse({
             'id': spec.id,
             'titulo': spec.titulo,

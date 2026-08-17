@@ -43,6 +43,15 @@ class EspecificacionTecnica(models.Model):
         related_name='especificaciones_tecnicas_creadas',
         verbose_name='Creado por'
     )
+    empresa = models.ForeignKey(
+        'accounts.Empresa',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='especificaciones_tecnicas',
+        verbose_name='Empresa',
+        help_text='Empresa dueña de este dato, fijada al crearlo. Vacío = cuenta personal.',
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Creación')
     fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name='Fecha de Actualización')
     clasificacion = models.JSONField(verbose_name='Clasificación', blank=True, null=True)
@@ -55,6 +64,20 @@ class EspecificacionTecnica(models.Model):
     resultado_markdown = models.TextField(verbose_name='Resultado en Markdown', blank=True, null=True)
     eliminado = models.BooleanField(default=False, verbose_name='Eliminado')
     paso = models.IntegerField(default=0, verbose_name='Paso')
+    # Se cobra 1 crédito la primera vez que se genera el pliego. Regenerarlo no vuelve a
+    # cobrar (ver accounts.creditos y pliego_licitacion.views.generar_resultado_view).
+    credito_consumido = models.BooleanField(default=False, verbose_name='Crédito consumido')
+    # Especificacion (proyectos) creada a partir de este borrador al guardarlo. Permite que
+    # guardar_resultado_view sea idempotente: si ya existe, se actualiza en vez de duplicar
+    # (ver pliego_licitacion.views.guardar_resultado_view).
+    especificacion_guardada = models.ForeignKey(
+        'proyectos.Especificacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        verbose_name='Especificación guardada',
+    )
 
     class Meta:
         verbose_name = 'Especificación Técnica'

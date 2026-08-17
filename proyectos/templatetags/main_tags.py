@@ -76,3 +76,15 @@ def get_item(dictionary, key):
         return None
     return dictionary.get(key, False)
 
+
+@register.filter
+def basename(value):
+    """
+    Nombre de archivo sin la ruta de carpetas: 'plantilla.docx' en vez de
+    'marca/usuario_5/plantilla.docx'. Uso: {{ campofile|basename }}
+    """
+    if not value:
+        return ''
+    nombre = getattr(value, 'name', value)
+    return str(nombre).rsplit('/', 1)[-1]
+

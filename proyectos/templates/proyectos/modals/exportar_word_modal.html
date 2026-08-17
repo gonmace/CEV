@@ -30,18 +30,10 @@
                  class="input input-bordered input-sm w-full" required>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Solicitante</label>
-            <input type="text" id="export-solicitante" name="solicitante" value="{{ proyecto.solicitante }}"
-                   class="input input-bordered input-sm w-full" required>
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Servicio</label>
-            <input type="text" id="export-servicio" name="servicio"
-                   value="{% if proyecto.descripcion %}{{ proyecto.descripcion }}{% else %}{{ proyecto.ubicacion }}{% endif %}"
-                   class="input input-bordered input-sm w-full" required>
-          </div>
+        <div>
+          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Solicitante</label>
+          <input type="text" id="export-solicitante" name="solicitante" value="{{ proyecto.solicitante }}"
+                 class="input input-bordered input-sm w-full" required>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -59,19 +51,6 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Nro. Pliego</label>
-            <input type="text" name="nro_pliego" value=""
-                   class="input input-bordered input-sm w-full">
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Operación</label>
-            <input type="text" name="operacion" value=""
-                   class="input input-bordered input-sm w-full">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
             <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Usuario</label>
             <input type="text" name="usuario"
                    value="{{ request.user.get_full_name|default:request.user.username }}"
@@ -79,19 +58,31 @@
           </div>
           <div>
             <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Tipo de Contrato</label>
-            <select name="tipo_contrato" class="select select-bordered select-sm w-full">
-              <option value="CO" selected>Contrato de Obra</option>
-              <option value="SPOT">SPOT</option>
-              <option value="NCM">Nuevo Contrato Marco</option>
+            <select id="export-tipo-contrato" name="tipo_contrato" class="select select-bordered select-sm w-full">
+              <option value="CO" selected>Contrato de Obra (CO)</option>
+              <option value="SPOT">Compra Spot (SPOT)</option>
+              <option value="NCM">Nuevo Contrato Marco (NCM)</option>
+              <option value="PFA">Precio Fijo con Ajuste Económico (PFA)</option>
+              <option value="PFI">Precio Fijo con Incentivo (PFI)</option>
+              <option value="CRF">Costo Reembolsable + Honorario Fijo (CRF)</option>
+              <option value="TYM">Tiempo y Materiales (TYM)</option>
+              <option value="OTRO">Personalizado…</option>
             </select>
           </div>
+        </div>
+
+        <div id="export-tipo-contrato-otro-wrap" class="hidden">
+          <label class="block text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-1.5">Especificar tipo de contrato</label>
+          <input type="text" id="export-tipo-contrato-otro" name="tipo_contrato_otro"
+                 maxlength="80" placeholder="Nombre del tipo de contrato"
+                 class="input input-bordered input-sm w-full">
         </div>
 
       </div>
 
       <!-- Footer -->
       <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-base-200">
-        <button type="submit" class="btn btn-primary btn-sm">
+        <button type="submit" class="btn btn-success btn-sm">
           <i class="fas fa-download text-xs"></i>
           Exportar
         </button>
@@ -107,6 +98,17 @@
   const form = document.getElementById('exportar-word-form');
   const modal = document.getElementById('exportar-word-modal');
   const submitBtn = form.querySelector('[type="submit"]');
+
+  const tipoContrato = document.getElementById('export-tipo-contrato');
+  const otroWrap = document.getElementById('export-tipo-contrato-otro-wrap');
+  const otroInput = document.getElementById('export-tipo-contrato-otro');
+  tipoContrato.addEventListener('change', function () {
+    const esOtro = tipoContrato.value === 'OTRO';
+    otroWrap.classList.toggle('hidden', !esOtro);
+    otroInput.required = esOtro;
+    if (!esOtro) otroInput.value = '';
+  });
+
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     const orig = submitBtn.innerHTML;

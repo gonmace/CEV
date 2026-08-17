@@ -63,10 +63,57 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "demo-check-001",
+              "leftValue": "={{ $('final').item.json.body.es_demo }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aef1b2c3-d4e5-6789-abcd-ef0123456789",
+      "name": "IF es_demo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        656,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n\"response\":\"{{ \"### \" + $('final').item.json.body.titulo}}\n\n\n#### Descripción\n\n{{ $('descripcion').item.json.output }}\n\n\n#### Materiales, Equipos y Herramientas\n\n- **Materiales:** {{ $('materiales').item.json.output.materiales }}\n- **Equipos:** {{ $('materiales').item.json.output.equipos }}\n- **Herramientas:** {{ $('materiales').item.json.output.herrameintas }}\n- **EPP:** {{ $('materiales').item.json.output.EPP }}\n\n\n#### Procedimiento\n\n{{ $('procedimiento').item.json.output }}\"\n}",
+        "options": {}
+      },
+      "id": "dd112233-4455-6677-8899-aabbccddeeff",
+      "name": "Edit Fields6 Demo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "promptType": "define",
         "text": "=Nombre de la Actividad: {{ $('final').item.json.body.titulo }}\n\nUnidad de Medida: {{ $('final').item.json.body.unidad_medida }}\n\nResumen técnico:\n{{ $('final').item.json.body.resumen }}\n\nCriterios de calidad para verificación:\n{{ $('final').item.json.body.criterios_calidad \n? $('final').item.json.body.criterios_calidad.map(p => `- ${p.parametro}: ${p.descripcion} (${p.valor_recomendado} ${p.unidad_medida})`).join('\\n')\n: \"Ninguno\" }}",
         "options": {
-          "systemMessage": "=## Rol\nEres un ingeniero especialista en elaboración de **especificaciones técnicas para proyectos de construcción, infraestructura y mantenimiento industrial**.\n\nTienes experiencia redactando secciones de **Medición y Forma de Pago** utilizadas en pliegos técnicos de ingeniería y contratos de obra.\n\n---\n\n## Tarea\nGenerar exclusivamente la sección **Medición y Forma de Pago** correspondiente a la actividad indicada.\n\nEl texto debe describir cómo se mide el trabajo ejecutado, cómo se realiza su verificación técnica y bajo qué condiciones se autoriza el pago.\n\n---\n\n## Estructura obligatoria\n\nDebes generar **exactamente tres párrafos consecutivos**, separados por **una línea en blanco**.\n\n### Párrafo 1 — Medición del trabajo\n\nDebe describir el criterio de medición del trabajo ejecutado de acuerdo con la unidad de medida proporcionada.\n\nLa unidad de medida debe mencionarse obligatoriamente indicando **nombre de la unidad y abreviación en negrilla**.\n\nLa medición debe referirse únicamente al trabajo efectivamente ejecutado y aprobado en obra.\n\n---\n\n### Párrafo 2 — Verificación técnica y control de calidad\n\nDebe describir el proceso de verificación técnica del trabajo ejecutado.\n\nDebe indicar que la verificación técnica es realizada por **EMBOL S.A.**, el cual debe aparecer **obligatoriamente en negrilla**.\n\nLos **criterios de calidad proporcionados deben integrarse ubligatoriamente dentro del texto**, indicando que estos parámetros serán utilizados para verificar la conformidad técnica del trabajo ejecutado.\n\nLos criterios deben mencionarse como parámetros de control técnico y no como lista y en **negrillas**.\n\n---\n\n### Párrafo 3 — Forma de pago\n\nDebe describir las condiciones bajo las cuales el trabajo será aceptado para efectos de pago.\n\nDebe establecer que el pago se realizará únicamente por las cantidades medidas y verificadas que cumplan con los criterios técnicos de aceptación.\n\nDebe indicar que la aprobación del trabajo se encuentra sujeta a la verificación realizada por **EMBOL S.A.** y al cumplimiento de los **criterios de calidad verificados**.\n\n---\n\n## Reglas estrictas\n\n- Generar **exactamente tres párrafos**.\n- Cada párrafo debe separarse por **doble salto de línea**.\n- No utilizar listas, numeraciones ni viñetas.\n- No agregar subtítulos ni encabezados.\n- No inventar información técnica.\n- No modificar la unidad de medida proporcionada.\n- Integrar los criterios de calidad dentro del texto técnico.\n- No copiar los criterios como lista.\n- Utilizar redacción técnica continua propia de especificaciones de ingeniería.\n- **EMBOL S.A. debe aparecer siempre en negrilla** usando formato Markdown: **EMBOL S.A.**\n\n---\n\n## Uso de criterios de calidad\n\nLos criterios de calidad representan **parámetros técnicos utilizados para verificar la conformidad del trabajo ejecutado**.\n\nEstos parámetros deben mencionarse dentro del texto como parte del proceso de verificación técnica, indicando que el trabajo ejecutado será evaluado conforme a dichos criterios.\n\n---\n\n## Formato de salida\n\n- La salida debe ser **Markdown válido**.\n- No incluir fences de código.\n- No incluir explicaciones adicionales.\n- Generar únicamente los **tres párrafos solicitados**."
+          "systemMessage": "=## Rol\nEres un ingeniero especialista en elaboración de **especificaciones técnicas para proyectos de construcción, infraestructura y mantenimiento industrial**.\n\nTienes experiencia redactando secciones de **Medición y Forma de Pago** utilizadas en pliegos técnicos de ingeniería y contratos de obra.\n\n---\n\n## Tarea\nGenerar exclusivamente la sección **Medición y Forma de Pago** correspondiente a la actividad indicada.\n\nEl texto debe describir cómo se mide el trabajo ejecutado, cómo se realiza su verificación técnica y bajo qué condiciones se autoriza el pago.\n\n---\n\n## Estructura obligatoria\n\nDebes generar **exactamente tres párrafos consecutivos**, separados por **una línea en blanco**.\n\n### Párrafo 1 — Medición del trabajo\n\nDebe describir el criterio de medición del trabajo ejecutado de acuerdo con la unidad de medida proporcionada.\n\nLa unidad de medida debe mencionarse obligatoriamente indicando **nombre de la unidad y abreviación en negrilla**.\n\nLa medición debe referirse únicamente al trabajo efectivamente ejecutado y aprobado en obra.\n\n---\n\n### Párrafo 2 — Verificación técnica y control de calidad\n\nDebe describir el proceso de verificación técnica del trabajo ejecutado.\n\nDebe indicar que la verificación técnica es realizada por **{{ $json.body.nombre_empresa }}**, el cual debe aparecer **obligatoriamente en negrilla**.\n\nLos **criterios de calidad proporcionados deben integrarse ubligatoriamente dentro del texto**, indicando que estos parámetros serán utilizados para verificar la conformidad técnica del trabajo ejecutado.\n\nLos criterios deben mencionarse como parámetros de control técnico y no como lista y en **negrillas**.\n\n---\n\n### Párrafo 3 — Forma de pago\n\nDebe describir las condiciones bajo las cuales el trabajo será aceptado para efectos de pago.\n\nDebe establecer que el pago se realizará únicamente por las cantidades medidas y verificadas que cumplan con los criterios técnicos de aceptación.\n\nDebe indicar que la aprobación del trabajo se encuentra sujeta a la verificación realizada por **{{ $json.body.nombre_empresa }}** y al cumplimiento de los **criterios de calidad verificados**.\n\n---\n\n## Reglas estrictas\n\n- Generar **exactamente tres párrafos**.\n- Cada párrafo debe separarse por **doble salto de línea**.\n- No utilizar listas, numeraciones ni viñetas.\n- No agregar subtítulos ni encabezados.\n- No inventar información técnica.\n- No modificar la unidad de medida proporcionada.\n- Integrar los criterios de calidad dentro del texto técnico.\n- No copiar los criterios como lista.\n- Utilizar redacción técnica continua propia de especificaciones de ingeniería.\n- **{{ $json.body.nombre_empresa }} debe aparecer siempre en negrilla** usando formato Markdown: **{{ $json.body.nombre_empresa }}**\n\n---\n\n## Uso de criterios de calidad\n\nLos criterios de calidad representan **parámetros técnicos utilizados para verificar la conformidad del trabajo ejecutado**.\n\nEstos parámetros deben mencionarse dentro del texto como parte del proceso de verificación técnica, indicando que el trabajo ejecutado será evaluado conforme a dichos criterios.\n\n---\n\n## Formato de salida\n\n- La salida debe ser **Markdown válido**.\n- No incluir fences de código.\n- No incluir explicaciones adicionales.\n- Generar únicamente los **tres párrafos solicitados**."
         }
       },
       "id": "0840076c-9f56-4519-97ca-fb90c3b7085e",
@@ -75,7 +122,7 @@
       "typeVersion": 3.1,
       "position": [
         656,
-        272
+        560
       ]
     },
     {
@@ -90,7 +137,7 @@
       "typeVersion": 3.4,
       "position": [
         992,
-        272
+        560
       ]
     },
     {
@@ -257,7 +304,8 @@
                 "unidad_medida": "m2",
                 "descripcion": "Demolición mecánica o manual de pavimentos, adhesivos y morteros existentes, con corte perimetral, acopio, carga y retiro de escombros para habilitar la superficie de colocación del nuevo porcelanato."
               }
-            ]
+            ],
+            "es_demo": false
           },
           "webhookUrl": "https://n8n.magoreal.com/webhook/final",
           "executionMode": "production"
@@ -310,7 +358,36 @@
       "main": [
         [
           {
+            "node": "IF es_demo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF es_demo": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields6 Demo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "medicion&pago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6 Demo": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
             "type": "main",
             "index": 0
           }

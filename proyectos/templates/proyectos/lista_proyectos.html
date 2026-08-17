@@ -44,7 +44,7 @@
           <i class="fas fa-folder-open mr-2 text-primary"></i>
           Proyectos Existentes
         </h2>
-        <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-primary">
+        <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-success">
           <i class="fas fa-plus mr-2"></i>
           Nuevo Proyecto
         </a>
@@ -78,7 +78,7 @@
                         Público
                       </span>
                     {% else %}
-                      <span class="badge badge-base-300">
+                      <span class="badge badge-ghost">
                         <i class="fas fa-lock mr-1"></i>
                         Privado
                       </span>
@@ -86,7 +86,7 @@
                   </td>
                   <td>
                     <div class="flex gap-2">
-                             <a href="{% url 'proyectos:seleccionar_proyecto' proyecto.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-primary" title="Seleccionar proyecto">
+                             <a href="{% url 'proyectos:seleccionar_proyecto' proyecto.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success" title="Seleccionar proyecto">
                         <i class="fas fa-check"></i>
                       </a>
                       <a href="{% url 'proyectos:editar_proyecto' proyecto.id %}" class="btn btn-sm btn-secondary" title="Editar proyecto">
@@ -112,7 +112,7 @@
           <h3 class="card-title text-xl mb-2">No hay proyectos disponibles</h3>
           <p class="text-base-content/70 mb-4">Cree un nuevo proyecto para comenzar</p>
           <div class="card-actions">
-            <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-primary">
+            <a href="{% url 'proyectos:crear_proyecto' %}" class="btn btn-success">
               <i class="fas fa-plus mr-2"></i>
               Crear Proyecto
             </a>

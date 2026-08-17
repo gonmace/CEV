@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import Value, CharField, Count
 from django.db.models.functions import Coalesce, Concat, NullIf, Trim, Lower
-from django.db.models import Q
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
 from django.core.files.base import ContentFile
@@ -25,6 +25,14 @@ from docx.oxml.ns import qn
 from markdown import markdown
 from bs4 import BeautifulSoup
 from PIL import Image
+from accounts.creditos import anotar_creditos, disponible, equipo_de, puede_consumir
+from accounts.marca import (
+    aplicar_colores, con_logo, insertar_logo, logo_de, marca_de, placeholders_de,
+    plantilla_de, tipo_contrato_label,
+)
+from accounts.permissions import filtrar_visibles, get_user_empresa, is_company_admin, puede_editar, puede_ver
+
+MODULO_PROYECTOS = 'pliegos.access'
 from .models import Proyecto, Especificacion, EspecificacionImagen
 from .forms import ProyectoForm, EspecificacionForm
 
@@ -36,31 +44,28 @@ def replace_header_placeholders(doc, proyecto, **overrides):
     Para agregar un nuevo placeholder, añadir una entrada al dict `placeholders`.
 
     Overrides opcionales (kwargs):
-        proyecto_nombre, solicitante, servicio, revision (default "1"), fecha
+        proyecto_nombre, solicitante, revision (default "1"), fecha
     """
     fecha_proyecto = proyecto.fecha_creacion.strftime("%d/%m/%Y") if proyecto.fecha_creacion else ''
 
     proyecto_nombre = overrides.get('proyecto_nombre') or proyecto.nombre or ''
 
-    CHK   = '\u2611'  # ☑ checkbox marcado
-    UNCHK = '\u2610'  # ☐ checkbox vacío
     tipo_contrato = overrides.get('tipo_contrato', 'CO')
 
     placeholders = {
-        '<<PROYECTO>>':    proyecto_nombre,
-        '<<SOLICITANTE>>': overrides.get('solicitante')     or proyecto.solicitante or '',
-        '<<SERVICIO>>':    overrides.get('servicio')        or proyecto.descripcion or proyecto.ubicacion or '',
-        '<<REV>>':         overrides.get('revision', '1'),
-        '<<REV.>>':        overrides.get('revision', '1'),
-        '<<FECHA>>':       overrides.get('fecha') or fecha_proyecto,
-        '<<NRO_PLIEGO>>':  overrides.get('nro_pliego', ''),
-        '<<OPERACION>>':   overrides.get('operacion', ''),
-        '<<USUARIO>>':     overrides.get('usuario', ''),
-        '<<CHK_SPOT>>':    CHK if tipo_contrato == 'SPOT' else UNCHK,
-        '<<CHK_NCM>>':     CHK if tipo_contrato == 'NCM'  else UNCHK,
-        '<<CHK_CO>>':      CHK if tipo_contrato == 'CO'   else UNCHK,
-        '<<XHK_CO>>':      CHK if tipo_contrato == 'CO'   else UNCHK,  # variante typo
+        '<<PROYECTO>>':       proyecto_nombre,
+        '<<SOLICITANTE>>':    overrides.get('solicitante')     or proyecto.solicitante or '',
+        '<<UBICACION>>':      overrides.get('ubicacion')       or proyecto.ubicacion or '',
+        '<<REV>>':            overrides.get('revision', '1'),
+        '<<REV.>>':           overrides.get('revision', '1'),
+        '<<FECHA>>':          overrides.get('fecha') or fecha_proyecto,
+        '<<USUARIO>>':        overrides.get('usuario', ''),
+        '<<TIPO_CONTRATO>>':  tipo_contrato_label(tipo_contrato),
     }
+
+    # Datos de la marca (empresa o cuenta personal): quedan vacíos si no hay marca, así el
+    # documento nunca muestra un <<EMPRESA>> suelto.
+    placeholders.update(placeholders_de(overrides.get('marca')))
 
     placeholders_body = {**placeholders, '<<PROYECTO>>': proyecto_nombre.upper()}
 
@@ -95,11 +100,12 @@ def replace_header_placeholders(doc, proyecto, **overrides):
 
 def _get_especificaciones_accesibles(request):
     qs = (
-        Especificacion.objects.filter(
-            proyecto__activo=True
-        )
-        .filter(
-            Q(proyecto__publico=True) | Q(proyecto__creado_por=request.user)
+        filtrar_visibles(
+            Especificacion.objects.filter(proyecto__activo=True),
+            request.user,
+            campo='proyecto__creado_por',
+            campo_publico='proyecto__publico',
+            campo_empresa='proyecto__empresa',
         )
         .select_related('proyecto')
         .order_by('proyecto__nombre', '-fecha_creacion')
@@ -123,7 +129,7 @@ def _copiar_especificaciones(user, especificaciones_ids, proyecto_destino):
         except Especificacion.DoesNotExist:
             continue
 
-        if not (especificacion.proyecto.publico or especificacion.proyecto.creado_por == user):
+        if not puede_ver(user, especificacion.proyecto):
             continue
 
         base_titulo = especificacion.titulo
@@ -156,12 +162,22 @@ def crear_proyecto_view(request):
     """
     Vista para crear un nuevo proyecto
     """
+    # Sin créditos no se inicia el flujo: el botón está deshabilitado en el índice,
+    # pero la URL directa también debe rebotar.
+    ok, motivo = puede_consumir(request.user, MODULO_PROYECTOS)
+    if not ok:
+        messages.error(request, motivo)
+        return redirect('proyectos:lista_proyectos')
+
     if request.method == 'POST':
         form = ProyectoForm(request.POST)
         if form.is_valid():
             proyecto = form.save(commit=False)
             if request.user.is_authenticated:
                 proyecto.creado_por = request.user
+                # Se fija una sola vez, al crear: no se recalcula si el usuario
+                # cambia de empresa después (ver accounts.permissions.filtrar_visibles).
+                proyecto.empresa = get_user_empresa(request.user)
             proyecto.save()
             messages.success(request, f'Proyecto "{proyecto.nombre}" creado exitosamente.')
             # Redirigir a la página principal o a la lista de proyectos
@@ -200,8 +216,7 @@ def lista_proyectos_view(request):
         per_page = per_page_options[0]
 
     proyectos_qs = (
-        Proyecto.objects.filter(activo=True)
-        .filter(Q(publico=True) | Q(creado_por=request.user))
+        filtrar_visibles(Proyecto.objects.filter(activo=True), request.user)
         .select_related('creado_por')
         .annotate(
             usuario_full_name=Trim(Concat(
@@ -244,21 +259,41 @@ def lista_proyectos_view(request):
             request.session.pop('proyecto_actual_id', None)
             request.session.pop('proyecto_actual_nombre', None)
 
-    total_especificaciones = Especificacion.objects.filter(
-        proyecto__activo=True
-    ).filter(
-        Q(proyecto__publico=True) | Q(proyecto__creado_por=request.user)
+    total_especificaciones = filtrar_visibles(
+        Especificacion.objects.filter(proyecto__activo=True),
+        request.user,
+        campo='proyecto__creado_por',
+        campo_publico='proyecto__publico',
+        campo_empresa='proyecto__empresa',
     ).count()
 
     from pliego_licitacion.models import EspecificacionTecnica
-    from django.contrib.auth.models import User
-    total_borradores = EspecificacionTecnica.objects.filter(
-        creado_por=request.user,
-        eliminado=False,
-        paso__gte=2,
-        paso__lt=8,
+    total_borradores = filtrar_visibles(
+        EspecificacionTecnica.objects.filter(
+            eliminado=False,
+            paso__gte=2,
+            paso__lt=8,
+        ),
+        request.user,
+        campo_publico=None,
     ).count()
-    total_usuarios = User.objects.filter(is_active=True).count()
+
+    # Consumido/tope/saldo de cada compañero de equipo en ESTE módulo — solo para quien
+    # administra la empresa (mismo gate que accounts:mi_equipo, donde se edita el tope).
+    # Cuenta personal o sin ese rol: None, así la tarjeta no se pinta.
+    equipo_creditos = None
+    empresa = get_user_empresa(request.user)
+    if empresa and is_company_admin(request.user):
+        miembros = anotar_creditos(list(
+            get_user_model().objects.filter(profile__empresa=empresa, is_active=True)
+            .select_related('profile')
+            .order_by('email')
+        ))
+        equipo_creditos = []
+        for miembro in miembros:
+            fila = next((c for c in miembro.creditos if c['key'] == MODULO_PROYECTOS), None)
+            if fila:
+                equipo_creditos.append({'user': miembro, **fila})
 
     return render(request, 'main/index.html', {
         'proyectos': page_obj.object_list,
@@ -271,7 +306,10 @@ def lista_proyectos_view(request):
         'per_page_options': per_page_options,
         'total_especificaciones': total_especificaciones,
         'total_borradores': total_borradores,
-        'total_usuarios': total_usuarios,
+        # None en cuentas personales: no tienen equipo, así que la tarjeta no se muestra.
+        'equipo': equipo_de(request.user),
+        'equipo_creditos': equipo_creditos,
+        'creditos': disponible(request.user, MODULO_PROYECTOS),
     })
 
 
@@ -281,7 +319,11 @@ def proyecto_detalle_view(request, proyecto_id):
     Vista de detalle del proyecto seleccionado
     """
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
-    es_propietario = proyecto.creado_por == request.user
+    es_propietario = puede_editar(request.user, proyecto)
+
+    if not puede_ver(request.user, proyecto):
+        messages.error(request, 'No tienes permisos para ver este proyecto.')
+        return redirect('proyectos:lista_proyectos')
 
     # Persistir el proyecto activo en la sesión
     request.session['proyecto_actual_id'] = proyecto.id
@@ -349,9 +391,13 @@ def proyecto_detalle_view(request, proyecto_id):
         2: (3, 'Ejecución'), 3: (4, 'Normas'), 4: (5, 'Criterios'),
         5: (6, 'Título'), 6: (7, 'Actividades'), 7: (8, 'Generar resultado'),
     }
-    borradores_raw = EspecificacionTecnica.objects.filter(
-        proyecto=proyecto, creado_por=request.user,
-        eliminado=False, paso__gte=2, paso__lt=8,
+    borradores_raw = filtrar_visibles(
+        EspecificacionTecnica.objects.filter(
+            proyecto=proyecto,
+            eliminado=False, paso__gte=2, paso__lt=8,
+        ),
+        request.user,
+        campo_publico=None,
     ).order_by('-fecha_actualizacion')
     borradores = [
         {'obj': b, 'resume_paso': _NEXT_LABELS.get(b.paso, (b.paso + 1, 'Continuar'))[0],
@@ -371,6 +417,7 @@ def proyecto_detalle_view(request, proyecto_id):
         'spec_modal_open': spec_modal_open,
         'especificaciones_con_cantidad': especificaciones_con_cantidad,
         'borradores': borradores,
+        'creditos': disponible(request.user, MODULO_PROYECTOS),
     })
 
 
@@ -382,32 +429,28 @@ def exportar_proyecto_word_view(request, proyecto_id):
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
     
     # Verificar permisos
-    if not (proyecto.publico or proyecto.creado_por == request.user):
+    if not puede_ver(request.user, proyecto):
         messages.error(request, 'No tienes permisos para exportar este proyecto.')
         return redirect('proyectos:lista_proyectos')
     
     # Obtener valores personalizados del formulario si es POST
     proyecto_nombre = None
     solicitante = None
-    servicio = None
     revision = "1"
     fecha = None
     
-    nro_pliego = ''
-    operacion = ''
     usuario = ''
     tipo_contrato = 'CO'
 
     if request.method == 'POST':
         proyecto_nombre = request.POST.get('proyecto', proyecto.nombre)
         solicitante = request.POST.get('solicitante', proyecto.solicitante)
-        servicio = request.POST.get('servicio', proyecto.descripcion or proyecto.ubicacion)
         revision = request.POST.get('revision', '1')
         fecha = request.POST.get('fecha', proyecto.fecha_creacion.strftime("%d/%m/%Y") if proyecto.fecha_creacion else '')
-        nro_pliego = request.POST.get('nro_pliego', '')
-        operacion = request.POST.get('operacion', '')
         usuario = request.POST.get('usuario', '')
         tipo_contrato = request.POST.get('tipo_contrato', 'CO')
+        if tipo_contrato == 'OTRO':
+            tipo_contrato = request.POST.get('tipo_contrato_otro', '').strip() or 'OTRO'
     
     # Obtener todas las especificaciones ordenadas con relaciones necesarias
     especificaciones = proyecto.especificaciones.prefetch_related(
@@ -423,27 +466,35 @@ def exportar_proyecto_word_view(request, proyecto_id):
     
     # Intentar cargar template de Word si existe, sino crear documento nuevo
     template_path = os.path.join(settings.BASE_DIR, 'proyectos', 'templates', 'word_templates', 'template_especificaciones.docx')
-    
+
     # Crear directorio si no existe
     template_dir = os.path.dirname(template_path)
     os.makedirs(template_dir, exist_ok=True)
-    
-    if os.path.exists(template_path):
+
+    # Marca del usuario (la de su empresa, o la suya si es cuenta personal): aporta logo y
+    # colores. La plantilla tiene su propia precedencia: la del usuario pisa a la de la
+    # empresa, y sin ninguna se usa la del sistema. Sin marca configurada, todo sigue igual.
+    marca = marca_de(request.user)
+    fuente_docx = plantilla_de(request.user, 'proyectos', template_path)
+    fuente_docx = con_logo(fuente_docx, logo_de(request.user))
+
+    existe_plantilla = os.path.exists(template_path) or not isinstance(fuente_docx, str)
+    if existe_plantilla:
         # Cargar el template (conserva header/footer/estilos)
-        doc = Document(template_path)
+        doc = Document(fuente_docx)
         replace_header_placeholders(
             doc,
             proyecto,
             proyecto_nombre=proyecto_nombre,
             solicitante=solicitante,
-            servicio=servicio,
             revision=revision,
             fecha=fecha,
-            nro_pliego=nro_pliego,
-            operacion=operacion,
             usuario=usuario,
             tipo_contrato=tipo_contrato,
+            marca=marca,
         )
+        insertar_logo(doc, logo_de(request.user))
+        aplicar_colores(doc, marca)
         usa_template = True
     else:
         doc = Document()
@@ -1485,7 +1536,7 @@ def ingresar_proyecto_view(request, proyecto_id):
     """
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
 
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         messages.error(request, 'Solo puedes crear especificaciones en tus propios proyectos.')
         return redirect('proyectos:lista_proyectos')
 
@@ -1505,7 +1556,11 @@ def seleccionar_proyecto_view(request, proyecto_id):
     Vista para seleccionar un proyecto existente
     """
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
-    
+
+    if not puede_ver(request.user, proyecto):
+        messages.error(request, 'No tienes permisos para ver este proyecto.')
+        return redirect('proyectos:lista_proyectos')
+
     # Guardar el proyecto seleccionado en la sesión
     request.session['proyecto_actual_id'] = proyecto.id
     request.session['proyecto_actual_nombre'] = proyecto.nombre
@@ -1538,7 +1593,7 @@ def editar_especificacion_view(request, especificacion_id):
     especificacion = get_object_or_404(Especificacion, id=especificacion_id, proyecto__activo=True)
     proyecto = especificacion.proyecto
 
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         messages.error(request, 'Solo puedes editar especificaciones de tus proyectos.')
         return redirect('proyectos:proyecto_detalle', proyecto_id=proyecto.id)
 
@@ -1569,7 +1624,7 @@ def eliminar_especificacion_view(request, especificacion_id):
     especificacion = get_object_or_404(Especificacion, id=especificacion_id, proyecto__activo=True)
     proyecto = especificacion.proyecto
 
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.content_type == 'application/json':
             return JsonResponse({'error': 'Solo puedes eliminar especificaciones de tus proyectos.'}, status=403)
         messages.error(request, 'Solo puedes eliminar especificaciones de tus proyectos.')
@@ -1604,7 +1659,7 @@ def eliminar_proyecto_view(request, proyecto_id):
     """
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
 
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         messages.error(request, 'Solo puedes eliminar proyectos que pertenecen a tu cuenta.')
         return redirect('proyectos:lista_proyectos')
     
@@ -1652,11 +1707,16 @@ def especificaciones_disponibles_view(request):
 
     if dest_id:
         try:
-            dest_project = Proyecto.objects.get(id=dest_id, activo=True, creado_por=request.user)
+            dest_project = Proyecto.objects.get(id=dest_id, activo=True)
         except Proyecto.DoesNotExist:
             dest_project = None
+        else:
+            if not puede_editar(request.user, dest_project):
+                dest_project = None
 
-    mis_proyectos = Proyecto.objects.filter(activo=True, creado_por=request.user).order_by('nombre')
+    mis_proyectos = filtrar_visibles(
+        Proyecto.objects.filter(activo=True), request.user, campo_publico=None
+    ).order_by('nombre')
     return render(request, 'proyectos/especificaciones_disponibles.html', {
         'especificaciones': especificaciones,
         'mis_proyectos': mis_proyectos,
@@ -1675,7 +1735,7 @@ def ver_especificacion_view(request, especificacion_id):
         proyecto__activo=True
     )
 
-    if not (especificacion.proyecto.publico or especificacion.proyecto.creado_por == request.user):
+    if not puede_ver(request.user, especificacion.proyecto):
         messages.error(request, 'No tienes permisos para ver esta especificación.')
         return redirect('proyectos:lista_proyectos')
 
@@ -1687,9 +1747,12 @@ def ver_especificacion_view(request, especificacion_id):
     dest_project = None
     if origin == 'disponibles' and dest_id:
         try:
-            dest_project = Proyecto.objects.get(id=dest_id, activo=True, creado_por=request.user)
+            dest_project = Proyecto.objects.get(id=dest_id, activo=True)
         except Proyecto.DoesNotExist:
             dest_project = None
+        else:
+            if not puede_editar(request.user, dest_project):
+                dest_project = None
 
     preview_html = markdown(especificacion.contenido or '', extensions=['extra'])
     preview_html = mark_safe(preview_html)
@@ -1717,9 +1780,12 @@ def copiar_especificacion_view(request, especificacion_id):
         proyecto_destino = Proyecto.objects.get(
             id=proyecto_destino_id,
             activo=True,
-            creado_por=request.user
         )
     except Proyecto.DoesNotExist:
+        messages.error(request, 'Solo puedes copiar especificaciones a tus propios proyectos activos.')
+        return redirect('proyectos:lista_proyectos')
+
+    if not puede_editar(request.user, proyecto_destino):
         messages.error(request, 'Solo puedes copiar especificaciones a tus propios proyectos activos.')
         return redirect('proyectos:lista_proyectos')
 
@@ -1759,9 +1825,12 @@ def copiar_especificaciones_view(request):
         proyecto_destino = Proyecto.objects.get(
             id=proyecto_destino_id,
             activo=True,
-            creado_por=request.user
         )
     except Proyecto.DoesNotExist:
+        messages.error(request, 'Solo puedes copiar especificaciones a tus propios proyectos activos.')
+        return redirect('proyectos:lista_proyectos')
+
+    if not puede_editar(request.user, proyecto_destino):
         messages.error(request, 'Solo puedes copiar especificaciones a tus propios proyectos activos.')
         return redirect('proyectos:lista_proyectos')
 
@@ -1785,7 +1854,7 @@ def editar_proyecto_view(request, proyecto_id):
     """
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
     
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         messages.error(request, 'Solo puedes editar proyectos que pertenecen a tu cuenta.')
         return redirect('proyectos:lista_proyectos')
 
@@ -1809,7 +1878,7 @@ def editar_proyecto_view(request, proyecto_id):
 def actualizar_cantidad_especificacion_view(request, especificacion_id):
     """Vista AJAX para actualizar la cantidad de una Especificacion."""
     especificacion = get_object_or_404(Especificacion, id=especificacion_id)
-    if especificacion.proyecto.creado_por != request.user:
+    if not puede_editar(request.user, especificacion.proyecto):
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     try:
         data = json.loads(request.body)
@@ -1832,7 +1901,7 @@ def mover_especificacion_view(request, proyecto_id):
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
     
     # Verificar que el usuario es propietario del proyecto
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         return JsonResponse({'error': 'No tienes permisos para mover especificaciones de este proyecto.'}, status=403)
     
     try:
@@ -1898,7 +1967,7 @@ def obtener_imagenes_especificacion_view(request, especificacion_id):
     especificacion = get_object_or_404(Especificacion, id=especificacion_id, proyecto__activo=True)
     
     # Verificar permisos
-    if not (especificacion.proyecto.publico or especificacion.proyecto.creado_por == request.user):
+    if not puede_ver(request.user, especificacion.proyecto):
         return JsonResponse({'error': 'No tienes permisos para ver las imágenes de esta especificación.'}, status=403)
     
     imagenes = especificacion.imagenes.all()
@@ -1924,7 +1993,7 @@ def subir_imagenes_especificacion_view(request, especificacion_id):
     especificacion = get_object_or_404(Especificacion, id=especificacion_id, proyecto__activo=True)
     
     # Verificar que el usuario es propietario del proyecto
-    if especificacion.proyecto.creado_por != request.user:
+    if not puede_editar(request.user, especificacion.proyecto):
         return JsonResponse({'error': 'Solo puedes agregar imágenes a especificaciones de tus proyectos.'}, status=403)
     
     imagenes_subidas = request.FILES.getlist('imagenes')
@@ -1973,7 +2042,7 @@ def eliminar_imagen_especificacion_view(request, imagen_id):
     especificacion = imagen.especificacion
     
     # Verificar que el usuario es propietario del proyecto
-    if especificacion.proyecto.creado_por != request.user:
+    if not puede_editar(request.user, especificacion.proyecto):
         return JsonResponse({'error': 'Solo puedes eliminar imágenes de especificaciones de tus proyectos.'}, status=403)
     
     # Eliminar el archivo físico
@@ -1998,7 +2067,7 @@ def actualizar_descripcion_imagen_view(request, imagen_id):
     especificacion = imagen.especificacion
     
     # Verificar que el usuario es propietario del proyecto
-    if especificacion.proyecto.creado_por != request.user:
+    if not puede_editar(request.user, especificacion.proyecto):
         return JsonResponse({'error': 'Solo puedes editar descripciones de imágenes de tus proyectos.'}, status=403)
     
     try:
@@ -2028,7 +2097,7 @@ def reordenar_especificaciones_view(request, proyecto_id):
     proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
     
     # Verificar que el usuario es propietario del proyecto
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         return JsonResponse({'error': 'No tienes permisos para reordenar las especificaciones de este proyecto.'}, status=403)
     
     try:
@@ -2069,7 +2138,7 @@ def obtener_actividades_adicionales_view(request, especificacion_id):
         proyecto__activo=True
     )
 
-    if not (especificacion.proyecto.publico or especificacion.proyecto.creado_por == request.user):
+    if not puede_ver(request.user, especificacion.proyecto):
         return JsonResponse({'error': 'No tienes permisos para ver las actividades adicionales de esta especificación.'}, status=403)
 
     actividades = especificacion.actividades_adicionales or []
@@ -2091,7 +2160,7 @@ def obtener_actividades_adicionales_view(request, especificacion_id):
             'unidad_medida': especificacion.unidad_medida or '',
             'cantidad': especificacion.cantidad or '',
             'mostrar': especificacion.mostrar,
-            'es_propietario': especificacion.proyecto.creado_por == request.user,
+            'es_propietario': puede_editar(request.user, especificacion.proyecto),
         },
     })
 
@@ -2100,7 +2169,7 @@ def obtener_actividades_adicionales_view(request, especificacion_id):
 @require_http_methods(["POST"])
 def actualizar_actividad_view(request, especificacion_id, actividad_idx):
     especificacion = get_object_or_404(Especificacion, id=especificacion_id)
-    if especificacion.proyecto.creado_por != request.user:
+    if not puede_editar(request.user, especificacion.proyecto):
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     try:
         data = json.loads(request.body)
@@ -2125,7 +2194,7 @@ def actualizar_actividad_view(request, especificacion_id, actividad_idx):
 @require_http_methods(['POST'])
 def toggle_proyecto_publico_view(request, proyecto_id):
     proyecto = get_object_or_404(Proyecto, id=proyecto_id)
-    if proyecto.creado_por != request.user:
+    if not puede_editar(request.user, proyecto):
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     proyecto.publico = not proyecto.publico
     proyecto.save(update_fields=['publico'])
@@ -2136,7 +2205,7 @@ def toggle_proyecto_publico_view(request, proyecto_id):
 @require_http_methods(['POST'])
 def actualizar_especificacion_mostrar_view(request, especificacion_id):
     especificacion = get_object_or_404(Especificacion, id=especificacion_id)
-    if especificacion.proyecto.creado_por != request.user:
+    if not puede_editar(request.user, especificacion.proyecto):
         return JsonResponse({'success': False, 'error': 'Sin permisos'}, status=403)
     try:
         data = json.loads(request.body)
