@@ -31,6 +31,7 @@ from accounts.marca import (
     plantilla_de, tipo_contrato_label,
 )
 from accounts.permissions import filtrar_visibles, get_user_empresa, is_company_admin, puede_editar, puede_ver
+from core.sanitize import sanitizar_html
 
 MODULO_PROYECTOS = 'pliegos.access'
 from .models import Proyecto, Especificacion, EspecificacionImagen
@@ -113,7 +114,7 @@ def _get_especificaciones_accesibles(request):
     especificaciones = []
     for especificacion in qs:
         preview_html = markdown(especificacion.contenido or '', extensions=['extra'])
-        especificacion.preview_html = mark_safe(preview_html)
+        especificacion.preview_html = mark_safe(sanitizar_html(preview_html))
         especificaciones.append(especificacion)
     return especificaciones
 
@@ -1034,17 +1035,26 @@ def exportar_proyecto_word_view(request, proyecto_id):
                         # Si es una URL relativa (media), convertir a ruta de archivo
                         if src.startswith('/media/'):
                             # Remover /media/ del inicio
-                            media_path = src.replace('/media/', '')
+                            media_path = src.replace('/media/', '', 1)
                             imagen_path = os.path.join(settings.MEDIA_ROOT, media_path)
                         elif src.startswith('media/'):
-                            imagen_path = os.path.join(settings.MEDIA_ROOT, src.replace('media/', ''))
+                            imagen_path = os.path.join(settings.MEDIA_ROOT, src.replace('media/', '', 1))
                         else:
                             # Intentar como ruta absoluta o relativa
                             imagen_path = src
                             if not os.path.isabs(imagen_path):
                                 imagen_path = os.path.join(settings.MEDIA_ROOT, imagen_path)
-                        
-                        if os.path.exists(imagen_path):
+
+                        # `src` sale del markdown del usuario: sin normalizar y comprobar
+                        # que el resultado siga DENTRO de MEDIA_ROOT, un '/media/../../etc/passwd'
+                        # (o una ruta absoluta arbitraria) se embebía tal cual en el .docx
+                        # descargable — lectura de ficheros del contenedor.
+                        imagen_path = os.path.realpath(imagen_path)
+                        media_root_real = os.path.realpath(settings.MEDIA_ROOT)
+                        if os.path.commonpath([imagen_path, media_root_real]) != media_root_real:
+                            imagen_path = None
+
+                        if imagen_path and os.path.exists(imagen_path):
                             para = doc.add_paragraph()
                             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             
@@ -1547,7 +1557,7 @@ def ingresar_proyecto_view(request, proyecto_id):
     if intended == 'detalle':
         return redirect('proyectos:proyecto_detalle', proyecto_id=proyecto.id)
 
-    return redirect(reverse('nuevo_pliego_view'))
+    return redirect(f"{reverse('pliego_licitacion:pasos')}?proyecto_id={proyecto.id}")
 
 
 @login_required
@@ -1755,7 +1765,7 @@ def ver_especificacion_view(request, especificacion_id):
                 dest_project = None
 
     preview_html = markdown(especificacion.contenido or '', extensions=['extra'])
-    preview_html = mark_safe(preview_html)
+    preview_html = mark_safe(sanitizar_html(preview_html))
 
     return render(request, 'proyectos/ver_especificacion.html', {
         'especificacion': especificacion,

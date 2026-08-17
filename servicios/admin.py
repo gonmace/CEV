@@ -4,7 +4,7 @@ from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
-from django.utils.html import format_html, mark_safe
+from django.utils.html import escape, format_html, mark_safe
 from .models import Servicio, ServicioImagen, CatalogoServicios
 
 
@@ -50,7 +50,9 @@ class CatalogoServiciosAdmin(admin.ModelAdmin):
         context = {
             **self.admin_site.each_context(request),
             'catalogo': catalogo,
-            'datos_json': json.dumps(catalogo.datos or [], ensure_ascii=False),
+            # Objeto Python: el template lo vuelca con `|json_script`, no con `|safe`
+            # sobre una cadena ya serializada (json.dumps no escapa `</script>`).
+            'datos_json': catalogo.datos or [],
             'title': f'Editar catálogo: {catalogo.nombre}',
             'opts': self.model._meta,
         }
@@ -78,15 +80,21 @@ class ServicioAdmin(admin.ModelAdmin):
     )
 
     def _render_json_lista(self, items, campos):
-        """Renderiza una lista de dicts como tabla HTML para el admin."""
+        """Renderiza una lista de dicts como tabla HTML para el admin.
+
+        Los valores vienen de un JSONField que la IA (o el usuario, vía los endpoints
+        que lo alimentan) puede haber escrito: sin `escape()`, un `nombre` o
+        `descripcion` con `<script>` se ejecutaría en el navegador del admin que abra
+        esta ficha.
+        """
         if not items:
             return mark_safe('<span style="color:#999">—</span>')
         filas = []
         for i, item in enumerate(items, 1):
             celdas = ''.join(
                 f'<tr><td style="padding:3px 8px;color:#666;font-size:0.8em;vertical-align:top;white-space:nowrap">'
-                f'<strong>{label}</strong></td>'
-                f'<td style="padding:3px 8px;font-size:0.85em">{item.get(key) or "—"}</td></tr>'
+                f'<strong>{escape(label)}</strong></td>'
+                f'<td style="padding:3px 8px;font-size:0.85em">{escape(item.get(key) or "—")}</td></tr>'
                 for key, label in campos if key != '__espec__'
             )
             # Especificaciones (sub-objeto)
@@ -96,9 +104,9 @@ class ServicioAdmin(admin.ModelAdmin):
                 func   = ', '.join(espec.get('funcionamiento') or []) or '—'
                 celdas += (
                     f'<tr><td style="padding:3px 8px;color:#666;font-size:0.8em;vertical-align:top"><strong>Características</strong></td>'
-                    f'<td style="padding:3px 8px;font-size:0.85em">{caract}</td></tr>'
+                    f'<td style="padding:3px 8px;font-size:0.85em">{escape(caract)}</td></tr>'
                     f'<tr><td style="padding:3px 8px;color:#666;font-size:0.8em;vertical-align:top"><strong>Funcionamiento</strong></td>'
-                    f'<td style="padding:3px 8px;font-size:0.85em">{func}</td></tr>'
+                    f'<td style="padding:3px 8px;font-size:0.85em">{escape(func)}</td></tr>'
                 )
             relevante = item.get('relevante', True)
             color = '#e8f5e9' if relevante else '#fff8e1'
@@ -107,7 +115,7 @@ class ServicioAdmin(admin.ModelAdmin):
                 f'<div style="margin-bottom:8px;border:1px solid {border};border-radius:6px;'
                 f'background:{color};overflow:hidden">'
                 f'<div style="padding:4px 8px;background:{border};font-weight:bold;font-size:0.85em">'
-                f'{i}. {item.get("nombre") or "Equipo sin nombre"}</div>'
+                f'{i}. {escape(item.get("nombre") or "Equipo sin nombre")}</div>'
                 f'<table style="width:100%;border-collapse:collapse">{celdas}</table></div>'
             )
         return mark_safe(''.join(filas))
@@ -132,13 +140,13 @@ class ServicioAdmin(admin.ModelAdmin):
         for i, act in enumerate(items, 1):
             nombre = act.get('nombre') or act.get('actividad') or f'Actividad {i}'
             resto = ''.join(
-                f'<tr><td style="padding:2px 8px;color:#666;font-size:0.8em;white-space:nowrap"><strong>{k}</strong></td>'
-                f'<td style="padding:2px 8px;font-size:0.85em">{v}</td></tr>'
+                f'<tr><td style="padding:2px 8px;color:#666;font-size:0.8em;white-space:nowrap"><strong>{escape(k)}</strong></td>'
+                f'<td style="padding:2px 8px;font-size:0.85em">{escape(v)}</td></tr>'
                 for k, v in act.items() if k not in ('nombre', 'actividad') and v
             )
             filas.append(
                 f'<div style="margin-bottom:6px;border:1px solid #b3c6e0;border-radius:5px;background:#f0f4ff;overflow:hidden">'
-                f'<div style="padding:3px 8px;background:#b3c6e0;font-weight:bold;font-size:0.85em">{i}. {nombre}</div>'
+                f'<div style="padding:3px 8px;background:#b3c6e0;font-weight:bold;font-size:0.85em">{i}. {escape(nombre)}</div>'
                 f'<table style="width:100%;border-collapse:collapse">{resto}</table></div>'
             )
         return mark_safe(''.join(filas))

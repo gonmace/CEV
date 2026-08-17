@@ -173,6 +173,34 @@ def consumir(user, modulo, referencia='', cantidad=1):
     )
 
 
+def revertir(user, modulo, referencia):
+    """Deshace el último `consumir()` con esa `referencia` (p. ej. la IA respondió con
+    error después de haber cobrado). Devuelve el crédito a la bolsa y borra el
+    `ConsumoCredito` que dejó el cobro, para no dejar rastro de algo que no se entregó.
+
+    No hace nada si no hay nada que revertir (superuser, o ya revertido antes).
+    """
+    if _es_ilimitado(user):
+        return
+
+    empresa = get_user_empresa(user)
+    filtro = {'empresa': empresa} if empresa else {'usuario': user}
+
+    with transaction.atomic():
+        consumo = (
+            ConsumoCredito.objects.select_for_update()
+            .filter(modulo=modulo, referencia=referencia, usuario=user)
+            .first()
+        )
+        if consumo is None:
+            return
+        bolsa = BolsaCreditos.objects.select_for_update().filter(modulo=modulo, **filtro).first()
+        if bolsa is not None:
+            bolsa.creditos += consumo.cantidad
+            bolsa.save(update_fields=['creditos', 'actualizado'])
+        consumo.delete()
+
+
 def recargar(destino, modulo, cantidad):
     """Suma créditos a la bolsa de una Empresa o de un User. Devuelve la bolsa."""
     from .models import Empresa

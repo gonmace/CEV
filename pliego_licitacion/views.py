@@ -8,7 +8,8 @@ from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_http_methods
-from accounts.creditos import SinCreditos, consumir, puede_consumir
+from accounts.creditos import SinCreditos, consumir, puede_consumir, revertir
+from core.sanitize import sanitizar_html
 from accounts.permissions import filtrar_visibles, get_user_empresa, puede_editar, puede_ver
 from .forms import EspecificacionTecnicaForm
 from .models import EspecificacionTecnica
@@ -53,6 +54,19 @@ def llamar_webhook(url, payload, timeout=120):
     return response.json()
 
 
+def desempaquetar(respuesta):
+    """n8n envuelve el payload de formas distintas según el workflow: un dict plano,
+    `{'output': {...}}`, o una lista de cualquiera de esos dos (`[{...}]`,
+    `[{'output': {...}}]`). Normaliza a un dict plano, o `{}` si no reconoce la forma.
+    """
+    dato = respuesta
+    if isinstance(dato, list):
+        dato = dato[0] if dato else {}
+    if isinstance(dato, dict) and isinstance(dato.get('output'), dict):
+        dato = dato['output']
+    return dato if isinstance(dato, dict) else {}
+
+
 _n8n = lambda path: f"{settings.N8N_BASE_URL}/webhook/{path}"
 N8N_WEBHOOK_COHERENCIA_URL = _n8n('coherencia')
 N8N_WEBHOOK_PARAMETROS_URL = _n8n('parametros')
@@ -90,11 +104,17 @@ def pasos_view(request):
                     request.session.modified = True
                     logger.info(f"pasos_view - Proyecto ID {proyecto_id} guardado en sesión para paso {paso_actual}")
                 else:
+                    # Sin acceso: no dejar que `proyecto_id` siga apuntando a un proyecto
+                    # ajeno, o el `pid` de más abajo lo usaría igual (fuga cross-tenant:
+                    # listaba y hasta re-vinculaba borradores a un proyecto de otra empresa).
                     logger.warning(f"pasos_view - Usuario no tiene acceso al proyecto {proyecto_id}")
+                    proyecto_id = None
             except (ValueError, Proyecto.DoesNotExist) as e:
                 logger.warning(f"pasos_view - Proyecto no válido o no encontrado: {str(e)}")
+                proyecto_id = None
             except Exception as e:
                 logger.error(f"pasos_view - Error al procesar proyecto_id: {str(e)}", exc_info=True)
+                proyecto_id = None
 
         proyecto_id_sesion = request.session.get('pliego_proyecto_id')
         if proyecto_id_sesion:
@@ -142,9 +162,11 @@ def pasos_view(request):
                     # escondería a cada usuario los borradores de sus compañeros en un
                     # proyecto compartido, que hoy sí se ven.
                     borradores = list(qs_borradores.order_by('-fecha_actualizacion'))
-                    # Vincular retroactivamente los sin proyecto al proyecto actual
+                    # Vincular retroactivamente los sin proyecto al proyecto actual — solo
+                    # si el usuario puede editar ese proyecto (puede_ver ya se comprobó al
+                    # fijar `pid`, pero escribir en el proyecto exige el permiso de edición).
                     ids_sin_proyecto = [b.id for b in borradores if b.proyecto_id is None]
-                    if ids_sin_proyecto:
+                    if ids_sin_proyecto and puede_editar(request.user, proy):
                         EspecificacionTecnica.objects.filter(id__in=ids_sin_proyecto).update(proyecto=proy)
                         for b in borradores:
                             if b.proyecto_id is None:
@@ -283,6 +305,15 @@ def coherencia_view(request):
                 'error': 'Título, descripción, tipo de servicio y unidad de medida son requeridos'
             }, status=400)
 
+        # El modelo limita titulo a 100 caracteres (models.py): validar acá evita un
+        # DataError de Postgres que antes caía en el `except Exception` genérico y
+        # devolvía un 500 con "Error al guardar" en vez de un mensaje claro al usuario.
+        if len(titulo) > 100:
+            return JsonResponse({
+                'success': False,
+                'error': 'El título no puede superar los 100 caracteres.'
+            }, status=400)
+
         if len(unidad_medida) > 10:
             unidad_medida = unidad_medida[:10]
 
@@ -294,7 +325,13 @@ def coherencia_view(request):
             if _proyecto_id:
                 try:
                     from proyectos.models import Proyecto
-                    _proyecto = Proyecto.objects.filter(id=_proyecto_id, activo=True).first()
+                    _proyecto_candidato = Proyecto.objects.filter(id=_proyecto_id, activo=True).first()
+                    # Un usuario no puede colgar una especificación de un proyecto que no
+                    # puede ver: `proyecto_id` viene del cliente (body o sesión), así que
+                    # sin esta comprobación cualquiera podía inyectar borradores en
+                    # proyectos ajenos (quedaban visibles vía pasos_view).
+                    if _proyecto_candidato and puede_ver(request.user, _proyecto_candidato):
+                        _proyecto = _proyecto_candidato
                 except Exception:
                     pass
             especificacion = EspecificacionTecnica.objects.create(
@@ -309,6 +346,11 @@ def coherencia_view(request):
                 proyecto=_proyecto,
                 paso=1,
             )
+            if request.session.get('demo_mode'):
+                # Marca esta especificación como la del flujo de prueba: es lo que
+                # `_es_demo()` usa para eximirla del cobro de créditos.
+                request.session['demo_especificacion_id'] = especificacion.id
+                request.session.modified = True
             logger.info(f"EspecificacionTecnica guardada con ID: {especificacion.id}")
         except Exception as e:
             logger.error(f"Error al guardar EspecificacionTecnica: {str(e)}", exc_info=True)
@@ -652,7 +694,11 @@ def propuesta_titulo_view(request):
 @require_http_methods(["POST"])
 def guardar_titulo_view(request):
     """
-    Paso 3: Guarda el título ajustado en BD y llama al webhook de actividades adicionales.
+    Paso 3: Guarda el título ajustado en BD.
+
+    Antes también llamaba acá al webhook de actividades adicionales (hasta 120 s bajo el
+    rótulo "Guardando título..."), duplicando la llamada que ya hace `adicionales_view` en
+    el paso 4. Se saca: esta vista queda liviana y el webhook se pide una sola vez.
     """
     try:
         data = json.loads(request.body)
@@ -664,6 +710,15 @@ def guardar_titulo_view(request):
             return JsonResponse({'success': False, 'error': 'El título final es requerido'}, status=400)
         if not especificacion_id:
             return JsonResponse({'success': False, 'error': 'El ID de la especificación técnica es requerido'}, status=400)
+
+        # El modelo limita titulo a 100 caracteres (models.py): validar acá evita un
+        # DataError de Postgres que antes caía en el `except Exception` genérico y devolvía
+        # un 500 "Error interno del servidor" en vez de un mensaje claro al usuario.
+        if aceptar and len(titulo_final) > 100:
+            return JsonResponse({
+                'success': False,
+                'error': 'El título no puede superar los 100 caracteres.'
+            }, status=400)
 
         try:
             especificacion_tecnica = EspecificacionTecnica.objects.get(id=especificacion_id)
@@ -679,40 +734,10 @@ def guardar_titulo_view(request):
             especificacion_tecnica.paso = 6
         especificacion_tecnica.save(update_fields=['titulo', 'paso'] if aceptar else ['paso'])
 
-        # Llamar al webhook de actividades adicionales con los datos actualizados
-        payload_adicionales = {
-            'titulo': especificacion_tecnica.titulo,
-            'descripcion': especificacion_tecnica.descripcion,
-            'parametros_materiales': especificacion_tecnica.parametros_materiales or [],
-            'parametros_ejecucion': especificacion_tecnica.parametros_ejecucion or [],
-        }
-        try:
-            adicionales_response = llamar_webhook(N8N_WEBHOOK_ADICIONALES_URL, payload_adicionales, timeout=120)
-        except Exception as e:
-            logger.error(f"Error llamando webhook adicionales: {str(e)}", exc_info=True)
-            adicionales_response = {}
-
-        # Extraer y guardar resumen de la respuesta
-        resumen = None
-        if isinstance(adicionales_response, dict):
-            resumen = adicionales_response.get('resumen')
-        elif isinstance(adicionales_response, list) and adicionales_response:
-            first = adicionales_response[0]
-            if isinstance(first, dict):
-                resumen = first.get('resumen') or (
-                    first.get('output', {}).get('resumen') if isinstance(first.get('output'), dict) else None
-                )
-
-        if resumen:
-            especificacion_tecnica.resumen = resumen
-            especificacion_tecnica.save(update_fields=['resumen'])
-            logger.info(f"resumen guardada para especificacion {especificacion_id}")
-
         return JsonResponse({
             'success': True,
             'titulo': especificacion_tecnica.titulo,
             'especificacion_id': especificacion_id,
-            'adicionales_response': adicionales_response,
         })
 
     except json.JSONDecodeError:
@@ -728,8 +753,9 @@ def guardar_titulo_view(request):
 @require_http_methods(["POST"])
 def adicionales_view(request):
     """
-    Paso 4 (preparación): Llama al webhook de actividades adicionales.
-    El frontend llama aquí tras guardar_titulo, luego muestra las actividades al usuario.
+    Paso 4 (preparación): Llama al webhook de actividades adicionales y guarda el resumen
+    que devuelve. El frontend llama aquí tras guardar_titulo, luego muestra las
+    actividades al usuario.
     """
     try:
         data = json.loads(request.body)
@@ -754,6 +780,12 @@ def adicionales_view(request):
         }
 
         response_data = llamar_webhook(N8N_WEBHOOK_ADICIONALES_URL, payload, timeout=120)
+
+        resumen = desempaquetar(response_data).get('resumen')
+        if resumen:
+            especificacion_tecnica.resumen = resumen
+            especificacion_tecnica.save(update_fields=['resumen'])
+            logger.info(f"resumen guardado para especificacion {especificacion_id}")
 
         return JsonResponse({'success': True, 'adicionales_response': response_data})
 
@@ -856,17 +888,41 @@ def generar_resultado_view(request):
 
         especificacion_tecnica.refresh_from_db()
 
-        # El pliego es el entregable del módulo: cuesta 1 crédito. Se comprueba ANTES de
-        # llamar a la IA (para no gastar OpenAI si no hay saldo) pero se cobra DESPUÉS de
-        # que responda bien, así un fallo de n8n no le cuesta un crédito al usuario.
-        cobrar_credito = (
-            not especificacion_tecnica.credito_consumido
-            and not _es_demo(request, especificacion_tecnica)
-        )
-        if cobrar_credito:
+        # El pliego es el entregable del módulo: cuesta 1 crédito. Se reserva de forma
+        # atómica ANTES de llamar a la IA (UPDATE ... WHERE credito_consumido=false):
+        # si dos peticiones llegan a la vez para la misma especificación, solo una gana
+        # esa reserva. Sin esto, N peticiones concurrentes pasaban la comprobación,
+        # generaban N pliegos y solo se cobraba 1 (entrega gratis) o se cobraba de más
+        # (doble cobro). Si la IA falla después, `revertir()` deshace el cobro.
+        cobrar_credito = not _es_demo(request, especificacion_tecnica)
+        credito_reservado = False
+        if cobrar_credito and not especificacion_tecnica.credito_consumido:
             ok, motivo = puede_consumir(request.user, MODULO_PLIEGOS)
             if not ok:
                 return JsonResponse({'success': False, 'error': motivo, 'sin_creditos': True}, status=402)
+
+            reservado = EspecificacionTecnica.objects.filter(
+                id=especificacion_tecnica.id, credito_consumido=False,
+            ).update(credito_consumido=True)
+            if not reservado:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Esta especificación ya se está generando.',
+                }, status=409)
+
+            try:
+                consumir(
+                    request.user, MODULO_PLIEGOS,
+                    referencia=f'EspecificacionTecnica#{especificacion_tecnica.id}',
+                )
+                credito_reservado = True
+            except SinCreditos as e:
+                # Se quedó sin saldo entre la comprobación y el cobro (otra generación en
+                # paralelo se llevó el último crédito). Liberar la reserva sin generar nada.
+                EspecificacionTecnica.objects.filter(id=especificacion_tecnica.id).update(
+                    credito_consumido=False,
+                )
+                return JsonResponse({'success': False, 'error': str(e), 'sin_creditos': True}, status=402)
 
         actividades_raw = especificacion_tecnica.actividades_adicionales or []
         actividades_formateadas = [
@@ -900,7 +956,13 @@ def generar_resultado_view(request):
             'actividades_adicionales': actividades_formateadas,
         }
 
-        response_data = llamar_webhook(N8N_WEBHOOK_FINAL_URL, payload, timeout=120)
+        try:
+            response_data = llamar_webhook(N8N_WEBHOOK_FINAL_URL, payload, timeout=120)
+        except Exception:
+            if credito_reservado:
+                revertir(request.user, MODULO_PLIEGOS, referencia=f'EspecificacionTecnica#{especificacion_tecnica.id}')
+                EspecificacionTecnica.objects.filter(id=especificacion_tecnica.id).update(credito_consumido=False)
+            raise
 
         # Extraer markdown de la respuesta
         markdown_resultado = None
@@ -916,27 +978,16 @@ def generar_resultado_view(request):
 
         if not markdown_resultado:
             logger.warning("No se encontró markdown en la respuesta del webhook final")
+            if credito_reservado:
+                # La IA no entregó nada: no cobrar por un pliego que no se generó.
+                revertir(request.user, MODULO_PLIEGOS, referencia=f'EspecificacionTecnica#{especificacion_tecnica.id}')
+                EspecificacionTecnica.objects.filter(id=especificacion_tecnica.id).update(credito_consumido=False)
             return JsonResponse({'success': False, 'error': 'No se generó contenido en la respuesta', 'response_data': response_data}, status=502)
 
         especificacion_tecnica.resultado_markdown = markdown_resultado
         especificacion_tecnica.paso = 8
         especificacion_tecnica.save(update_fields=['resultado_markdown', 'paso'])
         logger.info(f"Markdown guardado: {len(markdown_resultado)} caracteres")
-
-        # La IA respondió: recién ahora se cobra. `credito_consumido` marca el entregable
-        # como pagado, así regenerarlo (corregir y volver a generar) no vuelve a cobrar.
-        if cobrar_credito:
-            try:
-                consumir(
-                    request.user, MODULO_PLIEGOS,
-                    referencia=f'EspecificacionTecnica#{especificacion_tecnica.id}',
-                )
-                especificacion_tecnica.credito_consumido = True
-                especificacion_tecnica.save(update_fields=['credito_consumido'])
-            except SinCreditos as e:
-                # Se quedó sin saldo entre la comprobación y el cobro (otra generación en
-                # paralelo). El pliego ya está generado, así que no se descarta: se avisa.
-                logger.warning(f'Pliego {especificacion_tecnica.id} generado sin poder cobrar: {e}')
 
         extensions = [
             'markdown.extensions.extra',
@@ -945,7 +996,9 @@ def generar_resultado_view(request):
             'markdown.extensions.nl2br',
             'markdown.extensions.sane_lists',
         ]
-        markdown_html = markdown.markdown(markdown_resultado, output_format='html', extensions=extensions)
+        markdown_html = sanitizar_html(
+            markdown.markdown(markdown_resultado, output_format='html', extensions=extensions)
+        )
 
         return JsonResponse({
             'success': True,
@@ -1030,11 +1083,11 @@ def paso8_resultado_view(request):
             'markdown.extensions.nl2br',
             'markdown.extensions.sane_lists'
         ]
-        markdown_html = markdown.markdown(
+        markdown_html = sanitizar_html(markdown.markdown(
             especificacion_tecnica.resultado_markdown,
             output_format='html',
             extensions=extensions
-        )
+        ))
 
         return JsonResponse({
             'success': True,
@@ -1103,52 +1156,15 @@ def guardar_resultado_view(request):
                 'error': 'No se encontró el contenido de la especificación. Asegúrese de haber completado todos los pasos anteriores.'
             }, status=400)
 
-        logger.info(f"guardar_resultado_view - INICIANDO GUARDADO - {len(contenido)} caracteres")
-
-        try:
-            contenido_anterior = especificacion_tecnica.resultado_markdown or ''
-            especificacion_tecnica.resultado_markdown = contenido
-            especificacion_tecnica.save(update_fields=['resultado_markdown'])
-            logger.info(f"guardar_resultado_view - ✅ save() ejecutado")
-
-            from django.db import transaction
-            transaction.commit()
-            logger.info(f"guardar_resultado_view - ✅ Transacción confirmada")
-        except Exception as e:
-            logger.error(f"guardar_resultado_view - ❌ Error en save(): {str(e)}", exc_info=True)
-            raise
-
-        especificacion_tecnica.refresh_from_db()
-        contenido_despues_save = especificacion_tecnica.resultado_markdown or ''
-
-        if contenido_despues_save != contenido:
-            logger.warning(f"guardar_resultado_view - ⚠️ Contenido no coincide después de save(). Intentando con update()...")
-            try:
-                filas_actualizadas = EspecificacionTecnica.objects.filter(id=especificacion_id).update(resultado_markdown=contenido)
-                logger.info(f"guardar_resultado_view - ✅ update() ejecutado. Filas: {filas_actualizadas}")
-                especificacion_tecnica.refresh_from_db()
-                contenido_guardado = especificacion_tecnica.resultado_markdown or ''
-            except Exception as e:
-                logger.error(f"guardar_resultado_view - ❌ Error en update(): {str(e)}", exc_info=True)
-                contenido_guardado = contenido_despues_save
-        else:
-            contenido_guardado = contenido_despues_save
-            logger.info(f"guardar_resultado_view - ✅ save() funcionó correctamente")
-
-        guardado_exitoso = contenido_guardado == contenido
-        logger.info(f"guardar_resultado_view - Guardado exitoso: {guardado_exitoso} ({len(contenido_guardado)} chars)")
-
-        # Verificación final
-        especificacion_tecnica.refresh_from_db()
-        verificacion_final = especificacion_tecnica.resultado_markdown or ''
-
-        if len(verificacion_final) == 0:
-            logger.error(f"guardar_resultado_view - ERROR CRÍTICO: resultado_markdown está vacío en la BD")
-            return JsonResponse({
-                'success': False,
-                'error': 'No se pudo guardar el contenido de la especificación.',
-                'especificacion_id': especificacion_tecnica.id,
-            }, status=500)
+        # `save()` bajo autocommit (el modo por defecto de Django, sin ATOMIC_REQUESTS)
+        # ya persiste antes de devolver: no hace falta `transaction.commit()` manual —
+        # eso lanzaba TransactionManagementError sin transacción abierta que confirmar,
+        # y ese error caía en el `except Exception` genérico de más abajo: un guardado
+        # que en realidad había funcionado devolvía 500 igual. Tampoco hacen falta los
+        # refresh_from_db()/update() de respaldo que seguían a continuación.
+        especificacion_tecnica.resultado_markdown = contenido
+        especificacion_tecnica.save(update_fields=['resultado_markdown'])
+        logger.info(f"guardar_resultado_view - contenido guardado: {len(contenido)} caracteres")
 
         # Obtener proyecto_id desde la especificación técnica (evita conflictos de sesión multi-pestaña)
         proyecto_id = especificacion_tecnica.proyecto_id
@@ -1174,7 +1190,11 @@ def guardar_resultado_view(request):
 
                 proyecto = Proyecto.objects.get(id=proyecto_id, activo=True)
 
-                if not puede_editar(request.user, proyecto) and not proyecto.publico:
+                # `proyecto.publico` solo da lectura (accounts.permissions.puede_editar ya
+                # lo tiene en cuenta): comprobarlo acá aparte permitía a cualquier usuario
+                # de OTRA empresa escribir una especificación dentro de un proyecto público
+                # ajeno. Escribir siempre exige permiso de edición.
+                if not puede_editar(request.user, proyecto):
                     return JsonResponse({
                         'success': False,
                         'error': 'No tiene permisos para guardar en este proyecto'
@@ -1252,7 +1272,9 @@ def actualizar_cantidad_especificacion_tecnica_view(request, especificacion_tecn
     try:
         especificacion_tecnica = get_object_or_404(EspecificacionTecnica, id=especificacion_tecnica_id)
 
-        if especificacion_tecnica.creado_por and not puede_editar(request.user, especificacion_tecnica):
+        # `creado_por` es SET_NULL: un borrador huérfano (creador borrado) no debe quedar
+        # editable por cualquiera solo porque la condición de arriba se salte el chequeo.
+        if not puede_editar(request.user, especificacion_tecnica):
             return JsonResponse({
                 'success': False,
                 'error': 'No tienes permisos para editar esta especificación técnica'

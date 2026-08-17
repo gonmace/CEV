@@ -1,10 +1,12 @@
 """Tests del sistema de créditos y de los dos tipos de cuenta (empresa / personal)."""
+from allauth.account.adapter import get_adapter
+from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from .access import is_email_allowed, resolve_empresa
 from .creditos import (
-    SinCreditos, consumir, consumido_por, equipo_de, puede_consumir, recargar, saldo,
+    SinCreditos, consumir, consumido_por, equipo_de, puede_consumir, recargar, revertir, saldo,
 )
 from .models import BolsaCreditos, ConsumoCredito, Empresa, Profile, TopeUsuario
 
@@ -98,6 +100,23 @@ class CreditosTests(TestCase):
         consumir(su, PLIEGOS)
         self.assertEqual(ConsumoCredito.objects.count(), 0)
 
+    def test_revertir_devuelve_el_credito_y_borra_el_consumo(self):
+        # Caso real: `generar_resultado_view` cobra ANTES de saber si n8n va a responder
+        # bien (para reservar el crédito y cerrar la carrera de dos generaciones a la
+        # vez); si el webhook falla después, hay que deshacer ese cobro.
+        recargar(self.empresa, PLIEGOS, 3)
+        consumir(self.empleado, PLIEGOS, referencia='EspecificacionTecnica#9')
+        self.assertEqual(saldo(self.empleado, PLIEGOS), 2)
+
+        revertir(self.empleado, PLIEGOS, referencia='EspecificacionTecnica#9')
+
+        self.assertEqual(saldo(self.empleado, PLIEGOS), 3, 'el crédito debe volver a la bolsa')
+        self.assertEqual(ConsumoCredito.objects.count(), 0, 'no debe quedar rastro del cobro deshecho')
+
+    def test_revertir_sin_nada_que_revertir_no_hace_nada(self):
+        revertir(self.empleado, PLIEGOS, referencia='EspecificacionTecnica#inexistente')
+        self.assertEqual(saldo(self.empleado, PLIEGOS), 0)
+
 
 class CupoEmpresaTests(TestCase):
     def setUp(self):
@@ -126,6 +145,31 @@ class CupoEmpresaTests(TestCase):
             username='u', email='ana@acme.com', password='x', is_active=False)
         Profile.objects.create(user=u, empresa=self.empresa)
         self.assertTrue(self.empresa.hay_cupo, 'las bajas no deben ocupar plaza')
+
+
+class RegistroCerradoTests(TestCase):
+    """El registro (email+contraseña y Google) solo debe ser posible por el flujo
+    propio (`request_access` + link de activación) o para correos en la allow-list.
+
+    Antes de `accounts/adapters.py`, faltaban ACCOUNT_ADAPTER/SOCIALACCOUNT_ADAPTER y
+    allauth caía en su default (`is_open_for_signup` -> True): cualquiera podía crear
+    una cuenta activa en `/accounts/signup/` o con cualquier cuenta de Google, sin
+    Profile, sin empresa y sin pasar por `accounts.access.is_email_allowed`.
+    """
+
+    def test_signup_por_email_esta_cerrado(self):
+        self.assertFalse(get_adapter().is_open_for_signup(None))
+
+    def test_social_login_exige_correo_habilitado(self):
+        empresa = Empresa.objects.create(nombre='Acme', dominio='acme.com', max_usuarios=5)
+
+        class _SocialLoginFalso:
+            def __init__(self, email):
+                self.user = User(email=email)
+
+        adapter = get_social_adapter()
+        self.assertTrue(adapter.is_open_for_signup(None, _SocialLoginFalso('nueva@acme.com')))
+        self.assertFalse(adapter.is_open_for_signup(None, _SocialLoginFalso('nadie@evil.com')))
 
 
 class EquipoDashboardTests(TestCase):

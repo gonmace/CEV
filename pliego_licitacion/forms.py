@@ -4,7 +4,7 @@ from django import forms
 class EspecificacionTecnicaForm(forms.Form):
     titulo = forms.CharField(
         label='Título',
-        max_length=200,
+        max_length=100,  # debe coincidir con EspecificacionTecnica.titulo (models.py)
         required=True,
         widget=forms.TextInput(attrs={
             'class': 'input input-bordered w-full',

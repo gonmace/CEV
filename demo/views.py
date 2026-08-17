@@ -1,7 +1,9 @@
 import logging
 import markdown as md_lib
+from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
+from core.sanitize import sanitizar_html
 from .models import DemoTrial
 from .decorators import demo_login_required, demo_required
 from pliego_licitacion.models import EspecificacionTecnica
@@ -44,7 +46,6 @@ def landing_view(request):
             spec = EspecificacionTecnica.objects.get(
                 id=demo_spec_id,
                 creado_por=request.user,
-                es_demo=True,
                 eliminado=False,
             )
             if spec.paso < 8:
@@ -89,22 +90,37 @@ def iniciar_demo_view(request):
 
 @demo_login_required
 def flujo_paso1_view(request):
-    """Paso 1 del demo: formulario de datos iniciales."""
+    """Paso 1 del demo: formulario de datos iniciales.
+
+    Exige haber pasado por `iniciar_demo_view` (que registra el intento contra la
+    cuota `DemoTrial`): sin esto, cualquier usuario autenticado podía entrar directo
+    a esta URL y generar pliegos de demo sin límite.
+    """
+    if not request.session.get('demo_mode'):
+        return redirect('demo:landing')
     return render(request, 'demo/flujo_paso1.html', {
         'es_demo': True,
     })
 
 
-@demo_login_required
-def flujo_paso2_view(request, especificacion_id):
-    """Paso 2 del demo: selección de parámetros técnicos (4 sub-pasos)."""
-    spec = get_object_or_404(
+def _get_demo_spec_or_404(request, especificacion_id):
+    """La especificación de la demo EN CURSO de este usuario (no cualquier spec suya:
+    el modelo ya no tiene `es_demo`, así que la sesión es la única forma de distinguir
+    un pliego de prueba de uno real del mismo usuario)."""
+    if str(request.session.get('demo_especificacion_id') or '') != str(especificacion_id):
+        raise Http404
+    return get_object_or_404(
         EspecificacionTecnica,
         id=especificacion_id,
         creado_por=request.user,
-        es_demo=True,
         eliminado=False,
     )
+
+
+@demo_login_required
+def flujo_paso2_view(request, especificacion_id):
+    """Paso 2 del demo: selección de parámetros técnicos (4 sub-pasos)."""
+    spec = _get_demo_spec_or_404(request, especificacion_id)
     if spec.paso >= 8:
         return redirect('demo:flujo_resultado', especificacion_id=spec.id)
     return render(request, 'demo/flujo_paso2.html', {
@@ -116,18 +132,12 @@ def flujo_paso2_view(request, especificacion_id):
 @demo_login_required
 def flujo_resultado_view(request, especificacion_id):
     """Resultado final del demo, renderizado server-side."""
-    spec = get_object_or_404(
-        EspecificacionTecnica,
-        id=especificacion_id,
-        creado_por=request.user,
-        es_demo=True,
-        eliminado=False,
-    )
-    resultado_html = md_lib.markdown(
+    spec = _get_demo_spec_or_404(request, especificacion_id)
+    resultado_html = sanitizar_html(md_lib.markdown(
         spec.resultado_markdown or '',
         output_format='html',
         extensions=_MD_EXTENSIONS,
-    )
+    ))
     return render(request, 'demo/flujo_resultado.html', {
         'especificacion': spec,
         'resultado_html': resultado_html,

@@ -226,16 +226,24 @@
             if (el) { el.classList.add('hidden'); el.style.display = ''; }
         };
 
-        // 8 pasos, total 148 s → ángulos acumulados en sentido horario desde 0°
+        // 10 pasos, total ~141 s → ángulos acumulados en sentido horario desde 0°.
+        // `startSpinnerStep` usa el primer match cuyo texto aparece en el rótulo
+        // (label.includes(match)), en el orden de este array: los matches específicos
+        // ("guardando título", "guardando actividades" — guardados en BD, casi
+        // instantáneos) van ANTES que sus versiones genéricas ("título",
+        // "actividades adicionales" — llamadas a IA), o el genérico se los comería y el
+        // arco quedaría animando 12-43s para algo que ya terminó.
         const _SPINNER_STEPS = [
-            { match: 'parámetros técnicos',   startAngle:   0,     endAngle:  19.46, duration:  8 },
-            { match: 'materiales',             startAngle:  19.46,  endAngle:  58.38, duration: 16 },
-            { match: 'ejecuci',                startAngle:  58.38,  endAngle: 133.78, duration: 31 },
-            { match: 'normas',                 startAngle: 133.78,  endAngle: 153.24, duration:  8 },
-            { match: 'criterios',              startAngle: 153.24,  endAngle: 197.03, duration: 18 },
-            { match: 'título',                 startAngle: 197.03,  endAngle: 199.46, duration:  1 },
-            { match: 'guardando actividades',  startAngle: 199.46,  endAngle: 255.41, duration: 23 },
-            { match: 'generando especificaci', startAngle: 255.41,  endAngle: 360,    duration: 43 },
+            { match: 'parámetros técnicos',    startAngle:   0,      endAngle:  20.43, duration:  8 },
+            { match: 'materiales',              startAngle:  20.43,  endAngle:  61.28, duration: 16 },
+            { match: 'ejecuci',                 startAngle:  61.28,  endAngle: 140.43, duration: 31 },
+            { match: 'normas',                  startAngle: 140.43,  endAngle: 160.85, duration:  8 },
+            { match: 'criterios',               startAngle: 160.85,  endAngle: 206.81, duration: 18 },
+            { match: 'guardando título',        startAngle: 206.81,  endAngle: 209.36, duration:  1 },
+            { match: 'título',                  startAngle: 209.36,  endAngle: 217.02, duration:  3 },
+            { match: 'guardando actividades',   startAngle: 217.02,  endAngle: 219.57, duration:  1 },
+            { match: 'actividades adicionales', startAngle: 219.57,  endAngle: 250.21, duration: 12 },
+            { match: 'generando especificaci',  startAngle: 250.21,  endAngle: 360,    duration: 43 },
         ];
 
         let _dotRaf = null;

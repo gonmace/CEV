@@ -66,10 +66,10 @@
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">Nombre sugerido por IA</label>
-            <input type="text" id="titulo-propuesto"
+            <input type="text" id="titulo-propuesto" maxlength="100"
               class="input input-bordered focus:border-primary focus:outline-none transition-colors w-full"
               placeholder="Ingrese el nombre propuesto">
-            <p class="text-xs text-base-content/40 mt-0.5">Puede editar el nombre sugerido antes de aceptarlo.</p>
+            <p class="text-xs text-base-content/40 mt-0.5">Puede editar el nombre sugerido antes de aceptarlo (máx. 100 caracteres).</p>
           </div>
         </div>
         <div class="flex items-center justify-end px-6 py-4 border-t border-base-200 gap-2">
@@ -89,11 +89,21 @@
 
 {% block js %}
 <script>
+// Bloquea el botón Atrás mientras hay una operación en curso, para no perder el estado
+// del paso a mitad de una llamada a IA. Se libera en cuanto se muestra un error: quedarse
+// atrapado en una página rota es peor que perder el progreso de este paso.
+let _bloquearAtras = true;
 history.pushState(null, '', location.href);
-window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+window.addEventListener('popstate', () => {
+  if (_bloquearAtras) history.pushState(null, '', location.href);
+});
 
 const SPEC_ID    = {{ especificacion.id }};
 const CSRF_TOKEN = "{{ csrf_token }}";
+// El webhook de propuesta de título llama a la IA (timeout de 60s del lado del servidor);
+// guardar el título es solo una escritura en BD, así que puede ser bastante más corto.
+const TIMEOUT_PROPUESTA_MS = 65000;
+const TIMEOUT_GUARDAR_MS   = 15000;
 
 const N8N_URLS = {
   propuestaTitulo: "{% url 'pliego_licitacion:propuesta_titulo' %}",
@@ -110,16 +120,32 @@ function mostrar(id) {
     if (el) el.classList.toggle('hidden', b !== id);
   });
   hideSpinner();
+  if (id === 'bloque-error') _bloquearAtras = false;
+}
+
+// fetch() no se cancela solo si el servidor se cuelga: sin esto, un backend que nunca
+// responde deja el spinner girando para siempre (el bug que motivó este cambio).
+async function fetchConTimeout(url, opciones, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...opciones, signal: controller.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('La solicitud tardó demasiado tiempo. Intente nuevamente.');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function cargarPropuesta() {
   showSpinner('Generando propuesta de título...');
   try {
-    const resp = await fetch(N8N_URLS.propuestaTitulo, {
+    const resp = await fetchConTimeout(N8N_URLS.propuestaTitulo, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
       body: JSON.stringify({ especificacion_id: SPEC_ID }),
-    });
+    }, TIMEOUT_PROPUESTA_MS);
     const data = await resp.json();
     if (!resp.ok || !data.success) throw new Error(data.error || 'Error al obtener propuesta de título');
 
@@ -152,8 +178,9 @@ async function enviarTitulo(tituloFinal, aceptar) {
   btnRechazar.disabled = true;
   showSpinner('Guardando título...');
 
+  let navegando = false;
   try {
-    const resp = await fetch(N8N_URLS.guardarTitulo, {
+    const resp = await fetchConTimeout(N8N_URLS.guardarTitulo, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
       body: JSON.stringify({
@@ -164,39 +191,23 @@ async function enviarTitulo(tituloFinal, aceptar) {
         titulo_propuesto: _tituloPropuesto,
         especificacion_id: SPEC_ID,
       }),
-    });
+    }, TIMEOUT_GUARDAR_MS);
     const result = await resp.json();
     if (!resp.ok || !result.success) throw new Error(result.error || 'Error al guardar el título');
 
-    // Extraer actividades adicionales de la respuesta
-    let adicionales = null;
-    if (result.adicionales_response) {
-      const ar = result.adicionales_response;
-      if (ar.actividades_adicionales) {
-        adicionales = ar.actividades_adicionales;
-      } else if (Array.isArray(ar) && ar[0]?.output?.actividades_adicionales) {
-        adicionales = ar[0].output.actividades_adicionales;
-      } else if (Array.isArray(ar) && ar[0]?.actividades_adicionales) {
-        adicionales = ar[0].actividades_adicionales;
-      }
-    } else if (Array.isArray(result) && result[0]?.output?.actividades_adicionales) {
-      adicionales = result[0].output.actividades_adicionales;
-    } else if (result.actividades_adicionales) {
-      adicionales = result.actividades_adicionales;
-    }
-
-    // Guardar en sessionStorage para paso4
-    if (adicionales && Array.isArray(adicionales) && adicionales.length > 0) {
-      sessionStorage.setItem('adicionales_data', JSON.stringify(adicionales));
-    }
-
+    // Las actividades adicionales ya no vienen en esta respuesta: guardar_titulo_view
+    // solo guarda el título. El paso 4 pide el webhook de adicionales por su cuenta.
+    navegando = true;
     window.location.href = "{% url 'pliego_licitacion:paso4_actividades' especificacion.id %}";
 
   } catch (e) {
     document.getElementById('error-texto').textContent = e.message || 'Error desconocido';
     mostrar('bloque-error');
-    btnAceptar.disabled  = false;
-    btnRechazar.disabled = false;
+  } finally {
+    if (!navegando) {
+      btnAceptar.disabled  = false;
+      btnRechazar.disabled = false;
+    }
   }
 }
 

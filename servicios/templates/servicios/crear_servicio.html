@@ -152,9 +152,10 @@
 {% endblock %}
 
 {% block js %}
+{{ categorias_json|json_script:"categorias-data" }}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const categorias = {{ categorias_json|safe }};
+    const categorias = JSON.parse(document.getElementById('categorias-data').textContent);
     const selectCat = document.getElementById('id_categoria');
     const selectSub = document.getElementById('id_subcategoria_codigo');
 

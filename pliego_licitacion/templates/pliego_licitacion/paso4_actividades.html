@@ -93,11 +93,39 @@
 
 {% block js %}
 <script>
+let _bloquearAtras = true;
 history.pushState(null, '', location.href);
-window.addEventListener('popstate', () => history.pushState(null, '', location.href));
+window.addEventListener('popstate', () => {
+  if (_bloquearAtras) history.pushState(null, '', location.href);
+});
 
 const SPEC_ID    = {{ especificacion.id }};
 const CSRF_TOKEN = "{{ csrf_token }}";
+const FETCH_TIMEOUT_MS = 65000; // el webhook de adicionales/generar llama a la IA (timeout 120s del lado del servidor)
+
+// n8n envuelve la respuesta de formas distintas según el workflow: dict plano,
+// {output: {...}}, o una lista de cualquiera de esos dos. Normaliza a un dict plano.
+function desempaquetar(respuesta) {
+  let dato = respuesta;
+  if (Array.isArray(dato)) dato = dato.length ? dato[0] : {};
+  if (dato && typeof dato === 'object' && dato.output && typeof dato.output === 'object') {
+    dato = dato.output;
+  }
+  return (dato && typeof dato === 'object') ? dato : {};
+}
+
+async function fetchConTimeout(url, opciones, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...opciones, signal: controller.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('La solicitud tardó demasiado tiempo. Intente nuevamente.');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const N8N_URLS = {
   adicionales:     "{% url 'pliego_licitacion:adicionales' %}",
@@ -113,6 +141,7 @@ function mostrar(id) {
     if (el) el.classList.toggle('hidden', b !== id);
   });
   hideSpinner();
+  if (id === 'bloque-error') _bloquearAtras = false;
 }
 
 function escapeHtml(text) {
@@ -208,45 +237,24 @@ function agregarActividad() {
 
 async function cargarActividades() {
   showSpinner('Cargando actividades adicionales...');
-
-  // Intentar leer de sessionStorage primero
-  const cached = sessionStorage.getItem('adicionales_data');
-  if (cached) {
-    try {
-      const actividades = JSON.parse(cached);
-      sessionStorage.removeItem('adicionales_data');
-      if (Array.isArray(actividades) && actividades.length > 0) {
-        poblarTabla(actividades);
-        mostrar('bloque-tabla');
-        initListeners();
-        return;
-      }
-    } catch (e) { /* fallo de caché, llamar al endpoint */ }
-  }
-
-  // Llamar al endpoint
   try {
-    const resp = await fetch(N8N_URLS.adicionales, {
+    const resp = await fetchConTimeout(N8N_URLS.adicionales, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
       body: JSON.stringify({ especificacion_id: SPEC_ID }),
-    });
+    }, FETCH_TIMEOUT_MS);
     const data = await resp.json();
     if (!resp.ok || !data.success) throw new Error(data.error || 'Error al cargar actividades');
 
-    let actividades = null;
-    const ar = data.adicionales_response;
-    if (ar?.actividades_adicionales) {
-      actividades = ar.actividades_adicionales;
-    } else if (Array.isArray(ar) && ar[0]?.output?.actividades_adicionales) {
-      actividades = ar[0].output.actividades_adicionales;
-    } else if (Array.isArray(ar) && ar[0]?.actividades_adicionales) {
-      actividades = ar[0].actividades_adicionales;
-    } else if (data.actividades_adicionales) {
-      actividades = data.actividades_adicionales;
+    const actividades = desempaquetar(data.adicionales_response).actividades_adicionales
+      || data.actividades_adicionales
+      || [];
+
+    if (!Array.isArray(actividades) || actividades.length === 0) {
+      throw new Error('La IA no encontró actividades adicionales para esta especificación.');
     }
 
-    poblarTabla(actividades || []);
+    poblarTabla(actividades);
     mostrar('bloque-tabla');
     initListeners();
   } catch (e) {
@@ -275,22 +283,22 @@ async function continuar() {
     // Guardar actividades
     showSpinner('Guardando actividades adicionales...');
 
-    const saveResp = await fetch(N8N_URLS.actividades, {
+    const saveResp = await fetchConTimeout(N8N_URLS.actividades, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
       body: JSON.stringify({ actividades: seleccionadas, especificacion_id: SPEC_ID }),
-    });
+    }, FETCH_TIMEOUT_MS);
     const saveData = await saveResp.json();
     if (!saveResp.ok || !saveData.success) throw new Error(saveData.error || 'Error al guardar actividades');
 
     // Generar resultado
     showSpinner('Generando especificación técnica...');
 
-    const genResp = await fetch(N8N_URLS.generarResultado, {
+    const genResp = await fetchConTimeout(N8N_URLS.generarResultado, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
       body: JSON.stringify({ especificacion_id: SPEC_ID }),
-    });
+    }, FETCH_TIMEOUT_MS);
     const genData = await genResp.json();
     if (!genResp.ok || !genData.success) throw new Error(genData.error || 'Error al generar la especificación');
 

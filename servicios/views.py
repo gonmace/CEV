@@ -22,6 +22,8 @@ from accounts.marca import (
     plantilla_de, reemplazar_placeholders, tipo_contrato_label,
 )
 from accounts.permissions import filtrar_visibles, get_user_empresa, is_company_admin, puede_editar, puede_ver
+from core.sanitize import sanitizar_html
+from core.http_safe import URLNoPermitida, get_seguro
 
 # Generar las secciones de un servicio es el entregable: cuesta 1 crédito de este módulo.
 MODULO_SERVICIOS = 'servicios.access'
@@ -101,11 +103,13 @@ N8N_WEBHOOK_SER_PDF_EXTRACTOR_URL     = _n8n('pdf-vision')
 
 
 def _categorias_json(empresa=None):
-    """Devuelve el catálogo como JSON para cascada categoria→subcategoria en el template.
+    """Catálogo para la cascada categoria→subcategoria del template, como objeto Python
+    (no como cadena ya serializada: el template lo vuelca con `|json_script`, que
+    escapa `</script>` y compañía; `json.dumps` + `|safe` no lo hacía).
     `empresa=None` trae el catálogo global (cuentas personales o empresas sin uno propio)."""
     catalogo = CatalogoServicios.get_activo(empresa)
     datos = catalogo.datos if catalogo else []
-    result = [
+    return [
         {
             'id': cat['nombre'],
             'nombre': cat['nombre'],
@@ -123,7 +127,6 @@ def _categorias_json(empresa=None):
         }
         for cat in datos
     ]
-    return json.dumps(result)
 
 
 def _lookup_catalogo(subcategoria_codigo, empresa=None):
@@ -256,7 +259,10 @@ def editar_catalogo_view(request):
     )
 
     return render(request, 'servicios/editar_catalogo.html', {
-        'datos_json': json.dumps(datos_actuales, ensure_ascii=False),
+        # Objeto Python, no una cadena ya serializada: el template lo vuelca con
+        # `|json_script` (escapa `</script>` etc.), no con `|safe` sobre un
+        # `json.dumps` manual — ahí `json.dumps` no escapa `</script>`.
+        'datos_json': datos_actuales,
         'tiene_catalogo_propio': catalogo is not None,
     })
 
@@ -621,7 +627,7 @@ def paso5_consolidar_view(request, servicio_id):
             lineas.append(linea)
     contenido_md = '\n'.join(lineas)
 
-    preview_html = mark_safe(markdown(contenido_md, extensions=['extra']))
+    preview_html = mark_safe(sanitizar_html(markdown(contenido_md, extensions=['extra'])))
 
     return render(request, 'servicios/paso5_consolidar.html', {
         'servicio': servicio,
@@ -741,7 +747,7 @@ def extraer_equipo_ajax(request, servicio_id):
         if not contenido:
             return JsonResponse({'error': 'URL vacía.'}, status=400)
         try:
-            r = requests.get(contenido, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
+            r = get_seguro(contenido, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
             content_type = r.headers.get('Content-Type', '').lower()
             is_pdf = 'pdf' in content_type or contenido.lower().split('?')[0].endswith('.pdf')
 
@@ -787,8 +793,11 @@ def extraer_equipo_ajax(request, servicio_id):
                 html = re.sub(r'<[^>]+>', '', html)
                 html = re.sub(r'\s{2,}', ' ', html).strip()
                 texto = html[:6000]
+        except URLNoPermitida as e:
+            return JsonResponse({'error': str(e)}, status=400)
         except Exception as e:
-            return JsonResponse({'error': f'No se pudo obtener la URL: {e}'}, status=400)
+            logger.warning(f'No se pudo obtener la URL {contenido}: {e}')
+            return JsonResponse({'error': 'No se pudo obtener la URL.'}, status=400)
 
     elif tipo == 'pdf':
         pdf_file = request.FILES.get('archivo')
@@ -903,7 +912,7 @@ def generar_alcance_ajax(request, servicio_id):
         texto = ref.get('texto_referencia', '').strip()
         if url:
             try:
-                r = requests.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
+                r = get_seguro(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
                 html = r.text
                 html = re.sub(r'<script[\s\S]*?>[\s\S]*?</script>', '', html, flags=re.IGNORECASE)
                 html = re.sub(r'<style[\s\S]*?>[\s\S]*?</style>', '', html, flags=re.IGNORECASE)
@@ -1102,14 +1111,16 @@ def ver_servicio_view(request, servicio_id):
 
     es_propietario = puede_editar(request.user, servicio)
     contenido_md = servicio.contenido or ''
-    preview_html = mark_safe(markdown(contenido_md, extensions=['extra']))
+    preview_html = mark_safe(sanitizar_html(markdown(contenido_md, extensions=['extra'])))
     tiene_cantidad = bool(servicio.cantidad and servicio.cantidad.strip())
 
     return render(request, 'servicios/ver_servicio.html', {
         'servicio': servicio,
         'es_propietario': es_propietario,
         'preview_html': preview_html,
-        'contenido_md_json': json.dumps(contenido_md),
+        # Cadena, no dict, pero igual objeto Python "crudo": el template usa
+        # `|json_script`, no `|safe` sobre un `json.dumps` manual.
+        'contenido_md_json': contenido_md,
         'tiene_cantidad': tiene_cantidad,
     })
 

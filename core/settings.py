@@ -1,5 +1,6 @@
 import os
 from decouple import config, Csv
+from django.core.exceptions import ImproperlyConfigured
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(PROJECT_DIR)
@@ -15,7 +16,11 @@ ADMIN_URL = config('ADMIN_URL', default='admin/')
 SITE_LOGO_URL = config('SITE_LOGO_URL', default='')
 
 # n8n webhooks
-N8N_BASE_URL = config('N8N_BASE_URL', default='https://cev-n8n.magoreal.com')
+# Sin default al dominio de producción: un .env incompleto (a un dev nuevo, o a un
+# entorno de staging) antes disparaba workflows reales de n8n y consumía créditos de
+# IA de verdad sin que nadie lo pidiera. Con el default vacío, la URL del webhook queda
+# mal formada y la llamada falla explícitamente en vez de aterrizar en producción.
+N8N_BASE_URL = config('N8N_BASE_URL', default='')
 
 # Application definition
 
@@ -127,15 +132,26 @@ if config('POSTGRES_DB', default=''):
             # En dev se entra por el puerto publicado en el host (POSTGRES_HOST_PORT del
             # docker-compose.dev.yml); en prod por el puerto interno del contenedor.
             'PORT': config('POSTGRES_HOST_PORT', default='5432') if DEBUG else config('POSTGRES_PORT', default='5432'),
+            # Conexiones persistentes (10 min): evita el costo de abrir una conexión TCP
+            # nueva por request, que con Postgres es notorio bajo carga.
+            'CONN_MAX_AGE': 600,
         }
     }
-else:
+elif DEBUG:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
         }
     }
+else:
+    # Sin esto, un `.env` de producción incompleto (falta POSTGRES_DB) arrancaba en
+    # SQLite sin avisar: el sitio "funcionaba" pero contra una base vacía y descartable,
+    # en vez de fallar ruidosamente al levantar el contenedor.
+    raise ImproperlyConfigured(
+        'POSTGRES_DB no está definido y DEBUG=False: no se puede arrancar en producción '
+        'sin una base de datos Postgres configurada (revisa el .env del servidor).'
+    )
 
 # ── Redis (cache y sesiones) ────────────────────────────────────────────────────
 REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
@@ -212,6 +228,10 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Solo añade `preload` a la cabecera Strict-Transport-Security; NO envía el dominio
+    # a la lista de precarga de los navegadores por sí solo (eso es un paso manual en
+    # hstspreload.org, y es cuasi-irreversible: no lo hagas hasta estar seguro de HTTPS).
+    SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
@@ -231,12 +251,34 @@ else:
     AXES_CACHE = 'default'
 
 # ── Content Security Policy ───────────────────────────────────────────────────
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'",)
-CSP_STYLE_SRC = ("'self'",)
-CSP_IMG_SRC = ("'self'", "data:")
-CSP_FONT_SRC = ("'self'",)
-CSP_CONNECT_SRC = ("'self'",) if not DEBUG else ("'self'", "ws://localhost:*", "ws://127.0.0.1:*")
+# django-csp 4.x lee solo CONTENT_SECURITY_POLICY (dict); las variables sueltas
+# CSP_DEFAULT_SRC/CSP_SCRIPT_SRC/... son de la API <4.0 y se ignoran en silencio
+# (confirmado: con esas variables el middleware no emitía ninguna cabecera CSP).
+#
+# script-src/style-src llevan 'unsafe-inline' como transición: hay ~60 templates con
+# <script> inline sin nonce (ver templates/base.html, pliego_licitacion/paso8_resultado.html,
+# etc.) — activar una política estricta tal cual los rompía a todos en el navegador.
+# Endurecer esto a nonces (`request.csp_nonce` + `nonce="{{ request.csp_nonce }}"` en cada
+# <script>) es trabajo pendiente; mientras tanto, la defensa real contra XSS es sanitizar el
+# HTML generado desde markdown (ver core/sanitize.py), no esta cabecera.
+#
+# Hosts externos que el proyecto carga de verdad (comprobado por grep sobre los templates):
+# TOAST UI Editor (uicdn.toast.com) en los editores de contenido, SortableJS (jsdelivr) para
+# reordenar por drag&drop, y Google Fonts en el demo. Sin listarlos, script-src/style-src/
+# font-src 'self' los bloquea silenciosamente y esas páginas dejan de funcionar.
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'", 'https://uicdn.toast.com', 'https://cdn.jsdelivr.net'],
+        'style-src': ["'self'", "'unsafe-inline'", 'https://uicdn.toast.com', 'https://fonts.googleapis.com'],
+        'img-src': ["'self'", 'data:'],
+        'font-src': ["'self'", 'https://uicdn.toast.com', 'https://fonts.gstatic.com'],
+        'connect-src': ["'self'"] if not DEBUG else ["'self'", 'ws://localhost:*', 'ws://127.0.0.1:*'],
+        'object-src': ["'none'"],
+        'base-uri': ["'self'"],
+        'frame-ancestors': ["'self'"],
+    }
+}
 
 # ── Admins y logging ──────────────────────────────────────────────────────────
 ADMINS = [('Admin', 'admin@example.com')]
@@ -266,6 +308,12 @@ ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
+# Sin estos dos, `is_open_for_signup()` cae en el default de allauth (True) y
+# /accounts/signup/ + el login de Google quedan abiertos a cualquiera, saltándose
+# la allow-list de accounts.access. Ver accounts/adapters.py.
+ACCOUNT_ADAPTER = 'accounts.adapters.AccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'accounts.adapters.SocialAccountAdapter'
+
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['profile', 'email'],
@@ -286,7 +334,11 @@ LOGGING = {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler',
-        }
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
     },
     'loggers': {
         'django.request': {
@@ -294,5 +346,15 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': True,
         },
+        **({
+            # Sin esto, los logger.error(..., exc_info=True) de las vistas del pliego no
+            # dejan rastro en runserver: diagnosticar el spinner colgado en "Guardando
+            # título..." hubo que reconstruirlo desde la BD y las ejecuciones de n8n.
+            'pliego_licitacion': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+        } if DEBUG else {}),
     },
 }

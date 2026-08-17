@@ -363,6 +363,7 @@
 {% endblock %}
 
 {% block js %}
+{{ datos_catalogo|json_script:"datos-catalogo" }}
 <script>
   document.addEventListener('click', function(event) {
     const button = event.target.closest('.eliminar-servicio-btn');
@@ -420,7 +421,7 @@
     }
   });
 
-  const CATALOGO = {{ datos_catalogo|safe }};
+  const CATALOGO = JSON.parse(document.getElementById('datos-catalogo').textContent);
 
   function abrirVisor(tipo) {
     const modal = document.getElementById('modal-catalogo');

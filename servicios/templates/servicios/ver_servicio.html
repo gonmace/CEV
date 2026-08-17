@@ -285,10 +285,11 @@
 
 {% block js %}
 <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+{{ contenido_md_json|json_script:"contenido-md-data" }}
 <script>
   const GUARDAR_URL  = "{% url 'servicios:guardar_contenido' servicio.id %}";
   const CSRF_TOKEN   = "{{ csrf_token }}";
-  const CONTENIDO_MD = {{ contenido_md_json|safe }};
+  const CONTENIDO_MD = JSON.parse(document.getElementById('contenido-md-data').textContent);
 
   // ── Inline editor ────────────────────────────────────────────────────────
   {% if es_propietario %}
