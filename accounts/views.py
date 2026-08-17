@@ -75,10 +75,14 @@ def _get_or_create_pending_user(email, role=''):
     return user
 
 
-def _send_activation_email(request, user):
+def _activation_path(user):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    link = request.build_absolute_uri(reverse('accounts:activate', args=[uid, token]))
+    return reverse('accounts:activate', args=[uid, token])
+
+
+def _send_activation_email(request, user):
+    link = request.build_absolute_uri(_activation_path(user))
     body = render_to_string('accounts/emails/activation.txt', {'user': user, 'link': link})
     send_mail_async('Activa tu cuenta de CEV', body, [user.email])
 
@@ -149,6 +153,12 @@ def request_access(request):
             if _request_access_allowed(request, email) and is_email_allowed(email):
                 user = _get_or_create_pending_user(email)
                 if not user.is_active and not user.has_usable_password():
+                    if resolve_empresa(email):
+                        # Correo de dominio de empresa: el dominio ya lo certifica, así que
+                        # se salta la verificación por correo y se va directo a fijar
+                        # password (decisión de producto — a costa de la protección
+                        # anti-enumeración que sí aplica al resto de este flujo).
+                        return redirect(_activation_path(user))
                     _send_activation_email(request, user)
             messages.success(request, NEUTRAL_MSG)
             return redirect('accounts:login')
