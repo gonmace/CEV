@@ -49,8 +49,10 @@ n8n-update:
 	@[ -f .env ] || { echo "Error: .env no encontrado."; exit 1; }
 	@set -a && . ./.env && set +a; \
 	[ -n "$${N8N_DOMAIN}" ] || { echo "Error: N8N_DOMAIN no definido en .env"; exit 1; }; \
+	PROJECT_NAME_LC=$$(echo "$${PROJECT_NAME}" | tr '[:upper:]' '[:lower:]'); \
+	export PROJECT_NAME_LC; \
 	echo "▶ Descargando nueva imagen de n8n..."; \
-	docker build -t $${PROJECT_NAME}_n8n:latest -f docker/n8n.Dockerfile .; \
+	docker build -t $${PROJECT_NAME_LC}_n8n:latest -f docker/n8n.Dockerfile .; \
 	echo "▶ Reiniciando contenedor n8n..."; \
 	docker compose --profile n8n up -d --no-deps n8n; \
 	echo "✓ n8n actualizado."

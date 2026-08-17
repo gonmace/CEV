@@ -14,6 +14,9 @@ source .env
 set +a
 
 PROJECT_NAME=${PROJECT_NAME:?La variable PROJECT_NAME no está definida en .env}
+# Docker exige repo names en minúsculas (p. ej. la imagen de n8n); PROJECT_NAME puede
+# traer mayúsculas ("Constructor_EV"), así que se deriva una variante en minúsculas.
+export PROJECT_NAME_LC="$(echo "${PROJECT_NAME}" | tr '[:upper:]' '[:lower:]')"
 APP_PORT=${APP_PORT:-8000}
 DOMAIN=${DOMAIN:?La variable DOMAIN no está definida en .env}
 POSTGRES_MODE=${POSTGRES_MODE:-container}

@@ -61,7 +61,9 @@ services:
     build:
       context: .
       dockerfile: docker/n8n.Dockerfile
-    image: ${PROJECT_NAME}_n8n:latest
+    # Docker exige repo names en minúsculas; PROJECT_NAME (p. ej. "Constructor_EV")
+    # puede tener mayúsculas, así que se usa PROJECT_NAME_LC (ver deploy.sh/Makefile).
+    image: ${PROJECT_NAME_LC:-${PROJECT_NAME}}_n8n:latest
     container_name: ${PROJECT_NAME}_n8n
     restart: always
     ports:
