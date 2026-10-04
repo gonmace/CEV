@@ -1240,9 +1240,16 @@ def guardar_resultado_view(request):
                 edit_url = reverse('proyectos:editar_especificacion', args=[especificacion.id])
 
             except Proyecto.DoesNotExist:
-                pass
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No se encontró el proyecto donde guardar la especificación.'
+                }, status=404)
             except Exception as e:
                 logger.error(f"Error al convertir EspecificacionTecnica a Especificacion: {str(e)}", exc_info=True)
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No se pudo guardar la especificación en el proyecto. Intenta nuevamente.'
+                }, status=500)
 
         return JsonResponse({
             'success': True,

@@ -212,6 +212,8 @@
         // Guardado listo: mostrar el ícono de editar apuntando a la especificación
         // recién creada/actualizada. El usuario se queda en esta misma página.
         mostrarBotonEditar(data.edit_url);
+        // "Volver al proyecto" solo se habilita cuando el guardado terminó bien.
+        document.getElementById('action-bar').style.display = 'flex';
         toggleSpinner(false);
       } catch (error) {
         flashy.error('Error al guardar la especificación: ' + error.message);
@@ -286,8 +288,7 @@
             document.getElementById('result-title').textContent = resultado.titulo;
           }
           document.getElementById('resultContainer').style.display = 'block';
-          document.getElementById('action-bar').style.display = 'flex';
-          
+
           // IMPORTANTE: Guardar el markdown RAW original del POST, no el HTML
           // Prioridad: raw_markdown > (obtener de BD si no está disponible)
           if (resultado.raw_markdown) {
