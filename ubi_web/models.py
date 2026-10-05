@@ -30,6 +30,14 @@ class Ubicacion(models.Model):
     latitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Latitud")
     longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Longitud")
     ciudad = models.CharField(max_length=255, verbose_name="Ciudad/Localidad")
+    ruta_vias = models.CharField(max_length=255, blank=True, verbose_name="Vías principales")
+    ruta_distancia = models.CharField(max_length=50, blank=True, verbose_name="Distancia desde el centro")
+    ruta_duracion = models.CharField(max_length=50, blank=True, verbose_name="Tiempo estimado")
+    ruta_resumen = models.TextField(
+        blank=True,
+        verbose_name="Resumen de ruta",
+        help_text="Resumen genérico del acceso desde el centro de la ciudad (generado automáticamente, editable).",
+    )
     documento_pdf = models.FileField(upload_to='ubicaciones/documentos/', blank=True, null=True, verbose_name="Documento PDF")
     mapa_imagen = models.ImageField(upload_to='ubicaciones/mapas/', blank=True, null=True, verbose_name="Mapa")
     fecha_creacion = models.DateTimeField(auto_now_add=True)

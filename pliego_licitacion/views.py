@@ -9,6 +9,8 @@ from django.conf import settings
 from django.http import JsonResponse, Http404
 from django.views.decorators.http import require_http_methods
 from accounts.creditos import SinCreditos, consumir, puede_consumir, revertir
+from core.n8n import llamar_webhook, desempaquetar, webhook_url as _n8n
+from accounts.models import Marca
 from core.sanitize import sanitizar_html
 from accounts.permissions import filtrar_visibles, get_user_empresa, puede_editar, puede_ver
 from .forms import EspecificacionTecnicaForm
@@ -30,47 +32,6 @@ def _es_demo(request, especificacion):
     return str(request.session.get('demo_especificacion_id') or '') == str(especificacion.id)
 
 
-def llamar_webhook(url, payload, timeout=120):
-    """
-    Llama a un webhook de n8n con el payload dado.
-    Retorna el JSON parseado de la respuesta.
-    Lanza requests.exceptions.RequestException o json.JSONDecodeError si falla.
-    """
-    headers = {'Content-Type': 'application/json'}
-    if settings.N8N_WEBHOOK_TOKEN:
-        headers[settings.N8N_WEBHOOK_TOKEN_HEADER] = settings.N8N_WEBHOOK_TOKEN
-    response = requests.post(
-        url,
-        json=payload,
-        headers=headers,
-        timeout=timeout,
-    )
-    if not response.ok:
-        body = response.text[:500]
-        raise requests.exceptions.HTTPError(
-            f"HTTP {response.status_code} desde {url}: {body}",
-            response=response,
-        )
-    text = response.text.strip()
-    if not text:
-        return {}
-    return response.json()
-
-
-def desempaquetar(respuesta):
-    """n8n envuelve el payload de formas distintas según el workflow: un dict plano,
-    `{'output': {...}}`, o una lista de cualquiera de esos dos (`[{...}]`,
-    `[{'output': {...}}]`). Normaliza a un dict plano, o `{}` si no reconoce la forma.
-    """
-    dato = respuesta
-    if isinstance(dato, list):
-        dato = dato[0] if dato else {}
-    if isinstance(dato, dict) and isinstance(dato.get('output'), dict):
-        dato = dato['output']
-    return dato if isinstance(dato, dict) else {}
-
-
-_n8n = lambda path: f"{settings.N8N_BASE_URL}/webhook/{path}"
 N8N_WEBHOOK_COHERENCIA_URL = _n8n('coherencia')
 N8N_WEBHOOK_PARAMETROS_URL = _n8n('parametros')
 N8N_WEBHOOK_TITULO_URL = _n8n('titulo')
@@ -937,9 +898,20 @@ def generar_resultado_view(request):
             for act in actividades_raw
         ]
 
-        # El pliego debe indicar quién realiza la verificación técnica: la empresa
-        # dueña de la especificación, o el usuario mismo si es una cuenta personal.
-        if especificacion_tecnica.empresa:
+        # El pliego debe indicar quién realiza la verificación técnica. Manda la marca
+        # configurada (Configuración → Marca, "Nombre en los documentos"); si no hay,
+        # el nombre de la cuenta: la empresa dueña de la especificación, o el usuario
+        # mismo si es una cuenta personal.
+        if especificacion_tecnica.empresa_id:
+            marca = Marca.objects.filter(empresa_id=especificacion_tecnica.empresa_id).first()
+        elif especificacion_tecnica.creado_por_id:
+            marca = Marca.objects.filter(usuario_id=especificacion_tecnica.creado_por_id).first()
+        else:
+            marca = None
+
+        if marca and marca.nombre_mostrado:
+            nombre_empresa = marca.nombre_mostrado
+        elif especificacion_tecnica.empresa:
             nombre_empresa = especificacion_tecnica.empresa.nombre
         elif especificacion_tecnica.creado_por:
             nombre_empresa = especificacion_tecnica.creado_por.get_full_name() or especificacion_tecnica.creado_por.username

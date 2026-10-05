@@ -109,6 +109,15 @@
                              title="Editar texto generado">
                             <i class="fas fa-file-alt text-xs"></i>
                           </a>
+                          <form method="post" action="{% url 'ubi_web:regenerar_contenido_ubicacion' ubicacion.id %}" class="inline-flex"
+                                onsubmit="return confirm('¿Reemplazar el contenido actual con una nueva generación de IA?');">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="w-7 h-7 rounded-md flex items-center justify-center text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                                    title="Regenerar contenido (IA)">
+                              <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                            </button>
+                          </form>
                           <a href="{% url 'ubi_web:editar_ubicacion' ubicacion.id %}"
                              class="w-7 h-7 rounded-md flex items-center justify-center text-warning hover:bg-warning/10 transition-colors"
                              title="Editar datos">
@@ -390,6 +399,25 @@
           <div>
             <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest mb-0.5">Descripción</p>
             <p class="text-xs text-base-content/70 leading-relaxed">{{ proyecto.descripcion|linebreaksbr }}</p>
+          </div>
+          {% endif %}
+          {% if proyecto.objetivo or es_propietario %}
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-0.5">
+              <p class="text-[10px] font-bold text-secondary/50 uppercase tracking-widest">Objetivo</p>
+              {% if es_propietario %}
+              <button type="button" id="generar-objetivo-btn" data-proyecto-id="{{ proyecto.id }}"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                      title="Genera el objetivo con IA a partir de la descripción del proyecto. Consume 1 crédito.">
+                <i class="fas fa-wand-magic-sparkles text-[10px]"></i>
+                <span id="generar-objetivo-label">{% if proyecto.objetivo %}Regenerar{% else %}Generar con IA{% endif %}</span>
+              </button>
+              {% endif %}
+            </div>
+            <p id="objetivo-texto" class="text-xs text-base-content/70 leading-relaxed {% if not proyecto.objetivo %}italic text-base-content/40{% endif %}">
+              {% if proyecto.objetivo %}{{ proyecto.objetivo|linebreaksbr }}{% else %}Aún no hay objetivo.{% endif %}
+            </p>
+            <p id="generar-objetivo-error" class="text-xs text-error mt-1 hidden"></p>
           </div>
           {% endif %}
         </div>
@@ -789,6 +817,41 @@
       btnActualizar.disabled = false;
       btnActualizar.innerHTML = '<i class="fas fa-save text-xs"></i> Actualizar';
       actualizarVisibilidadBoton();
+    });
+  }
+
+  // Generar objetivo con IA
+  const objetivoBtn = document.getElementById('generar-objetivo-btn');
+  if (objetivoBtn) {
+    objetivoBtn.addEventListener('click', function() {
+      const proyectoId = this.dataset.proyectoId;
+      const label = document.getElementById('generar-objetivo-label');
+      const errorEl = document.getElementById('generar-objetivo-error');
+      const textoEl = document.getElementById('objetivo-texto');
+      const textoOriginal = label.textContent;
+      objetivoBtn.disabled = true;
+      label.textContent = 'Generando…';
+      errorEl.classList.add('hidden');
+      fetch(`/proyectos/${proyectoId}/generar-objetivo/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '' }
+      }).then(r => r.json().then(data => ({ ok: r.ok, data }))).then(({ ok, data }) => {
+        if (ok && data.success) {
+          textoEl.textContent = data.objetivo;
+          textoEl.classList.remove('italic', 'text-base-content/40');
+          label.textContent = 'Regenerar';
+        } else {
+          errorEl.textContent = data.error || 'No se pudo generar el objetivo.';
+          errorEl.classList.remove('hidden');
+          label.textContent = textoOriginal;
+        }
+      }).catch(() => {
+        errorEl.textContent = 'No se pudo generar el objetivo. Revisa tu conexión.';
+        errorEl.classList.remove('hidden');
+        label.textContent = textoOriginal;
+      }).finally(() => {
+        objetivoBtn.disabled = false;
+      });
     });
   }
 

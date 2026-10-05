@@ -17,6 +17,11 @@ class Proyecto(models.Model):
     solicitante = models.CharField(max_length=200, verbose_name="Solicitante", blank=True)
     ubicacion = models.CharField(max_length=200, verbose_name="Ubicación", blank=True)
     descripcion = models.TextField(verbose_name="Descripción", blank=True)
+    objetivo = models.TextField(
+        verbose_name="Objetivo",
+        blank=True,
+        help_text="Objetivo del proyecto para el pliego. Puede generarse con IA y editarse manualmente.",
+    )
     creado_por = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

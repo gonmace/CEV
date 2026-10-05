@@ -1,0 +1,134 @@
+{
+  "name": "objetivo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "objetivo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e5b8a1f4-0c7d-4f2e-d9a6-a3c1b0e8d7f5",
+      "name": "1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        -160
+      ],
+      "webhookId": "f6c9b2a5-1d8e-4a3f-e0b7-b4d2c1f9e8a6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "systemMessage": "Eres un redactor técnico de pliegos de construcción. Redacta la sección \"Objetivo\" de un pliego de especificaciones técnicas en español neutro latinoamericano, a partir de los datos JSON que recibes (proyecto_nombre, solicitante, ubicacion, descripcion).\n\nReglas estrictas:\n1. Entre 1 y 3 párrafos: primero el objetivo general de la contratación, luego los alcances principales que se desprenden de la descripción.\n2. Sin encabezados ni títulos. Sin listas, salvo que la descripción enumere componentes claramente.\n3. No inventes cifras, plazos, normas ni datos que no estén en la entrada.\n4. Sin texto conversacional antes o después: responde únicamente el texto del objetivo."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        80,
+        -160
+      ],
+      "id": "a7d0c3b6-2e9f-4b4a-f1c8-c5e3d2a0f9b7",
+      "name": "redactor objetivo",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "b8e1d4c7-3f0a-4c5b-a2d9-d6f4e3b1a0c8",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        80,
+        32
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": $json.output } }}",
+        "options": {}
+      },
+      "id": "c9f2e5d8-4a1b-4d6c-b3e0-e7a5f4c2b1d9",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        400,
+        -160
+      ]
+    }
+  ],
+  "connections": {
+    "1": {
+      "main": [
+        [
+          {
+            "node": "redactor objetivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "redactor objetivo",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "redactor objetivo": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "a0c3b6e9-5d2f-4e7a-c4b1-f8d6a5e3c2b0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d9c5adb5b47dc1dff2717f3c50997b1de6d705b83f6fc3647d372ee5b662ea9d"
+  },
+  "id": "ObjPryCEV0000001",
+  "tags": []
+}

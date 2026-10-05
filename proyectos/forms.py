@@ -5,7 +5,7 @@ from .models import Proyecto, Especificacion
 class ProyectoForm(forms.ModelForm):
     class Meta:
         model = Proyecto
-        fields = ['nombre', 'solicitante', 'ubicacion', 'descripcion', 'publico']
+        fields = ['nombre', 'solicitante', 'ubicacion', 'descripcion', 'objetivo', 'publico']
         widgets = {
             'nombre': forms.TextInput(attrs={
                 'class': 'input input-bordered input-primary w-full focus:input-primary',
@@ -24,6 +24,11 @@ class ProyectoForm(forms.ModelForm):
                 'rows': 4,
                 'placeholder': 'Ingrese una descripción del proyecto (opcional)'
             }),
+            'objetivo': forms.Textarea(attrs={
+                'class': 'textarea textarea-bordered textarea-primary w-full focus:textarea-primary',
+                'rows': 5,
+                'placeholder': 'Objetivo del proyecto para el pliego. Puedes generarlo con IA desde la página del proyecto y editarlo aquí.'
+            }),
             'publico': forms.CheckboxInput(attrs={
                 'class': 'toggle toggle-primary'
             }),
@@ -33,6 +38,7 @@ class ProyectoForm(forms.ModelForm):
             'solicitante': 'Solicitante',
             'ubicacion': 'Ubicación',
             'descripcion': 'Descripción',
+            'objetivo': 'Objetivo',
             'publico': 'Público',
         }
 

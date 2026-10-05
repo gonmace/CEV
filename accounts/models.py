@@ -302,7 +302,7 @@ class Marca(models.Model):
     # ── Identidad ───────────────────────────────────────────────────────────
     nombre_mostrado = models.CharField(
         'Nombre en los documentos', max_length=120, blank=True,
-        help_text='Cómo aparece el nombre en portada y pie. Vacío = el nombre de la cuenta.',
+        help_text='Cómo aparece el nombre en los documentos Word y en el pliego generado. Vacío = el nombre de la cuenta.',
     )
     logo = models.ImageField(
         'Logo', upload_to=marca_upload_path, null=True, blank=True,

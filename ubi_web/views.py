@@ -12,13 +12,14 @@ import re
 import logging
 from PIL import Image
 from accounts.permissions import puede_editar, puede_ver
+from core.n8n import N8NError, extraer_markdown, limpiar_markdown_ubicacion, llamar_webhook_seguro, webhook_url
 from proyectos.models import Proyecto
 from .models import Ubicacion, UbicacionImagen
 from .forms import UbicacionForm, UbicacionContenidoForm
 
 logger = logging.getLogger(__name__)
 
-N8N_WEBHOOK_UBICACION_URL = f"{settings.N8N_BASE_URL}/webhook/ubicacion"
+N8N_WEBHOOK_UBICACION_URL = webhook_url('ubicacion')
 
 
 
@@ -66,6 +67,7 @@ def obtener_indicaciones_ruta(origen_lat, origen_lon, destino_lat, destino_lon, 
                 return {
                     'distancia_total': distancia_total,
                     'duracion_total': duracion_total,
+                    'vias': route.get('summary', ''),
                     'indicaciones': indicaciones,
                     'pasos_totales': len(steps)
                 }
@@ -75,11 +77,74 @@ def obtener_indicaciones_ruta(origen_lat, origen_lon, destino_lat, destino_lon, 
     return None
 
 
+class RutaError(Exception):
+    """Fallo al obtener la ruta desde el centro de la ciudad, con mensaje para el usuario."""
+
+
+def construir_resumen_ruta(ciudad, vias, distancia, duracion):
+    """Arma un párrafo genérico de acceso al sitio. Determinista: sin IA, sin pasos."""
+    base = f"El acceso al sitio se realiza desde el centro de {ciudad}"
+    if vias:
+        base += f" por {vias}"
+    base += "."
+    datos = []
+    if distancia:
+        datos.append(f"una distancia aproximada de {distancia}")
+    if duracion:
+        datos.append(f"un tiempo estimado de viaje de {duracion} en vehículo")
+    if datos:
+        base += " El recorrido comprende " + " y ".join(datos) + "."
+    return base
+
+
+def obtener_datos_ruta(ubicacion_instance, google_maps_api_key):
+    """Geocodifica la ciudad, consulta Directions y setea los campos ruta_* de la ubicación.
+
+    No guarda la instancia (el caller decide cuándo). Lanza RutaError con mensaje en
+    español si la ciudad no se puede geocodificar o no hay ruta.
+    """
+    if not ubicacion_instance.ciudad:
+        raise RutaError("La ubicación no tiene ciudad definida; no se puede calcular la ruta.")
+    if ubicacion_instance.latitud is None or ubicacion_instance.longitud is None:
+        raise RutaError("La ubicación no tiene coordenadas; no se puede calcular la ruta.")
+
+    try:
+        geocoding_response = requests.get(
+            "https://maps.googleapis.com/maps/api/geocode/json",
+            params={'address': ubicacion_instance.ciudad, 'key': google_maps_api_key},
+            timeout=10,
+        )
+        geocoding_data = geocoding_response.json()
+    except Exception as e:
+        logger.error(f"Error al geocodificar la ciudad '{ubicacion_instance.ciudad}': {e}")
+        raise RutaError("No se pudo consultar Google Maps para ubicar el centro de la ciudad.")
+
+    if geocoding_data.get('status') != 'OK' or not geocoding_data.get('results'):
+        raise RutaError(f'No se encontró la ciudad "{ubicacion_instance.ciudad}" en Google Maps. Revisa el nombre.')
+
+    centro = geocoding_data['results'][0]['geometry']['location']
+    ruta = obtener_indicaciones_ruta(
+        centro['lat'], centro['lng'],
+        float(ubicacion_instance.latitud), float(ubicacion_instance.longitud),
+        google_maps_api_key,
+    )
+    if not ruta:
+        raise RutaError("Google Maps no devolvió una ruta desde el centro de la ciudad hasta el sitio.")
+
+    ubicacion_instance.ruta_vias = ruta.get('vias', '')[:255]
+    ubicacion_instance.ruta_distancia = ruta.get('distancia_total', '')[:50]
+    ubicacion_instance.ruta_duracion = ruta.get('duracion_total', '')[:50]
+    ubicacion_instance.ruta_resumen = construir_resumen_ruta(
+        ubicacion_instance.ciudad,
+        ubicacion_instance.ruta_vias,
+        ubicacion_instance.ruta_distancia,
+        ubicacion_instance.ruta_duracion,
+    )
+
+
 def crear_imagen_mapa(ubicacion_instance, google_maps_api_key=None):
     """
     Descarga y guarda la imagen del mapa desde Google Static Maps API
-    También obtiene las indicaciones de cómo llegar desde el centro de la ciudad
-    Retorna las indicaciones formateadas (pero NO las guarda en el contenido)
     """
     if not google_maps_api_key:
         # Intentar obtener desde settings primero, luego desde env
@@ -174,55 +239,9 @@ def crear_imagen_mapa(ubicacion_instance, google_maps_api_key=None):
                 save=False
             )
         
-        # Obtener indicaciones de cómo llegar desde el centro de la ciudad
-        indicaciones_texto = ""
-        indicaciones_dict = None
-        if ubicacion_instance.ciudad:
-            try:
-                # Obtener coordenadas del centro de la ciudad usando Geocoding API
-                geocoding_url = "https://maps.googleapis.com/maps/api/geocode/json"
-                geocoding_params = {
-                    'address': ubicacion_instance.ciudad,
-                    'key': google_maps_api_key
-                }
-                geocoding_response = requests.get(geocoding_url, params=geocoding_params, timeout=10)
-                geocoding_data = geocoding_response.json()
-                
-                if geocoding_data['status'] == 'OK' and geocoding_data['results']:
-                    centro_ciudad = geocoding_data['results'][0]['geometry']['location']
-                    centro_lat = centro_ciudad['lat']
-                    centro_lon = centro_ciudad['lng']
-                    
-                    # Obtener indicaciones desde el centro de la ciudad hasta la ubicación
-                    indicaciones_dict = obtener_indicaciones_ruta(
-                        centro_lat, centro_lon,
-                        latitud, longitud,
-                        google_maps_api_key
-                    )
-                    
-                    if indicaciones_dict:
-                        # Formatear indicaciones en markdown (solo para enviar al webhook, NO se guardan en contenido)
-                        indicaciones_texto = f"\n\n## Cómo Llegar\n\n"
-                        indicaciones_texto += f"**Distancia total:** {indicaciones_dict['distancia_total']}\n\n"
-                        indicaciones_texto += f"**Tiempo estimado:** {indicaciones_dict['duracion_total']}\n\n"
-                        indicaciones_texto += f"**Indicaciones:**\n\n"
-                        
-                        for i, paso in enumerate(indicaciones_dict['indicaciones'][:10], 1):  # Primeros 10 pasos
-                            indicaciones_texto += f"{i}. {paso['instruccion']} ({paso['distancia']})\n"
-                        
-                        # NO guardar las indicaciones en el contenido
-                        # Solo se enviarán al webhook, el contenido final será reemplazado por la respuesta de la IA
-                        logger.info(f"Indicaciones obtenidas para enviar al webhook: {len(indicaciones_texto)} caracteres")
-            except Exception as e:
-                logger.error(f"Error al obtener indicaciones: {e}")
-                # Continuar sin indicaciones si hay error
-        
         # Eliminar archivo temporal
         if os.path.exists(mapa_imagen_path):
             os.remove(mapa_imagen_path)
-        
-        # Retornar las indicaciones formateadas para enviarlas al webhook
-        return indicaciones_texto
     except requests.exceptions.RequestException as e:
         # Eliminar archivo temporal si existe
         if os.path.exists(mapa_imagen_path):
@@ -238,147 +257,86 @@ def crear_imagen_mapa(ubicacion_instance, google_maps_api_key=None):
         raise Exception(f"Error al descargar el mapa: {str(e)}")
 
 
-def enviar_a_n8n_ubicacion(ubicacion_instance, google_maps_api_key=None, indicaciones=None):
+def enviar_a_n8n_ubicacion(ubicacion_instance):
     """
     Envía los datos de la ubicación al webhook de n8n para generar contenido con IA
-    Args:
-        ubicacion_instance: Instancia del modelo Ubicacion
-        google_maps_api_key: API key de Google Maps (opcional)
-        indicaciones: Texto de indicaciones formateado en markdown (opcional)
+    y lo deja en `ubicacion_instance.contenido` (no guarda la instancia).
+    Lanza N8NError con mensaje en español si el webhook falla o no devuelve contenido.
     """
+    proyecto = ubicacion_instance.proyecto
+    tiene_coords = ubicacion_instance.latitud is not None and ubicacion_instance.longitud is not None
+    payload = {
+        'nombre': ubicacion_instance.nombre,
+        'descripcion': ubicacion_instance.descripcion or '',
+        'latitud': float(ubicacion_instance.latitud) if tiene_coords else None,
+        'longitud': float(ubicacion_instance.longitud) if tiene_coords else None,
+        # Coordenadas ya formateadas para que el prompt las copie literalmente,
+        # sin que el LLM las redondee o trunque.
+        'coordenadas_texto': (
+            f"{float(ubicacion_instance.latitud):.6f}, {float(ubicacion_instance.longitud):.6f}"
+            if tiene_coords else ''
+        ),
+        'ciudad': ubicacion_instance.ciudad or '',
+        'contenido_actual': ubicacion_instance.contenido or '',
+        'proyecto_nombre': proyecto.nombre if proyecto else '',
+        'proyecto_solicitante': proyecto.solicitante if proyecto else '',
+        'proyecto_ubicacion': proyecto.ubicacion if proyecto else '',
+        'ruta': {
+            'vias': ubicacion_instance.ruta_vias,
+            'distancia': ubicacion_instance.ruta_distancia,
+            'duracion': ubicacion_instance.ruta_duracion,
+            'resumen': ubicacion_instance.ruta_resumen,
+        },
+        'tiene_ruta': bool(ubicacion_instance.ruta_resumen),
+    }
+
+    logger.info(f"Enviando datos de ubicación a n8n webhook: {N8N_WEBHOOK_UBICACION_URL}")
+    respuesta = llamar_webhook_seguro(N8N_WEBHOOK_UBICACION_URL, payload, timeout=60)
+
+    markdown_generado = extraer_markdown(respuesta)
+    if not markdown_generado:
+        logger.warning(f"Sin markdown en la respuesta del webhook de ubicación. Tipo: {type(respuesta)}")
+        raise N8NError("La respuesta de la IA no contiene contenido utilizable.")
+
+    ubicacion_instance.contenido = limpiar_markdown_ubicacion(markdown_generado)
+    logger.info(f"Contenido markdown generado guardado: {len(ubicacion_instance.contenido)} caracteres")
+
+
+def _generar_mapa_ruta_contenido(ubicacion, con_contenido=True):
+    """Ejecuta las tres etapas de generación (mapa, ruta, contenido IA) por separado.
+
+    Cada etapa falla sin tumbar a las demás. Retorna la lista de mensajes de error
+    (vacía si todo salió bien). No guarda la instancia.
+    """
+    errores = []
+    api_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', None)
+
     try:
-        # Preparar payload con toda la información disponible
-        contenido_actual = ubicacion_instance.contenido or ''
-        
-        payload = {
-            'nombre': ubicacion_instance.nombre,
-            'descripcion': ubicacion_instance.descripcion or '',
-            'latitud': float(ubicacion_instance.latitud) if ubicacion_instance.latitud else None,
-            'longitud': float(ubicacion_instance.longitud) if ubicacion_instance.longitud else None,
-            'ciudad': ubicacion_instance.ciudad or '',
-            'contenido_actual': contenido_actual,
-            'proyecto_nombre': ubicacion_instance.proyecto.nombre if ubicacion_instance.proyecto else '',
-            'proyecto_solicitante': ubicacion_instance.proyecto.solicitante if ubicacion_instance.proyecto else '',
-            'proyecto_ubicacion': ubicacion_instance.proyecto.ubicacion if ubicacion_instance.proyecto else '',
-        }
-        
-        # Agregar indicaciones al payload si están disponibles (pasadas como parámetro)
-        if indicaciones and indicaciones.strip():
-            payload['indicaciones'] = indicaciones.strip()
-            payload['tiene_indicaciones'] = True
-            logger.info(f"Indicaciones incluidas en payload para webhook: {len(indicaciones)} caracteres")
-        else:
-            payload['tiene_indicaciones'] = False
-        
-        logger.info(f"Enviando datos de ubicación a n8n webhook: {N8N_WEBHOOK_UBICACION_URL}")
-        logger.debug(f"Payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
-        
-        # Enviar POST request al webhook de n8n
-        response = requests.post(
-            N8N_WEBHOOK_UBICACION_URL,
-            json=payload,
-            headers={
-                'Content-Type': 'application/json',
-                # Header Auth del lado de n8n (ver core/settings.py): sin token, el
-                # webhook queda abierto a cualquiera que conozca la URL.
-                **({settings.N8N_WEBHOOK_TOKEN_HEADER: settings.N8N_WEBHOOK_TOKEN} if settings.N8N_WEBHOOK_TOKEN else {}),
-            },
-            timeout=60  # Timeout de 60 segundos
-        )
-        
-        # Verificar si la respuesta fue exitosa
-        response.raise_for_status()
-        
-        # Procesar la respuesta JSON
-        response_data = None
-        try:
-            response_data = response.json()
-            logger.info(f"Respuesta recibida de n8n webhook - Status: {response.status_code}")
-            logger.debug(f"Respuesta JSON: {json.dumps(response_data, indent=2, ensure_ascii=False)}")
-        except json.JSONDecodeError as e:
-            logger.warning(f"Respuesta no es JSON válido: {str(e)}")
-            response_data = {'text': response.text, 'status_code': response.status_code}
-        
-        # Extraer el markdown generado por la IA
-        markdown_generado = None
-        
-        # Intentar diferentes formatos de respuesta (similar a como se hace en n8n/views.py)
-        # Formato esperado: [{"output": "markdown..."}]
-        if isinstance(response_data, list) and len(response_data) > 0:
-            first_item = response_data[0]
-            if isinstance(first_item, dict):
-                # Prioridad: output > pliego > contenido > markdown > text
-                if 'output' in first_item:
-                    markdown_generado = first_item['output']
-                    logger.info(f"Markdown encontrado en formato array[0].output: {len(markdown_generado) if markdown_generado else 0} caracteres")
-                elif 'pliego' in first_item:
-                    markdown_generado = first_item['pliego']
-                    logger.info(f"Markdown encontrado en formato array[0].pliego: {len(markdown_generado) if markdown_generado else 0} caracteres")
-                elif 'contenido' in first_item:
-                    markdown_generado = first_item['contenido']
-                    logger.info(f"Markdown encontrado en formato array[0].contenido: {len(markdown_generado) if markdown_generado else 0} caracteres")
-                elif 'markdown' in first_item:
-                    markdown_generado = first_item['markdown']
-                    logger.info(f"Markdown encontrado en formato array[0].markdown: {len(markdown_generado) if markdown_generado else 0} caracteres")
-                elif 'text' in first_item:
-                    markdown_generado = first_item['text']
-                    logger.info(f"Markdown encontrado en formato array[0].text: {len(markdown_generado) if markdown_generado else 0} caracteres")
-        
-        elif isinstance(response_data, dict):
-            # Buscar en diferentes campos posibles (formato objeto directo)
-            if 'output' in response_data:
-                markdown_generado = response_data['output']
-                logger.info(f"Markdown encontrado en campo 'output': {len(markdown_generado) if markdown_generado else 0} caracteres")
-            elif 'pliego' in response_data:
-                markdown_generado = response_data['pliego']
-                logger.info(f"Markdown encontrado en campo 'pliego': {len(markdown_generado) if markdown_generado else 0} caracteres")
-            elif 'contenido' in response_data:
-                markdown_generado = response_data['contenido']
-                logger.info(f"Markdown encontrado en campo 'contenido': {len(markdown_generado) if markdown_generado else 0} caracteres")
-            elif 'markdown' in response_data:
-                markdown_generado = response_data['markdown']
-                logger.info(f"Markdown encontrado en campo 'markdown': {len(markdown_generado) if markdown_generado else 0} caracteres")
-            elif 'text' in response_data:
-                markdown_generado = response_data['text']
-                logger.info(f"Markdown encontrado en campo 'text': {len(markdown_generado) if markdown_generado else 0} caracteres")
-        
-        # Si se encontró markdown generado, guardarlo en el contenido
-        if markdown_generado and isinstance(markdown_generado, str) and markdown_generado.strip():
-            # Extraer solo el contenido desde "UBICACIÓN DEL SITIO" en adelante
-            contenido_final = markdown_generado.strip()
-            
-            # Buscar el inicio del contenido que queremos guardar
-            marcador_inicio = "UBICACIÓN DEL SITIO"
-            if marcador_inicio in contenido_final:
-                # Encontrar la posición donde comienza "UBICACIÓN DEL SITIO"
-                indice_inicio = contenido_final.find(marcador_inicio)
-                # Extraer desde ese punto en adelante
-                contenido_final = contenido_final[indice_inicio:].strip()
-                logger.info(f"Contenido extraído desde '{marcador_inicio}': {len(contenido_final)} caracteres")
-            else:
-                # Si no se encuentra el marcador, usar todo el contenido
-                logger.warning(f"No se encontró el marcador '{marcador_inicio}' en el contenido generado. Usando todo el contenido.")
-            
-            # Reemplazar completamente el contenido con el generado por IA (sin las indicaciones previas)
-            ubicacion_instance.contenido = contenido_final
-            logger.info(f"Contenido markdown generado guardado: {len(ubicacion_instance.contenido)} caracteres")
-            
-            return True
-        else:
-            logger.warning(f"No se encontró markdown en la respuesta del webhook. Tipo de respuesta: {type(response_data)}")
-            if isinstance(response_data, list):
-                logger.warning(f"Array con {len(response_data)} elementos")
-            return False
-            
-    except requests.exceptions.Timeout:
-        logger.error(f"Timeout al enviar a {N8N_WEBHOOK_UBICACION_URL}")
-        return False
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error al comunicarse con el webhook {N8N_WEBHOOK_UBICACION_URL}: {str(e)}", exc_info=True)
-        return False
+        crear_imagen_mapa(ubicacion, google_maps_api_key=api_key)
+    except ValueError:
+        errores.append('Falta configurar GOOGLE_MAPS_API_KEY, no se generó el mapa.')
     except Exception as e:
-        logger.error(f"Error inesperado al procesar respuesta del webhook: {str(e)}", exc_info=True)
-        return False
+        logger.error(f"Error al generar el mapa de la ubicación {ubicacion.id}: {e}", exc_info=True)
+        errores.append('Falló la generación del mapa.')
+
+    try:
+        obtener_datos_ruta(ubicacion, api_key)
+    except RutaError as e:
+        errores.append(f'Falló el cálculo de la ruta: {e}')
+    except Exception as e:
+        logger.error(f"Error al calcular la ruta de la ubicación {ubicacion.id}: {e}", exc_info=True)
+        errores.append('Falló el cálculo de la ruta.')
+
+    if con_contenido:
+        try:
+            enviar_a_n8n_ubicacion(ubicacion)
+        except N8NError as e:
+            errores.append(f'Falló la generación del contenido con IA: {e}')
+        except Exception as e:
+            logger.error(f"Error al generar contenido IA de la ubicación {ubicacion.id}: {e}", exc_info=True)
+            errores.append('Falló la generación del contenido con IA.')
+
+    return errores
 
 
 @login_required
@@ -397,31 +355,21 @@ def crear_ubicacion_view(request, proyecto_id):
         if form.is_valid():
             ubicacion = form.save(commit=False)
             ubicacion.proyecto = proyecto
+            ubicacion.save()
 
             if ubicacion.latitud and ubicacion.longitud:
-                try:
-                    ubicacion.save()
-                    api_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', None)
-                    indicaciones_texto = crear_imagen_mapa(ubicacion, google_maps_api_key=api_key)
-                    ubicacion.save()
-                    try:
-                        contenido_generado = enviar_a_n8n_ubicacion(ubicacion, google_maps_api_key=api_key, indicaciones=indicaciones_texto)
-                        if contenido_generado:
-                            ubicacion.save()
-                            messages.success(request, f'Ubicación "{ubicacion.nombre}" creada. Mapa y contenido generados automáticamente.')
-                        else:
-                            messages.success(request, f'Ubicación "{ubicacion.nombre}" creada. Mapa generado automáticamente.')
-                    except Exception as e:
-                        logger.error(f"Error al enviar a n8n: {str(e)}", exc_info=True)
-                        messages.success(request, f'Ubicación "{ubicacion.nombre}" creada. Mapa generado, pero hubo un error al generar el contenido con IA.')
-                except ValueError:
-                    ubicacion.save()
-                    messages.warning(request, f'Ubicación "{ubicacion.nombre}" creada. Configure GOOGLE_MAPS_API_KEY para generar el mapa automáticamente.')
-                except Exception as e:
-                    ubicacion.save()
-                    messages.warning(request, f'Ubicación "{ubicacion.nombre}" creada, pero hubo un error al generar el mapa: {str(e)}')
-            else:
+                errores = _generar_mapa_ruta_contenido(ubicacion)
                 ubicacion.save()
+                if not errores:
+                    messages.success(request, f'Ubicación "{ubicacion.nombre}" creada. Mapa, ruta y contenido generados.')
+                else:
+                    messages.warning(
+                        request,
+                        f'Ubicación "{ubicacion.nombre}" creada, pero con problemas: '
+                        + ' '.join(errores)
+                        + ' Puedes reintentar con "Regenerar contenido".'
+                    )
+            else:
                 messages.success(request, f'Ubicación "{ubicacion.nombre}" creada exitosamente.')
 
             return redirect('proyectos:proyecto_detalle', proyecto.id)
@@ -449,8 +397,19 @@ def editar_ubicacion_view(request, ubicacion_id):
     if request.method == 'POST':
         form = UbicacionForm(request.POST, instance=ubicacion)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Ubicación actualizada correctamente.')
+            cambio_geo = bool({'coordenadas', 'ciudad'} & set(form.changed_data))
+            ubicacion = form.save()
+            # Al cambiar coordenadas o ciudad se regeneran mapa y ruta, pero NO el
+            # contenido: eso pisaría ediciones manuales (hay botón "Regenerar contenido").
+            if cambio_geo and ubicacion.latitud and ubicacion.longitud:
+                errores = _generar_mapa_ruta_contenido(ubicacion, con_contenido=False)
+                ubicacion.save()
+                if not errores:
+                    messages.success(request, 'Ubicación actualizada. Mapa y ruta regenerados.')
+                else:
+                    messages.warning(request, 'Ubicación actualizada, pero con problemas: ' + ' '.join(errores))
+            else:
+                messages.success(request, 'Ubicación actualizada correctamente.')
             return redirect('proyectos:proyecto_detalle', proyecto.id)
     else:
         form = UbicacionForm(instance=ubicacion)
@@ -460,6 +419,45 @@ def editar_ubicacion_view(request, ubicacion_id):
         'ubicacion': ubicacion,
         'proyecto': proyecto,
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def regenerar_contenido_ubicacion_view(request, ubicacion_id):
+    """Recalcula la ruta y vuelve a generar el contenido de la ubicación con IA."""
+    ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, proyecto__activo=True)
+    proyecto = ubicacion.proyecto
+
+    if not puede_editar(request.user, proyecto):
+        messages.error(request, 'Solo puedes regenerar el contenido de ubicaciones de tus proyectos.')
+        return redirect('proyectos:proyecto_detalle', proyecto.id)
+
+    if not (ubicacion.latitud and ubicacion.longitud):
+        messages.error(request, 'La ubicación no tiene coordenadas; agrégalas antes de regenerar el contenido.')
+        return redirect('proyectos:proyecto_detalle', proyecto.id)
+
+    api_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', None)
+    try:
+        obtener_datos_ruta(ubicacion, api_key)
+    except RutaError as e:
+        messages.warning(request, f'No se pudo actualizar la ruta: {e}')
+    except Exception as e:
+        logger.error(f"Error al recalcular la ruta de la ubicación {ubicacion.id}: {e}", exc_info=True)
+        messages.warning(request, 'No se pudo actualizar la ruta.')
+
+    try:
+        enviar_a_n8n_ubicacion(ubicacion)
+        ubicacion.save()
+        messages.success(request, f'Contenido de "{ubicacion.nombre}" regenerado con IA.')
+    except N8NError as e:
+        ubicacion.save()  # conserva la ruta actualizada aunque falle la IA
+        messages.error(request, f'No se pudo regenerar el contenido: {e}')
+    except Exception as e:
+        logger.error(f"Error al regenerar contenido de la ubicación {ubicacion.id}: {e}", exc_info=True)
+        ubicacion.save()
+        messages.error(request, 'No se pudo regenerar el contenido con IA.')
+
+    return redirect('proyectos:proyecto_detalle', proyecto.id)
 
 
 @login_required

@@ -92,6 +92,20 @@
             {% endif %}
           </div>
 
+          <!-- Objetivo -->
+          <div class="form-control w-full">
+            <label class="label" for="{{ form.objetivo.id_for_label }}">
+              <span class="label-text font-semibold">{{ form.objetivo.label }}</span>
+              <span class="label-text-alt">Opcional</span>
+            </label>
+            {{ form.objetivo }}
+            {% if form.objetivo.errors %}
+              <label class="label">
+                <span class="label-text-alt text-error">{{ form.objetivo.errors.0 }}</span>
+              </label>
+            {% endif %}
+          </div>
+
           <!-- Público -->
           <div class="form-control w-full">
             <label class="label cursor-pointer justify-start gap-3">

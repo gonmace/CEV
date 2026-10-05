@@ -1,0 +1,134 @@
+{
+  "name": "ubicacion",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ubicacion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1f4c2d8-5b3e-4f7a-9c1d-2e8b6a4f0c3d",
+      "name": "1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        -160
+      ],
+      "webhookId": "c7d2e9f4-8a1b-4c6d-b3e5-f0a9d8c7b6a5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "systemMessage": "Eres un redactor técnico de pliegos de construcción. Redacta la sección \"Ubicación\" de un pliego en español neutro latinoamericano, en formato Markdown, a partir de los datos JSON que recibes (nombre, descripcion, ciudad, coordenadas_texto, latitud, longitud, proyecto_nombre, proyecto_solicitante, ruta, tiene_ruta).\n\nReglas estrictas:\n1. NO incluyas ningún encabezado de nivel 1 (#) ni de nivel 2 (##), ni los títulos \"Ubicación del Sitio\", \"Ubicación\" o \"Datos generales\". Comienza directamente con encabezados de nivel 3 (###).\n2. Estructura exacta:\n### Coordenadas\nSistema de referencia: WGS84 (grados decimales)\n\nLatitud: <primer valor de coordenadas_texto>° — Longitud: <segundo valor de coordenadas_texto>°\n(copia LITERALMENTE los valores de coordenadas_texto, sin redondear, truncar ni reformatear los decimales)\n### Descripción del sitio\n(basada en la descripción provista; si no hay descripción, redacta de forma general y prudente a partir de la ciudad)\n3. NO incluyas los datos del proyecto, solicitante ni localidad como sección aparte: esos datos ya van en el encabezado del documento.\n4. NO incluyas indicaciones de ruta paso a paso ni una sección \"Cómo llegar\": el documento final ya la agrega por separado. Puedes usar los datos de `ruta` solo como contexto para la descripción.\n5. Prohibido: Plus Codes (por ejemplo \"6VF4+2G4\"), URLs, enlaces, texto conversacional antes o después del Markdown, e inventar datos que no estén en la entrada.\n\nResponde únicamente el Markdown, nada más."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        80,
+        -160
+      ],
+      "id": "b2e5d8c1-7f4a-4e9b-a6c3-d0f8e7b5a4c2",
+      "name": "redactor ubicacion",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "id": "c3f6e9d2-8a5b-4d0c-b7e4-e1a9f8c6b5d3",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        80,
+        32
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "F9ep7hxU9Ld9irP7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"output\": $json.output } }}",
+        "options": {}
+      },
+      "id": "d4a7f0e3-9b6c-4e1d-c8f5-f2b0a9d7c6e4",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        400,
+        -160
+      ]
+    }
+  ],
+  "connections": {
+    "1": {
+      "main": [
+        [
+          {
+            "node": "redactor ubicacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "redactor ubicacion",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "redactor ubicacion": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "f8b3d6a1-4c7e-4a2b-9d5f-e0c8b7a6d5f4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d9c5adb5b47dc1dff2717f3c50997b1de6d705b83f6fc3647d372ee5b662ea9d"
+  },
+  "id": "LnC8ex7bFjCF1PTv",
+  "tags": []
+}

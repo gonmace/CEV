@@ -16,6 +16,7 @@ from django.conf import settings
 import json
 import os
 import io
+import re
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -25,7 +26,8 @@ from docx.oxml.ns import qn
 from markdown import markdown
 from bs4 import BeautifulSoup
 from PIL import Image
-from accounts.creditos import anotar_creditos, disponible, equipo_de, puede_consumir
+from accounts.creditos import SinCreditos, anotar_creditos, consumir, disponible, equipo_de, puede_consumir, revertir
+from core.n8n import N8NError, extraer_markdown, llamar_webhook_seguro, webhook_url
 from accounts.marca import (
     aplicar_colores, con_logo, insertar_logo, logo_de, marca_de, placeholders_de,
     plantilla_de, tipo_contrato_label,
@@ -641,7 +643,6 @@ def exportar_proyecto_word_view(request, proyecto_id):
         if not texto:
             return texto
         
-        import re
         # Patrón principal para detectar Plus Codes completos con el símbolo +
         # Formato típico: 4-6 caracteres alfanuméricos + 2-4 caracteres alfanuméricos
         # Ejemplos: "6VF4+2G4", "6VF4+2G", "ABC123+XY"
@@ -719,7 +720,6 @@ def exportar_proyecto_word_view(request, proyecto_id):
         # Si tenemos una instancia de ubicación, SIEMPRE reemplazar coordenadas con valores completos
         # Esto asegura que los decimales completos se preserven sin importar cómo estén en el HTML
         if ubicacion_instance and ubicacion_instance.latitud is not None and ubicacion_instance.longitud is not None:
-            import re
             latitud_completa = f"{float(ubicacion_instance.latitud):.6f}"
             longitud_completa = f"{float(ubicacion_instance.longitud):.6f}"
             
@@ -893,7 +893,6 @@ def exportar_proyecto_word_view(request, proyecto_id):
                     # Si tenemos ubicacion_instance, verificar si este li contiene coordenadas
                     # y reemplazarlas antes de procesar
                     if ubicacion_instance and ubicacion_instance.latitud is not None and ubicacion_instance.longitud is not None:
-                        import re
                         texto_li = li.get_text()
                         latitud_completa = f"{float(ubicacion_instance.latitud):.6f}"
                         longitud_completa = f"{float(ubicacion_instance.longitud):.6f}"
@@ -923,7 +922,6 @@ def exportar_proyecto_word_view(request, proyecto_id):
                     para = doc.add_paragraph(style='List Number')
                     # Si tenemos ubicacion_instance, verificar si este li contiene coordenadas
                     if ubicacion_instance and ubicacion_instance.latitud is not None and ubicacion_instance.longitud is not None:
-                        import re
                         texto_li = li.get_text()
                         latitud_completa = f"{float(ubicacion_instance.latitud):.6f}"
                         longitud_completa = f"{float(ubicacion_instance.longitud):.6f}"
@@ -951,7 +949,6 @@ def exportar_proyecto_word_view(request, proyecto_id):
                 para = doc.add_paragraph(style='List Bullet')
                 # Si tenemos ubicacion_instance, verificar si este li contiene coordenadas
                 if ubicacion_instance and ubicacion_instance.latitud is not None and ubicacion_instance.longitud is not None:
-                    import re
                     texto_li = elem.get_text()
                     latitud_completa = f"{float(ubicacion_instance.latitud):.6f}"
                     longitud_completa = f"{float(ubicacion_instance.longitud):.6f}"
@@ -1184,20 +1181,38 @@ def exportar_proyecto_word_view(request, proyecto_id):
                 # Preservar el texto completo sin truncar
                 para.add_run(element.strip())
     
-    # Agregar contenido de ubicación al principio si existe
+    # La numeración (1., 2., 2.1., ...) la pone el estilo de títulos de la plantilla
+    # Word, así que el texto va sin número: ponerlo a mano lo duplicaría ("1. 1. ...").
+    def titulo_seccion(texto):
+        return doc.add_heading(texto, level=2)
+
+    # 1. Objetivo del proyecto
+    if (proyecto.objetivo or '').strip():
+        titulo_seccion("Objetivo")
+        process_markdown_content(proyecto.objetivo)
+        doc.add_paragraph()
+
+    # 2. Ubicación: contenido generado + ruta + mapa de la primera ubicación
     ubicaciones_list = list(ubicaciones) if not isinstance(ubicaciones, list) else ubicaciones
     if ubicaciones_list:
         ubicacion = ubicaciones_list[0]  # Tomar la primera ubicación
-        if ubicacion.contenido:
+        if ubicacion.contenido or ubicacion.mapa_imagen or ubicacion.ruta_resumen:
             # Filtrar Plus Codes del contenido antes de procesarlo
-            contenido_limpio = filtrar_plus_codes(ubicacion.contenido)
-            
+            contenido_limpio = filtrar_plus_codes(ubicacion.contenido) if ubicacion.contenido else ''
+
             # Eliminar espacios en blanco al inicio del contenido
             contenido_limpio = contenido_limpio.lstrip()
-            
+
+            # Eliminar la subsección "Datos generales" completa (título + cuerpo):
+            # proyecto, solicitante y localidad ya van en el encabezado del documento.
+            contenido_limpio = re.sub(
+                r'(?ims)^#{2,6}\s*datos\s+generales\b.*?(?=^#{2,6}\s|\Z)',
+                '',
+                contenido_limpio,
+            ).lstrip()
+
             # Asegurar que las coordenadas muestren todos los decimales
             # Buscar patrones de coordenadas truncadas y reemplazarlas con valores completos
-            import re
             if ubicacion.latitud is not None and ubicacion.longitud is not None:
                 latitud_completa = f"{float(ubicacion.latitud):.6f}"
                 longitud_completa = f"{float(ubicacion.longitud):.6f}"
@@ -1217,6 +1232,11 @@ def exportar_proyecto_word_view(request, proyecto_id):
                     # Formato simple "-17." o "-63." cuando están solos en una línea (para listas)
                     (r'^(\s*[-•*]\s*Latitud[:\s]+)(-?\d+\.)(\s*°?\s*$)', rf"\1{latitud_completa}°\3"),
                     (r'^(\s*[-•*]\s*Longitud[:\s]+)(-?\d+\.)(\s*°?\s*$)', rf"\1{longitud_completa}°\3"),
+                    # Par de coordenadas a secas en su propia línea (truncadas "-17., -63."
+                    # o completas), p. ej. bajo "### Coordenadas": normalizar a WGS84 etiquetado.
+                    (r'^\s*-?\d+\.\d*\s*°?\s*,\s*-?\d+\.\d*\s*°?\s*$',
+                     f"Sistema de referencia: WGS84 (grados decimales)\n\n"
+                     f"Latitud: {latitud_completa}° — Longitud: {longitud_completa}°"),
                 ]
                 
                 for patron, reemplazo in patrones_coordenadas:
@@ -1226,7 +1246,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
                 # Esto se hará en la función process_markdown_content
             
             # Título de sección de ubicación (después de limpiar el contenido)
-            ubicacion_heading = doc.add_heading("Ubicación del Sitio", level=2)
+            ubicacion_heading = titulo_seccion("Ubicación")
             
             # Verificar si hay imágenes en el contenido markdown limpio
             # Si hay imágenes en el markdown, asumimos que la imagen del mapa ya está incluida
@@ -1242,17 +1262,33 @@ def exportar_proyecto_word_view(request, proyecto_id):
             # Procesar el contenido markdown de la ubicación, omitiendo títulos específicos
             # Omitir "UBICACIÓN DEL SITIO" porque ya se agregó como heading manualmente
             # Pasar la instancia de ubicación para reemplazar coordenadas truncadas en HTML también
-            process_markdown_content(
-                contenido_limpio, 
-                omitir_titulos=[
-                    'Coordenadas del Sitio', 
-                    'Descripción de Acceso',
-                    'UBICACIÓN DEL SITIO',
-                    'Ubicación del Sitio',
-                    'Ubicación Del Sitio'
-                ],
-                ubicacion_instance=ubicacion
-            )
+            if contenido_limpio:
+                process_markdown_content(
+                    contenido_limpio,
+                    omitir_titulos=[
+                        'Coordenadas del Sitio',
+                        'Descripción de Acceso',
+                        'UBICACIÓN DEL SITIO',
+                        'Ubicación del Sitio',
+                        'Ubicación Del Sitio',
+                        'Ubicación',
+                        'UBICACIÓN'
+                    ],
+                    ubicacion_instance=ubicacion
+                )
+
+            # Bloque "Cómo llegar" desde los campos de ruta guardados. Si el contenido
+            # legado ya trae su propia sección de ruta, no se duplica.
+            if ubicacion.ruta_resumen and 'cómo llegar' not in contenido_limpio.lower():
+                doc.add_heading("Cómo llegar", level=3)
+                doc.add_paragraph(ubicacion.ruta_resumen)
+                datos_ruta = []
+                if ubicacion.ruta_distancia:
+                    datos_ruta.append(f"Distancia aproximada: {ubicacion.ruta_distancia}")
+                if ubicacion.ruta_duracion:
+                    datos_ruta.append(f"Tiempo estimado: {ubicacion.ruta_duracion}")
+                if datos_ruta:
+                    doc.add_paragraph(" — ".join(datos_ruta))
             
             # Agregar imagen del mapa solo si existe y NO está ya en el contenido markdown
             # (si el markdown ya tiene imágenes, no agregar la imagen manualmente)
@@ -1300,7 +1336,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
 
     # Título de sección antes de las especificaciones
     if especificaciones:
-        doc.add_heading("Especificaciones Técnicas", level=2)
+        titulo_seccion("Especificaciones Técnicas")
 
     resumen_cantidades = []  # acumulador para el resumen final
 
@@ -1476,7 +1512,7 @@ def exportar_proyecto_word_view(request, proyecto_id):
 
     # Resumen de cantidades al final del documento
     if resumen_cantidades:
-        doc.add_heading("Resumen de Cantidades", level=2)
+        titulo_seccion("Resumen de Cantidades")
 
         ancho_total = int(6.5 * 0.8 * 1440)
         col_widths_res = [int(ancho_total * 0.70), int(ancho_total * 0.10), int(ancho_total * 0.20)]
@@ -2198,6 +2234,55 @@ def actualizar_actividad_view(request, especificacion_id, actividad_idx):
         return JsonResponse({'success': True, 'actividad': act})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(['POST'])
+def generar_objetivo_view(request, proyecto_id):
+    """Genera la sección "Objetivo" del pliego con IA a partir de la descripción del proyecto.
+
+    Cuesta 1 crédito del módulo pliegos; se reembolsa si la IA falla o no devuelve texto.
+    """
+    proyecto = get_object_or_404(Proyecto, id=proyecto_id, activo=True)
+    if not puede_editar(request.user, proyecto):
+        return JsonResponse({'success': False, 'error': 'Solo puedes generar el objetivo de tus propios proyectos.'}, status=403)
+
+    if not (proyecto.descripcion or '').strip():
+        return JsonResponse({
+            'success': False,
+            'error': 'El proyecto no tiene descripción. Agrega una descripción antes de generar el objetivo.',
+        }, status=400)
+
+    ok, motivo = puede_consumir(request.user, MODULO_PROYECTOS)
+    if not ok:
+        return JsonResponse({'success': False, 'error': motivo, 'sin_creditos': True}, status=402)
+    referencia = f'ProyectoObjetivo#{proyecto.id}'
+    try:
+        consumir(request.user, MODULO_PROYECTOS, referencia=referencia)
+    except SinCreditos as e:
+        return JsonResponse({'success': False, 'error': str(e), 'sin_creditos': True}, status=402)
+
+    payload = {
+        'proyecto_nombre': proyecto.nombre,
+        'solicitante': proyecto.solicitante or '',
+        'ubicacion': proyecto.ubicacion or '',
+        'descripcion': proyecto.descripcion,
+    }
+    try:
+        respuesta = llamar_webhook_seguro(webhook_url('objetivo'), payload, timeout=60)
+        objetivo = extraer_markdown(respuesta)
+        if not objetivo:
+            raise N8NError('La respuesta de la IA no contiene contenido utilizable.')
+    except N8NError as e:
+        revertir(request.user, MODULO_PROYECTOS, referencia=referencia)
+        return JsonResponse({'success': False, 'error': str(e)}, status=502)
+    except Exception:
+        revertir(request.user, MODULO_PROYECTOS, referencia=referencia)
+        raise
+
+    proyecto.objetivo = objetivo.strip()
+    proyecto.save(update_fields=['objetivo', 'fecha_actualizacion'])
+    return JsonResponse({'success': True, 'objetivo': proyecto.objetivo})
 
 
 @login_required

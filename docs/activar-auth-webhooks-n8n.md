@@ -27,7 +27,7 @@ curl -sS -X POST https://cev-n8n.magoreal.com/webhook/coherencia \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
-## 3. Activar los 14 nodos
+## 3. Activar los 15 nodos
 
 Con las herramientas MCP de n8n (`mcp__cev-n8n__n8n_update_partial_workflow`), para
 cada fila de esta tabla:
@@ -47,7 +47,14 @@ cada fila de esta tabla:
 | `PYavEwJJfEDPELOE` | EspSer_03-2_Equipos | `Webhook Extractor` |
 | `PYavEwJJfEDPELOE` | EspSer_03-2_Equipos | `Webhook Ajustar` |
 | `PYavEwJJfEDPELOE` | EspSer_03-2_Equipos | `Webhook PDF Vision` |
-| `LnC8ex7bFjCF1PTv` | ubicacion | `1` |
+| (verificar en la UI) | ubicacion_proyecto | `1` |
+| (verificar en la UI) | objetivo_proyecto | `1` |
+
+Los workflows `ubicacion_proyecto` (webhook `ubicacion`) y `objetivo_proyecto`
+(webhook `objetivo`) están versionados en `n8n/workflows/` (`Ubicacion_sitio.json`,
+`Objetivo_proyecto.json`). Se importaron por la UI, que les asignó ids nuevos
+(el viejo `LnC8ex7bFjCF1PTv` quedó reemplazado); verificar los ids en la UI antes
+del rollout. Se importan con auth desactivada hasta que se haga este rollout.
 
 Operación (probada con `validateOnly: true` el 17-ago-2026, no aplicada):
 
